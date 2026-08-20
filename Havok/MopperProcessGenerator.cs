@@ -158,6 +158,17 @@ namespace SECmd.Havok
         }
 
         /// <inheritdoc/>
+        public MoppResult? GenerateCollection(string description)
+        {
+            if (!IsAvailable || description.Length == 0)
+                return null;
+
+            // The same output as -msm, with the welding count zero: a collection of
+            // primitives has no triangles to weld.
+            return ParseSimpleMeshOutput(Run("-clm", description));
+        }
+
+        /// <inheritdoc/>
         public CompressedMeshResult? GenerateCompressedMesh(IReadOnlyList<MoppGeometry> geometries)
         {
             if (!IsAvailable || geometries.Count == 0)

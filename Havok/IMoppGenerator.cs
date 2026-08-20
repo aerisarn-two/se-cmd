@@ -42,6 +42,24 @@ namespace SECmd.Havok
         /// do it return anything; the rest return null.
         /// </remarks>
         CompressedMeshResult? GenerateCompressedMesh(IReadOnlyList<MoppGeometry> geometries) => null;
+
+        /// <summary>
+        /// Builds MOPP code for a shape collection that is not a mesh.
+        /// </summary>
+        /// <remarks>
+        /// A MOPP tree indexes a shape *collection*, and Havok's own
+        /// <c>hkpMoppUtility::buildCode</c> takes a shape container rather than a mesh
+        /// — so a `bhkListShape` of primitives is as valid an input as a mesh, which is
+        /// how ck-cmd's `HKXWrangler` builds one. What that needs is the primitives as
+        /// real Havok shapes, so they travel as a description the backend builds from.
+        ///
+        /// A tree over a list has leaves that are child *indices*, not triangle
+        /// indices, which is why a tessellation cannot stand in for one.
+        /// </remarks>
+        /// <param name="description">
+        /// The shape tree in mopper's own grammar. See <c>MoppShapeWriter</c>.
+        /// </param>
+        MoppResult? GenerateCollection(string description) => null;
     }
 
     /// <summary>One geometry going into a compressed mesh shape.</summary>

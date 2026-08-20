@@ -770,16 +770,30 @@ namespace SECmd.Conversion
                 return null;
             }
 
-            if (TriangleGeometryUnder(node) is not { } mesh || mesh.Triangles.Count == 0)
+            MoppResult? built;
+
+            if (TriangleGeometryUnder(node) is { Triangles.Count: > 0 } mesh)
+            {
+                built = generator.GenerateSimpleMesh(mesh.Vertices, mesh.Triangles);
+            }
+            else if (MoppShapeWriter.Describe(_model, inner) is { Length: > 0 } description)
+            {
+                // A tree over a collection of primitives. Its leaves are child indices
+                // rather than triangle indices, so a tessellation cannot stand in for
+                // one -- the backend has to build the primitives as Havok shapes and
+                // index those, which is what ck-cmd's HKXWrangler does.
+                built = generator.GenerateCollection(description);
+            }
+            else
             {
                 Warnings.Add(
-                    $"{name}: a MOPP tree over {inner.Name} indexes child shapes rather than "
-                    + "triangles, which no backend can build, so the tree is dropped");
+                    $"{name}: a MOPP tree over {inner.Name} is not one this build can "
+                    + "describe to the generator, so the tree is dropped");
 
                 return null;
             }
 
-            if (generator.GenerateSimpleMesh(mesh.Vertices, mesh.Triangles) is not { } built)
+            if (built is null)
             {
                 Warnings.Add($"{name}: MOPP generation failed, the tree is dropped");
                 return null;
