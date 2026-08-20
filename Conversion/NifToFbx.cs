@@ -185,10 +185,9 @@ namespace SECmd.Conversion
             if (!_model.BlockInherits(block, "NiAVObject"))
                 return null;
 
-            string name = NameEncoding.Sanitize(_model.GetName(block));
-
-            if (name.Length == 0)
-                name = block.Name;
+            // The name no other block shares, which is what an animation track binds
+            // by. Where it is not the block's own, `nif_name` carries the real one.
+            string name = NameEncoding.Sanitize(NifAnimAccess.TrackName(_model, block));
 
             FbxObject node = FbxMeshWriter.AddModel(scene, name, "Null", _model.GetTransform(block));
             _built[block] = node;
@@ -837,10 +836,7 @@ namespace SECmd.Conversion
         /// </remarks>
         private void ConvertEmptyShape(FbxScene scene, NifItem shape, FbxObject? parent)
         {
-            string name = NameEncoding.Sanitize(_model.GetName(shape));
-
-            if (name.Length == 0)
-                name = shape.Name;
+            string name = NameEncoding.Sanitize(NifAnimAccess.TrackName(_model, shape));
 
             FbxObject node = FbxMeshWriter.AddModel(scene, name, "Null", _model.GetTransform(shape));
 
@@ -900,10 +896,7 @@ namespace SECmd.Conversion
                 return;
             }
 
-            string name = NameEncoding.Sanitize(_model.GetName(shape));
-
-            if (name.Length == 0)
-                name = shape.Name;
+            string name = NameEncoding.Sanitize(NifAnimAccess.TrackName(_model, shape));
 
             // FBX allows one mesh attribute per node, and refuses meshes parented
             // straight to the scene root, so a holder node is interposed in both
@@ -936,6 +929,11 @@ namespace SECmd.Conversion
                 LodFields);
             FbxDynamicShape.Write(geometry, _model, shape);
             FbxLodSizes.Write(geometry, _model, shape);
+
+            // The geometry is named uniquely too, so two shapes sharing a name can be
+            // told apart; this says which name each really had.
+            FbxNodeType.WriteName(geometry, _model, shape);
+
             scene.Connect(geometry, holder);
 
             ConvertSkin(scene, shape, geometry);

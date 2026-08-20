@@ -586,6 +586,13 @@ One class is refused explicitly: geometry is built on the mesh path, from a mesh
 node naming a shape class would arrive there with no vertices to be one from. The one
 exception is a node marked as an empty shape, below.
 
+**A name is made unique before it is used.** A NIF is free to give two nodes the same
+name — `impactfrosticestorm` has five called `AddOnNode66`, each with a transform
+controller of its own — and a track binds to a node *by name*, so the shared name kept
+the first controller and dropped four. A repeat is numbered (`AddOnNode66#1`) and the
+block's real name travels as `nif_name`. The order is the block order, a property of the
+file, so the export and the animation reader work it out separately and agree.
+
 **A block with no name is still a block.** The game's cameras have none. FBX has no
 anonymous object, so the export falls back to the class name — and three things have to
 agree on that, or the node is lost in a different way each time:
@@ -596,10 +603,11 @@ agree on that, or the node is lost in a different way each time:
 | The animation reader, keying tracks | A track names a node; a nameless one has no name to be named by |
 | The model lookup an FBX track binds through | Or the controller has nothing to hang on |
 
-The name itself travels separately, as `nif_name`, holding the empty string. It is
-written **only** when the name is empty, and read back as *present or absent* rather than
-by its value — every property getter answers absent and empty alike with its fallback,
-which is the one distinction this needs.
+The name itself travels as `nif_name`, written whenever the FBX object ended up called
+something else — an empty name replaced by the class, or a duplicate numbered. It is read
+back as *present or absent* rather than by its value, since an empty string is one of the
+things it has to be able to say, and every property getter answers absent and empty alike
+with its fallback.
 
 **A shape with no vertices travels as a node.** nif.xml says why: a
 `BSProceduralLightningController` is "paired with dummy TriShapes", empty shapes the
@@ -1598,7 +1606,7 @@ mesh with more than one emitter.
 
 | Limit | Consequence |
 | --- | --- |
-| A track binds by node name | Duplicate names cannot be told apart, in either format. A block with **no** name is bound by its class name instead, and the name itself travels as `nif_name` (§5.2.5) |
+| A track binds by node name | Which is why the name it binds by is made unique (§5.2.5) rather than taken from the file: a NIF is free to give two nodes one name, and `impactfrosticestorm` gives five of them `AddOnNode66` |
 | One layer per stack | Layered animation is not represented |
 
 ---

@@ -1,3 +1,4 @@
+using SECmd.Conversion;
 using SECmd.Nif;
 
 namespace SECmd.Fbx
@@ -141,6 +142,12 @@ namespace SECmd.Fbx
         public const string NameProperty = "nif_name";
 
         /// <summary>Records a name FBX cannot carry as the object's own.</summary>
+        /// <remarks>
+        /// Two cases, and both are about the FBX object being called something else.
+        /// A block with **no** name is exported under its class; a block sharing a name
+        /// with another is numbered, so a track can bind to one of them rather than to
+        /// whichever came first.
+        /// </remarks>
         public static void WriteName(FbxObject node, NifModel model, NifItem block)
         {
             if (model.FindItem(block, "Name") is null)
@@ -148,8 +155,8 @@ namespace SECmd.Fbx
 
             string name = model.GetName(block);
 
-            if (name.Length == 0)
-                node.Properties.SetUserString(NameProperty, string.Empty);
+            if (name != NameEncoding.Unsanitize(node.Name))
+                node.Properties.SetUserString(NameProperty, name);
         }
 
         /// <summary>The name a node should be given, which is usually its own.</summary>

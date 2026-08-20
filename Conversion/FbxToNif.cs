@@ -1503,7 +1503,9 @@ namespace SECmd.Conversion
         private NifItem BuildNiTriShape(FbxObject geometry, MeshGeometry mesh, string type)
         {
             NifItem shape = _model.InsertBlock(type);
-            _model.SetString(shape, "Name", NameEncoding.Unsanitize(geometry.Name));
+            _model.SetString(
+                shape, "Name",
+                FbxNodeType.ReadName(geometry, NameEncoding.Unsanitize(geometry.Name)));
 
             // A BSLODTriShape's levels are counts into its one triangle list, and a
             // shape whose counts are all zero draws nothing at any distance.
@@ -1537,7 +1539,9 @@ namespace SECmd.Conversion
         {
             NifItem shape = _model.InsertBlock(
                 FbxNodeType.Read(geometry, _model, "BSTriShape", "BSTriShape"));
-            _model.SetString(shape, "Name", NameEncoding.Unsanitize(geometry.Name));
+            _model.SetString(
+                shape, "Name",
+                FbxNodeType.ReadName(geometry, NameEncoding.Unsanitize(geometry.Name)));
 
             var descriptor = BuildVertexDescriptor(mesh, skinned);
 

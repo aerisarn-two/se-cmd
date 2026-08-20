@@ -180,12 +180,60 @@ namespace SECmd.Nif
         /// is its class. The name itself travels separately (`nif_name`), so an
         /// unnamed node still comes back unnamed.
         /// </remarks>
-        public static string TrackName(NifModel model, NifItem block)
-        {
-            string name = model.GetName(block);
+        public static string TrackName(NifModel model, NifItem block) =>
+            UniqueNames(model).GetValueOrDefault(block, model.GetName(block));
 
-            return name.Length > 0 ? name : block.Name;
+        /// <summary>
+        /// A name per block that no other block shares.
+        /// </summary>
+        /// <remarks>
+        /// A track binds to a node by name, and a NIF is free to give two nodes the
+        /// same one. `impactfrosticestorm` has five nodes called `AddOnNode66`, each
+        /// with a transform controller of its own, and keying by the shared name kept
+        /// the first and dropped four.
+        ///
+        /// So a repeat gets a numbered suffix, and the block's real name travels
+        /// separately as `nif_name` — the carrier a nameless block already needed
+        /// (§5.2.5). The order is the block order, which is a property of the file, so
+        /// the export and the animation reader work it out separately and agree.
+        ///
+        /// Cached per model: every node asks, and the answer only changes when the
+        /// block list does.
+        /// </remarks>
+        public static Dictionary<NifItem, string> UniqueNames(NifModel model)
+        {
+            if (_uniqueNames.TryGetValue(model, out var cached)
+                && cached.Count == model.Blocks.Count)
+            {
+                return cached;
+            }
+
+            var names = new Dictionary<NifItem, string>();
+            var seen = new Dictionary<string, int>(StringComparer.Ordinal);
+
+            foreach (NifItem block in model.Blocks)
+            {
+                string name = model.GetName(block);
+
+                // A block with no name of its own is exported under its class, which
+                // is shared by construction, so it is numbered on the same rule.
+                if (name.Length == 0)
+                    name = block.Name;
+
+                int count = seen.GetValueOrDefault(name);
+                seen[name] = count + 1;
+
+                names[block] = count == 0 ? name : $"{name}#{count}";
+            }
+
+            _uniqueNames.Remove(model);
+            _uniqueNames.Add(model, names);
+
+            return names;
         }
+
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<
+            NifModel, Dictionary<NifItem, string>> _uniqueNames = [];
 
         /// <summary>Everything on a node that can carry a controller chain.</summary>
         public static IEnumerable<NifItem> ControllerHosts(NifModel model, NifItem block)

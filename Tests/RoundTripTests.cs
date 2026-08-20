@@ -1243,6 +1243,66 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void TwoNodesWithOneNameAreStillTwoNodes()
+        {
+            // A NIF is free to give two nodes the same name, and impactfrosticestorm
+            // does: five called AddOnNode66, each with a transform controller of its
+            // own. A track binds by name, so keying on the shared one kept the first
+            // controller and dropped four.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("NiNode");
+            model.SetString(root, "Name", "root");
+
+            var nodes = new List<NifItem>();
+
+            for (int i = 0; i < 3; i++)
+            {
+                NifItem node = model.InsertBlock("NiNode");
+                model.SetString(node, "Name", "AddOnNode66");
+                nodes.Add(node);
+
+                NifItem controller = model.InsertBlock("NiTransformController");
+                NifItem interpolator = model.InsertBlock("NiTransformInterpolator");
+                NifItem data = model.InsertBlock("NiTransformData");
+
+                NifItem keys = model.SetArraySize(
+                    data, @"Translations\Num Keys", @"Translations\Keys", 2)!;
+
+                for (int k = 0; k < 2; k++)
+                {
+                    keys.Children[k].Children.First(c => c.Name == "Time").Value.SetFloat(k);
+                    keys.Children[k].Children.First(c => c.Name == "Value").Value
+                        .Set(new NifVector3(i * 10 + k, 0f, 0f));
+                }
+
+                model.SetRef(interpolator, "Data", data);
+                model.SetRef(controller, "Interpolator", interpolator);
+                model.SetRef(controller, "Target", node);
+                model.SetRef(node, "Controller", controller);
+            }
+
+            if (model.SetArraySize(root, "Num Children", "Children", nodes.Count) is { } children)
+            {
+                for (int i = 0; i < nodes.Count; i++)
+                    children.Children[i].Value.SetLink(model.IndexOf(nodes[i]));
+            }
+
+            model.SetRoots([root]);
+
+            NifModel rebuilt = RoundTrip(model);
+
+            // Three controllers, not one.
+            Assert.Equal(3, rebuilt.Blocks.Count(b => b.Name == "NiTransformController"));
+
+            // And all three nodes still carry the name they had, not the numbered one
+            // the FBX object needed.
+            Assert.Equal(
+                3,
+                rebuilt.Blocks.Count(b => b.Name == "NiNode" && rebuilt.GetName(b) == "AddOnNode66"));
+        }
+
+        [Fact]
         public void ANodeThatClaimsToBeGeometryIsStillANode()
         {
             // Geometry is built on the mesh path, from a mesh. A node that names a
