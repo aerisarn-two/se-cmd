@@ -431,6 +431,14 @@ namespace SECmd.Conversion
             // authoring tool arrive equal.
             List<NifVector3> points = Distinct(raw);
 
+            // Merging can leave too few points to be a surface, and that is not the
+            // same as there being no shape. A daedric mace's haft collision is half a
+            // metre long and two *microns* thick, so every point merges onto one of
+            // two ends -- and the sliver it describes is still the collision the game
+            // ships. The unmerged points are what the flat case then works from.
+            if (points.Count < 3 && raw.Count >= 3)
+                points = [.. raw];
+
             if (points.Count < 3)
                 return mesh;
 

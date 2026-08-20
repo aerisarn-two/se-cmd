@@ -1361,6 +1361,49 @@ A shape the description does not cover makes the whole description null rather t
 partial one, and the tree is dropped with a warning. A tree built over *some* of a
 collection would index its children by numbers that no longer mean what they did.
 
+#### 5.7.0B The convex hull, and what quantised points do to it
+
+The hull is incremental: seed a tetrahedron, then for each further point remove the faces
+it can see and stitch the resulting boundary to it. That is correct for points in general
+position, and collision points are not in general position — the game stores them
+quantised, so corners that were distinct in the authoring tool arrive equal.
+
+`snowdriftm01int.nif` is eight blocks with one collision shape, a 222-point hull. It
+produced **309,394 faces**, where a hull of 222 points has at most 2n−4 = 440, and a
+sweep of the corpus spent three and a half hours on that one mesh. Three things came out
+of it.
+
+**A face with no area has no distance, not a distance of zero.** `SignedDistance`
+returned zero for a degenerate face, and zero reads as "the point lies exactly on it" —
+so a sliver was visible from nowhere, nothing ever removed it, and every later point
+stitched its edges onto a hole that never closed. It returns `NaN` now, and a face
+nothing can judge is removed rather than kept.
+
+**Tolerances are relative to the shape.** A Havok shape may be a centimetre across or ten
+metres; an absolute `1e-6` is meaningless on one and ruinous on the other. Both the
+merging of near-duplicate points and the test for "is this point outside at all" scale
+with the extent.
+
+**A hull with more than 2n faces has stopped being a hull**, so the construction stops
+rather than going on being wrong more expensively.
+
+Merging cuts both ways, and the other edge is a **sliver**. A daedric mace's haft
+collision is eight points describing something half a metre long and *two microns* thick;
+every one of them merges onto one of two ends, which is not enough for a surface. It is
+still the collision the game ships, so where merging leaves too few points the unmerged
+ones are what the flat case works from. Three vanilla weapons were losing a shape that
+way — and had been long before any of this, since the seed search needs a triangle of
+area² above 1e-12 and a sliver's is 6e-14.
+
+That last one is a **backstop, not a cure**, and this mesh still trips it: what comes back
+is a hull of some of the points rather than all of them. The remaining defect is in the
+horizon extraction, which assumes the visible faces form one connected region — it cancels
+shared edges and treats the rest as a single loop. Where the tolerance makes visibility
+inconsistent between neighbouring faces, the visible set can be disconnected, the boundary
+is then several loops, and fanning across all of them leaves a surface that is not closed.
+Fixing it properly means per-face conflict lists and adaptive predicates, so neighbours
+decide visibility consistently rather than independently. Listed in §7.3.
+
 #### 5.7.1 Convex hull plane equations
 
 `bhkConvexVerticesShape` stores the hull's faces as half spaces, and the convention is
@@ -2168,6 +2211,7 @@ Real gaps, each with its reason recorded where it bites.
 | What | Consequence | Where |
 | --- | --- | --- |
 | A controller with no interpolator, outside a particle system | Not recognised as animation, and only particle systems carry these structurally so far | §5A.6, §4.9A |
+| Completeness of a convex hull over near-degenerate points | The incremental construction can leave the surface unclosed when quantised points make visibility inconsistent between neighbouring faces. It now stops instead of growing without bound, so the hull is of *some* of the points; one vanilla mesh is known to hit it | §5.7.0B |
 | Array order within a rebuilt convex hull | The vertices and planes agree, but arrive in the fit's order rather than Havok's, which nif.xml says is lexicographic | §5.7.1 |
 | The second and later materials of a multi-material render mesh | A NIF shape has one material, and the import keeps the first rather than splitting the mesh into one shape per material. Authoring means splitting it in the DCC tool | §5.3.4 |
 

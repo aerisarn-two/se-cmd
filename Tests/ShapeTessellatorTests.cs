@@ -295,6 +295,40 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void ASliverIsStillAShape()
+        {
+            // A daedric mace's haft collision is eight points describing something
+            // half a metre long and two microns thick. Merging near-duplicates leaves
+            // two of them, which is not enough for a surface -- but the sliver is
+            // still the collision the game ships, so the unmerged points are what the
+            // flat case works from, and the shape comes back rather than the body
+            // losing it.
+            const float Length = 0.245f;
+            const float Hair = 0.000001f;
+
+            var points = new List<NifVector3>();
+
+            foreach (float y in new[] { -Length, Length })
+            {
+                points.Add(new NifVector3(0f, y, 0f));
+                points.Add(new NifVector3(Hair, y, 0f));
+                points.Add(new NifVector3(0f, y, Hair));
+                points.Add(new NifVector3(Hair, y, Hair));
+            }
+
+            MeshGeometry hull = ShapeTessellator.ConvexHull(points);
+
+            Assert.NotEmpty(hull.Triangles);
+            Assert.NotEmpty(hull.Vertices);
+
+            // It still spans the length it had: the sliver is thin, not short.
+            Assert.Equal(
+                2 * Length,
+                hull.Vertices.Max(v => v.Y) - hull.Vertices.Min(v => v.Y),
+                3);
+        }
+
+        [Fact]
         public void TooFewPointsAreStillNothing()
         {
             // Two points span no polygon, however it is wound.
