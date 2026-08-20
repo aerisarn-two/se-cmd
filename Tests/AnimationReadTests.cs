@@ -230,8 +230,11 @@ namespace SECmd.Tests
 
             // Shader, visibility and emitter controllers share these sequences.
             // Reading their interpolators as transforms would move nodes that were
-            // never animated.
-            Assert.Empty(model.ReadAnimations());
+            // never animated -- so the track exists, and moves nothing.
+            AnimTrack track = Assert.Single(Assert.Single(model.ReadAnimations()).Tracks);
+
+            Assert.Empty(track.Curves.SelectMany(c => c.Keys));
+            Assert.Null(track.Pose);
         }
     }
 }

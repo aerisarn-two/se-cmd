@@ -79,6 +79,20 @@ namespace SECmd.Conversion
         /// <summary>Whether the source was a boolean track rather than a float one.</summary>
         public bool IsBoolean { get; init; }
 
+        /// <summary>
+        /// Whether the source held an interpolator here that itself held nothing.
+        /// </summary>
+        /// <remarks>
+        /// A file can store an interpolator with no data block and no pose value —
+        /// nif.xml's sentinels, `#INV_FLT#` for a float and 2 for a bool, both meaning
+        /// "none". It says nothing, and it is still a block: the controlled block that
+        /// names it and the interpolator itself are in the file and have to come back.
+        ///
+        /// Distinct from a constant, which says one thing, and from an absent property,
+        /// which is not there at all.
+        /// </remarks>
+        public bool Empty { get; init; }
+
         /// <summary>The NIF controller class, e.g. <c>NiPSysEmitterCtlr</c>.</summary>
         public string ControllerType { get; init; } = string.Empty;
 
@@ -225,7 +239,7 @@ namespace SECmd.Conversion
         /// controlled blocks and interpolators that carried them.
         /// </remarks>
         public bool Says =>
-            HasKeys || Pose is not null || Properties.Any(p => p.Constant is not null);
+            HasKeys || Pose is not null || Properties.Any(p => p.Constant is not null || p.Empty);
     }
 
     /// <summary>

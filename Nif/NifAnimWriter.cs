@@ -466,7 +466,7 @@ namespace SECmd.Nif
         /// </remarks>
         private static bool Carries(AnimProperty property) =>
             property.ControllerType.Length > 0
-            && (property.Curves.Any(c => c.HasKeys) || property.Constant is not null);
+            && (property.Curves.Any(c => c.HasKeys) || property.Constant is not null || property.Empty);
 
         /// <summary>
         /// Records which of several same-typed controllers on a target this one is.
@@ -663,7 +663,7 @@ namespace SECmd.Nif
                     entries.Add((track, node, null));
 
                 foreach (AnimProperty property in track.Properties.Where(
-                             p => p.Curves.Any(c => c.HasKeys) || p.Constant is not null))
+                             p => p.Curves.Any(c => c.HasKeys) || p.Constant is not null || p.Empty))
                 {
                     entries.Add((track, node, property));
                 }
@@ -727,6 +727,12 @@ namespace SECmd.Nif
             // at all -- that absence is the representation, not a missing piece of
             // one, so writing a one-key block instead would be a different animation
             // that happens to look the same.
+            // An interpolator that holds nothing: no data block, and its Value left at
+            // the default nif.xml gives it, which is the sentinel meaning "none".
+            // The block exists because the file had one, and says as little.
+            if (property.Empty)
+                return model.InsertBlock(InterpolatorClass(model, property));
+
             if (property.Constant is { } constant)
                 return WriteConstantInterpolator(model, property, constant);
 

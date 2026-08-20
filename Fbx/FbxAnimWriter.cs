@@ -95,7 +95,9 @@ namespace SECmd.Fbx
 
                 foreach (AnimProperty property in track.Properties)
                 {
-                    if (property.Constant is { } value)
+                    if (property.Empty)
+                        AddEmpty(stack, track.NodeName, property);
+                    else if (property.Constant is { } value)
                         AddConstant(stack, track.NodeName, property, value);
                     else
                         AddPropertyChannel(scene, layer, model, property);
@@ -143,6 +145,28 @@ namespace SECmd.Fbx
                 string.Join(
                     ' ',
                     parts.Select(p => p.ToString("R", System.Globalization.CultureInfo.InvariantCulture))));
+        }
+
+        /// <summary>Prefix on a stack property marking a track that holds nothing.</summary>
+        public const string EmptyPrefix = "noval_";
+
+        /// <summary>
+        /// Records a track whose interpolator held neither keys nor a pose.
+        /// </summary>
+        /// <remarks>
+        /// It cannot be a curve — there is nothing to key — and it cannot be a
+        /// constant, because a constant says one thing and this says none. It is on
+        /// the stack for the same reason both of those are: it is one per take.
+        ///
+        /// The value is the interpolator class, so the mark and the type travel
+        /// together; a track that holds nothing is entirely described by what kind of
+        /// nothing it is.
+        /// </remarks>
+        private static void AddEmpty(FbxObject stack, string nodeName, AnimProperty property)
+        {
+            stack.Properties.SetUserString(
+                $"{EmptyPrefix}{nodeName}{AnimProperty.Separator}{property.Name}",
+                property.InterpolatorType);
         }
 
         /// <summary>Prefix on a stack property naming a track's interpolator class.</summary>

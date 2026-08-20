@@ -90,6 +90,46 @@ namespace SECmd.Fbx
             }
         }
 
+        /// <summary>Reads the tracks whose interpolator holds nothing.</summary>
+        /// <remarks>See <see cref="FbxAnimWriter.AddEmpty"/>.</remarks>
+        private static void ReadEmpties(FbxObject stack, Dictionary<string, AnimTrack> tracks)
+        {
+            foreach (FbxProperty70 property in stack.Properties.All)
+            {
+                if (!property.Name.StartsWith(FbxAnimWriter.EmptyPrefix, StringComparison.Ordinal))
+                    continue;
+
+                string rest = property.Name[FbxAnimWriter.EmptyPrefix.Length..];
+                int bar = rest.IndexOf(AnimProperty.Separator);
+
+                if (bar <= 0)
+                    continue;
+
+                string nodeName = rest[..bar];
+                string propertyName = rest[(bar + 1)..];
+
+                if (!tracks.TryGetValue(nodeName, out AnimTrack? track))
+                    tracks[nodeName] = track = new AnimTrack { NodeName = nodeName };
+
+                (string type, string id, string interpolatorId, string propertyType) =
+                    AnimProperty.FromPropertyName(propertyName);
+
+                string interpolator = property.Values.FirstOrDefault() as string ?? string.Empty;
+
+                track.Properties.Add(new AnimProperty
+                {
+                    Name = propertyName,
+                    IsBoolean = interpolator.Contains("Bool", StringComparison.Ordinal),
+                    InterpolatorType = interpolator,
+                    ControllerType = type,
+                    ControllerId = id,
+                    InterpolatorId = interpolatorId,
+                    PropertyType = propertyType,
+                    Empty = true
+                });
+            }
+        }
+
         /// <summary>Reads the tracks that hold one transform for the whole take.</summary>
         /// <remarks>See <see cref="FbxAnimWriter.AddPose"/>.</remarks>
         private static void ReadPoses(FbxObject stack, Dictionary<string, AnimTrack> tracks)
@@ -179,6 +219,7 @@ namespace SECmd.Fbx
             }
 
             ReadConstants(stack, tracks);
+            ReadEmpties(stack, tracks);
             ReadPoses(stack, tracks);
             ReadInterpolatorTypes(stack, tracks);
 

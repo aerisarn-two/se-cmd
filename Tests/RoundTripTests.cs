@@ -813,7 +813,7 @@ namespace SECmd.Tests
         }
 
         [Fact]
-        public void AnInterpolatorHoldingNeitherKeysNorAPoseValueSaysNothing()
+        public void AnInterpolatorHoldingNeitherKeysNorAPoseValueIsStillABlock()
         {
             // nif.xml gives the pose value a default that means "none": INV_FLT for a
             // float, 2 for a bool, a bool being 0 or 1 and never 2. Reading the
@@ -834,7 +834,18 @@ namespace SECmd.Tests
             model.SetString(entry, "Node Name", "root");
             model.SetString(entry, "Controller Type", "NiVisController");
 
-            Assert.Empty(model.ReadAnimations());
+            AnimTrack track = Assert.Single(Assert.Single(model.ReadAnimations()).Tracks);
+            AnimProperty property = Assert.Single(track.Properties);
+
+            // No constant is invented from the sentinel...
+            Assert.Null(property.Constant);
+            Assert.Empty(property.Curves.SelectMany(c => c.Keys));
+
+            // ...and the block is still there to be rebuilt. The game's lightning
+            // effects are full of these: a sequence that drives nothing, spelled out
+            // rather than left out.
+            Assert.True(property.Empty);
+            Assert.Equal("NiFloatInterpolator", property.InterpolatorType);
         }
 
         [Fact]

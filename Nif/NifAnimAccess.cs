@@ -361,7 +361,26 @@ namespace SECmd.Nif
             };
 
             if (ReadValueKeys(model, interpolator, property))
+            {
                 TrackFor(tracks, name).Properties.Add(property);
+                return;
+            }
+
+            // An interpolator that holds neither keys nor a pose still exists, and so
+            // does the controlled block naming it. The game's lightning effects are
+            // full of them: a "loop" sequence that drives nothing, spelled out rather
+            // than left out. Dropping it lost both blocks.
+            TrackFor(tracks, name).Properties.Add(new AnimProperty(colour ? 3 : 1)
+            {
+                Name = property.Name,
+                IsBoolean = property.IsBoolean,
+                InterpolatorType = property.InterpolatorType,
+                ControllerType = property.ControllerType,
+                ControllerId = property.ControllerId,
+                InterpolatorId = property.InterpolatorId,
+                PropertyType = property.PropertyType,
+                Empty = true
+            });
         }
 
         /// <summary>
