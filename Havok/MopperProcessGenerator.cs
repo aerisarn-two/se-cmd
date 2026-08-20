@@ -496,21 +496,71 @@ namespace SECmd.Havok
         private static T? Attempt<T>(Func<T?> generate)
             where T : class
         {
+            for (int attempt = 0; attempt < Attempts; attempt++)
+            {
+                try
+                {
+                    if (generate() is { } result)
+                        return result;
+                }
+                catch (TimeoutException)
+                {
+                    // Try again: the usual cause is contention, not this geometry.
+                }
+                catch (IOException)
+                {
+                    // As above -- a pipe that broke rather than a shape that cannot
+                    // be built.
+                }
+
+                if (attempt + 1 < Attempts)
+                    Thread.Sleep(TimeSpan.FromMilliseconds(200 * (attempt + 1)));
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// How many times a generation is tried before it counts as impossible.
+        /// </summary>
+        /// <remarks>
+        /// A backend that fails because of the shape fails every time; one that fails
+        /// because forty of it are running at once does not. `smdetod02` converts on
+        /// its own, five times out of five, and lost its whole collision object part
+        /// way through a sweep of the corpus -- so the same input did not produce the
+        /// same file twice, which is worse than a shape that is always missing.
+        /// </remarks>
+        private const int Attempts = 3;
+
+        /// <summary>
+        /// How many backends may run at once.
+        /// </summary>
+        /// <remarks>
+        /// A sweep converts meshes in parallel and most of them want a MOPP tree, so
+        /// without this there are as many Wine processes as the thread pool feels like
+        /// starting. They contend for the same wineserver, and what comes back is a
+        /// timeout on a shape that converts perfectly well on its own.
+        ///
+        /// Half the cores, since each backend is itself a process that wants one.
+        /// </remarks>
+        private static readonly SemaphoreSlim Running =
+            new(Math.Max(1, Environment.ProcessorCount / 2));
+
+        private string Run(string mode, string input)
+        {
+            Running.Wait();
+
             try
             {
-                return generate();
+                return Execute(mode, input);
             }
-            catch (TimeoutException)
+            finally
             {
-                return null;
-            }
-            catch (IOException)
-            {
-                return null;
+                Running.Release();
             }
         }
 
-        private string Run(string mode, string input)
+        private string Execute(string mode, string input)
         {
             string executable = NeedsWine && WineCommand.Length > 0 ? WineCommand : _resolvedPath!;
 
