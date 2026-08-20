@@ -357,6 +357,49 @@ namespace SECmd.Tests
 
         private static readonly object ProgressLock = new();
 
+        /// <summary>
+        /// The file a trace of every mesh is written to, or null when nobody asked.
+        /// </summary>
+        /// <remarks>
+        /// Derived from the progress file rather than named separately: anyone who
+        /// wants to watch a sweep wants both.
+        /// </remarks>
+        private static string? TraceFile() =>
+            ProgressFile() is { } progress ? progress + ".trace" : null;
+
+        /// <summary>
+        /// Records a mesh starting and finishing, so a sweep that stops says where.
+        /// </summary>
+        /// <remarks>
+        /// Written before the work rather than after it, and flushed as it goes. A
+        /// batch line only narrows a hang to a thousand meshes: the run this was
+        /// written for sat for three and a half hours, and all anyone knew afterwards
+        /// was that it had been somewhere in batch eight of eighteen.
+        ///
+        /// A file is opened per line, which is slower than holding a handle and is
+        /// deliberate. What this has to survive is a process that never gets to close
+        /// anything -- a buffered writer's last few lines are exactly the ones naming
+        /// the mesh that hung.
+        ///
+        /// Several meshes run at once, so the ones still going are those with a "&gt;"
+        /// and no "&lt;":
+        ///
+        /// <code>
+        /// awk '{ if ($1 == "&gt;") open[$2] = 1; else delete open[$2] }
+        ///      END { for (f in open) print f }' progress.txt.trace
+        /// </code>
+        /// </remarks>
+        private static void Trace(string mark, string path)
+        {
+            if (TraceFile() is not { } file)
+                return;
+
+            lock (TraceLock)
+                File.AppendAllText(file, $"{mark} {path}{Environment.NewLine}");
+        }
+
+        private static readonly object TraceLock = new();
+
         private static void Sweep(Func<byte[], NifXmlDatabase, string?> check, string[]? tolerated = null)
         {
             var allowed = new HashSet<string>(tolerated ?? [], StringComparer.OrdinalIgnoreCase);
@@ -429,6 +472,7 @@ namespace SECmd.Tests
             Parallel.ForEach(files, file =>
                 {
                     Interlocked.Increment(ref done);
+                    Trace(">", file.Path);
 
                     byte[] original;
 
@@ -439,6 +483,7 @@ namespace SECmd.Tests
                     catch (Exception e)
                     {
                         failures.Add((file.Path, $"could not be read out of the archive: {e.GetType().Name}"));
+                        Trace("<", file.Path);
                         return;
                     }
 
@@ -454,6 +499,8 @@ namespace SECmd.Tests
                     {
                         failures.Add((file.Path, e.Message));
                     }
+
+                    Trace("<", file.Path);
                 });
 
             return done;
