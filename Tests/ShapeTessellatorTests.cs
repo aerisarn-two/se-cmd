@@ -212,13 +212,37 @@ namespace SECmd.Tests
         }
 
         [Fact]
-        public void DegenerateInputYieldsNoHull()
+        public void AFlatHullIsTessellatedAsThePolygonItIs()
         {
-            // Fewer than four points, and four coplanar ones, enclose no volume.
-            Assert.Empty(ShapeTessellator.ConvexHull([new(0, 0, 0), new(1, 0, 0), new(0, 1, 0)]).Triangles);
+            // The game ships these: byohwrdoorload01 draws its load door as four
+            // coplanar points. A hull with no volume has no tetrahedron to start from,
+            // and yielding nothing lost the shape, its body and the collision object
+            // above it. Wound both ways, so it exists from either side.
+            MeshGeometry quad = ShapeTessellator.ConvexHull(
+                [new(0, 0, 0), new(1, 0, 0), new(1, 1, 0), new(0, 1, 0)]);
 
+            Assert.Equal(4, quad.Triangles.Count);
+            Assert.Equal(4, quad.Vertices.Count);
+
+            // Every corner is still a corner, and every triangle lies in the plane.
+            Assert.All(quad.Vertices, v => Assert.Equal(0f, v.Z, 5));
+
+            MeshGeometry triangle = ShapeTessellator.ConvexHull(
+                [new(0, 0, 0), new(1, 0, 0), new(0, 1, 0)]);
+
+            Assert.Equal(2, triangle.Triangles.Count);
+        }
+
+        [Fact]
+        public void TooFewPointsAreStillNothing()
+        {
+            // Two points span no polygon, however it is wound.
+            Assert.Empty(ShapeTessellator.ConvexHull([new(0, 0, 0), new(1, 0, 0)]).Triangles);
+            Assert.Empty(ShapeTessellator.ConvexHull([]).Triangles);
+
+            // Nor do three points that are all the same point.
             Assert.Empty(ShapeTessellator.ConvexHull(
-                [new(0, 0, 0), new(1, 0, 0), new(1, 1, 0), new(0, 1, 0)]).Triangles);
+                [new(2, 2, 2), new(2, 2, 2), new(2, 2, 2)]).Triangles);
         }
 
         // --- scaling ----------------------------------------------------------

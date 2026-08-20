@@ -714,6 +714,8 @@ namespace SECmd.Conversion
                     built = BuildSphere(points);
                 else if (name.EndsWith("_capsule", StringComparison.Ordinal))
                     built = BuildCapsule(points);
+                else if (name.EndsWith("_cylinder", StringComparison.Ordinal))
+                    built = BuildCylinder(points);
                 else if (name.EndsWith("_convex", StringComparison.Ordinal))
                     built = BuildConvex(points);
                 else if (name.EndsWith("_mesh", StringComparison.Ordinal))
@@ -910,6 +912,31 @@ namespace SECmd.Conversion
             SetFloat(shape, "Radius", radius);
             SetFloat(shape, "Radius 1", radius);
             SetFloat(shape, "Radius 2", radius);
+
+            return shape;
+        }
+
+        /// <summary>
+        /// Rebuilds a cylinder, whose ends are discs rather than hemispheres.
+        /// </summary>
+        /// <remarks>
+        /// Havok stores both points as four-component vectors, and the fourth
+        /// component is not padding: it holds the radius again, and Havok reads it.
+        /// </remarks>
+        private NifItem BuildCylinder(IReadOnlyList<NifVector3> points)
+        {
+            (NifVector3 first, NifVector3 second, float radius) = ShapeFitter.FitCylinder(points);
+
+            NifItem shape = _model.InsertBlock("bhkCylinderShape");
+
+            _model.FindItem(shape, "Vertex A")?.Value.Set(
+                new NifVector4(first.X, first.Y, first.Z, radius));
+
+            _model.FindItem(shape, "Vertex B")?.Value.Set(
+                new NifVector4(second.X, second.Y, second.Z, radius));
+
+            SetFloat(shape, "Cylinder Radius", radius);
+            SetFloat(shape, "Radius", radius);
 
             return shape;
         }

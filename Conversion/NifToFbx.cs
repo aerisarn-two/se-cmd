@@ -622,6 +622,7 @@ namespace SECmd.Conversion
             "bhkSphereShape" => "_sphere",
             "bhkBoxShape" => "_box",
             "bhkCapsuleShape" => "_capsule",
+            "bhkCylinderShape" => "_cylinder",
             "bhkConvexVerticesShape" => "_convex",
             "bhkCompressedMeshShape" => "_mesh",
             _ => "_shape"
@@ -640,6 +641,14 @@ namespace SECmd.Conversion
                 _model.FindItem(shape, "First Point")?.Value.Get<NifVector3>() ?? new NifVector3(),
                 _model.FindItem(shape, "Second Point")?.Value.Get<NifVector3>() ?? new NifVector3(),
                 _model.FindItem(shape, "Radius")?.Value.ToFloat() ?? 0f),
+
+            // A cylinder's ends are flat discs through its two points, where a
+            // capsule's are hemispheres a radius beyond them. Reading one as the other
+            // makes a collision two radii too long.
+            "bhkCylinderShape" => ShapeTessellator.Cylinder(
+                Vector3Of(_model.FindItem(shape, "Vertex A")),
+                Vector3Of(_model.FindItem(shape, "Vertex B")),
+                _model.FindItem(shape, "Cylinder Radius")?.Value.ToFloat() ?? 0f),
 
             "bhkConvexVerticesShape" => ShapeTessellator.ConvexHull(ReadConvexVertices(shape)),
 
@@ -784,6 +793,17 @@ namespace SECmd.Conversion
         /// A convex shape's vertices, which are stored as Vector4 with the fourth
         /// component unused.
         /// </summary>
+        /// <summary>The XYZ of a four-component field, which is how Havok stores a point.</summary>
+        private static NifVector3 Vector3Of(NifItem? item)
+        {
+            if (item is null)
+                return new NifVector3();
+
+            NifVector4 v = item.Value.Get<NifVector4>();
+
+            return new NifVector3(v.X, v.Y, v.Z);
+        }
+
         private List<NifVector3> ReadConvexVertices(NifItem shape)
         {
             var points = new List<NifVector3>();

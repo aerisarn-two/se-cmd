@@ -138,6 +138,76 @@ namespace SECmd.Conversion
         /// <summary>
         /// A capsule: a cylinder between two points, capped with hemispheres.
         /// </summary>
+        /// <summary>
+        /// A cylinder between two points, with flat ends.
+        /// </summary>
+        /// <remarks>
+        /// The same shape as a capsule but for the caps: a capsule's ends are
+        /// hemispheres and reach a radius beyond each point, a cylinder's are discs
+        /// through the points themselves. Getting that wrong makes a collision that is
+        /// two radii too long, which is exactly the kind of error nothing reports.
+        ///
+        /// ck-cmd converts neither — its `recursive_convert` has no
+        /// <c>bhkCylinderShape</c> case at all, so a body whose shape is one leaves
+        /// with no geometry and the whole collision object is lost. The game ships
+        /// them, so this port converts them.
+        /// </remarks>
+        public static MeshGeometry Cylinder(NifVector3 first, NifVector3 second, float radius, int segments = 16)
+        {
+            segments = Math.Max(3, segments);
+
+            var axis = new NifVector3(second.X - first.X, second.Y - first.Y, second.Z - first.Z);
+            float length = MathF.Sqrt(axis.X * axis.X + axis.Y * axis.Y + axis.Z * axis.Z);
+
+            if (length < 1e-6f)
+                return Sphere(radius, segments);
+
+            var mesh = new MeshGeometry();
+
+            for (int end = 0; end < 2; end++)
+            {
+                float z = end == 0 ? 0f : length;
+
+                for (int segment = 0; segment < segments; segment++)
+                {
+                    float theta = (float)segment / segments * MathF.Tau;
+                    mesh.Vertices.Add(new NifVector3(MathF.Cos(theta) * radius, MathF.Sin(theta) * radius, z));
+                }
+            }
+
+            for (int segment = 0; segment < segments; segment++)
+            {
+                int next = (segment + 1) % segments;
+
+                var a = (ushort)segment;
+                var b = (ushort)next;
+                var c = (ushort)(segments + segment);
+                var d = (ushort)(segments + next);
+
+                mesh.Triangles.Add(new NifTriangle(a, c, b));
+                mesh.Triangles.Add(new NifTriangle(b, c, d));
+            }
+
+            // Flat caps, fanned from a centre point on each end plane.
+            var bottom = (ushort)mesh.Vertices.Count;
+            mesh.Vertices.Add(new NifVector3(0f, 0f, 0f));
+
+            var top = (ushort)mesh.Vertices.Count;
+            mesh.Vertices.Add(new NifVector3(0f, 0f, length));
+
+            for (int segment = 0; segment < segments; segment++)
+            {
+                int next = (segment + 1) % segments;
+
+                mesh.Triangles.Add(new NifTriangle(bottom, (ushort)next, (ushort)segment));
+                mesh.Triangles.Add(new NifTriangle(top, (ushort)(segments + segment), (ushort)(segments + next)));
+            }
+
+            AlignToAxis(mesh, first, axis, length);
+            mesh.RecalculateNormals();
+            return mesh;
+        }
+
         public static MeshGeometry Capsule(NifVector3 first, NifVector3 second, float radius, int segments = 16)
         {
             segments = Math.Max(3, segments);
@@ -262,18 +332,25 @@ namespace SECmd.Conversion
         /// <remarks>
         /// An incremental hull: start from a tetrahedron, then for each remaining
         /// point delete every face it can see and stitch the resulting boundary back
-        /// to it. Degenerate input (fewer than four points, or all points coplanar)
-        /// has no hull, and yields an empty mesh rather than a broken one.
+        /// to it.
+        ///
+        /// A *flat* hull is not broken input. The game ships them — `byohwrdoorload01`
+        /// draws its load door as four coplanar points — and a hull with no volume has
+        /// no tetrahedron to start from, so it used to yield an empty mesh, which lost
+        /// the shape, the body and the collision object above it. It is tessellated as
+        /// the polygon it is instead, wound both ways so it exists from either side.
+        ///
+        /// Fewer than three points is genuinely nothing, and stays nothing.
         /// </remarks>
         public static MeshGeometry ConvexHull(IReadOnlyList<NifVector3> points)
         {
             var mesh = new MeshGeometry();
 
-            if (points.Count < 4)
+            if (points.Count < 3)
                 return mesh;
 
-            if (!FindInitialTetrahedron(points, out int[] seed))
-                return mesh;
+            if (points.Count < 4 || !FindInitialTetrahedron(points, out int[] seed))
+                return PlanarHull(points);
 
             var vertices = new List<NifVector3>(points);
             var faces = new List<(int A, int B, int C)>
@@ -355,6 +432,104 @@ namespace SECmd.Conversion
                 mesh.Vertices.Add(vertices[original]);
                 return mapped;
             }
+        }
+
+        /// <summary>
+        /// A hull with no volume, tessellated as the polygon it is.
+        /// </summary>
+        /// <remarks>
+        /// The points are already the hull's own vertices — Havok stores a
+        /// `bhkConvexVerticesShape` as its corners, not as a cloud to be reduced — so
+        /// the job is to order them around their common plane and fan them.
+        ///
+        /// Wound both ways. A single-sided quad is invisible from behind in a DCC tool
+        /// and, more to the point, the import refits from these triangles: a fan in one
+        /// direction only would give the fit a surface rather than a solid to work from.
+        /// </remarks>
+        private static MeshGeometry PlanarHull(IReadOnlyList<NifVector3> points)
+        {
+            var mesh = new MeshGeometry();
+
+            NifVector3 centre = Average(points);
+
+            // Two axes spanning the points' plane, from the longest spread and
+            // whatever is most perpendicular to it.
+            NifVector3 u = Farthest(points, centre);
+            float length = Length(u);
+
+            if (length < 1e-9f)
+                return mesh;
+
+            u = new NifVector3(u.X / length, u.Y / length, u.Z / length);
+
+            NifVector3 v = new(0f, 0f, 0f);
+            float best = 0f;
+
+            foreach (NifVector3 p in points)
+            {
+                var d = new NifVector3(p.X - centre.X, p.Y - centre.Y, p.Z - centre.Z);
+                float along = d.X * u.X + d.Y * u.Y + d.Z * u.Z;
+                var perp = new NifVector3(d.X - along * u.X, d.Y - along * u.Y, d.Z - along * u.Z);
+                float size = Length(perp);
+
+                if (size > best)
+                {
+                    best = size;
+                    v = new NifVector3(perp.X / size, perp.Y / size, perp.Z / size);
+                }
+            }
+
+            if (best < 1e-9f)
+                return mesh;
+
+            // Order the corners around the plane, so the fan does not self-cross.
+            var ordered = points
+                .Select((p, i) => (Index: i, Angle: MathF.Atan2(
+                    (p.X - centre.X) * v.X + (p.Y - centre.Y) * v.Y + (p.Z - centre.Z) * v.Z,
+                    (p.X - centre.X) * u.X + (p.Y - centre.Y) * u.Y + (p.Z - centre.Z) * u.Z)))
+                .OrderBy(e => e.Angle)
+                .Select(e => e.Index)
+                .ToList();
+
+            foreach (NifVector3 p in points)
+                mesh.Vertices.Add(p);
+
+            for (int i = 1; i + 1 < ordered.Count; i++)
+            {
+                var a = (ushort)ordered[0];
+                var b = (ushort)ordered[i];
+                var c = (ushort)ordered[i + 1];
+
+                mesh.Triangles.Add(new NifTriangle(a, b, c));
+                mesh.Triangles.Add(new NifTriangle(a, c, b));
+            }
+
+            mesh.RecalculateNormals();
+
+            return mesh;
+        }
+
+        private static float Length(NifVector3 v) => MathF.Sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z);
+
+        /// <summary>The offset from the centre to the point furthest from it.</summary>
+        private static NifVector3 Farthest(IReadOnlyList<NifVector3> points, NifVector3 centre)
+        {
+            var best = new NifVector3(0f, 0f, 0f);
+            float far = -1f;
+
+            foreach (NifVector3 p in points)
+            {
+                var d = new NifVector3(p.X - centre.X, p.Y - centre.Y, p.Z - centre.Z);
+                float size = Length(d);
+
+                if (size > far)
+                {
+                    far = size;
+                    best = d;
+                }
+            }
+
+            return best;
         }
 
         /// <summary>

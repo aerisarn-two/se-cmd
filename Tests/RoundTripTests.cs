@@ -1200,6 +1200,49 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void ACylinderComesBackACylinder()
+        {
+            // ck-cmd's recursive_convert has no bhkCylinderShape case at all, so a
+            // body whose shape is one leaves with no geometry and the collision object
+            // above it is lost with it. The game ships them.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("BSFadeNode");
+            model.SetString(root, "Name", "root");
+            model.SetRoots([root]);
+
+            NifItem body = model.InsertBlock("bhkRigidBody");
+            NifItem collision = model.InsertBlock("bhkCollisionObject");
+
+            model.SetRef(collision, "Body", body);
+            model.SetRef(collision, "Target", root);
+            model.SetRef(root, "Collision Object", collision);
+
+            NifItem cylinder = model.InsertBlock("bhkCylinderShape");
+            model.FindItem(cylinder, "Vertex A")!.Value.Set(new NifVector4(0f, 0f, -1f, 0.25f));
+            model.FindItem(cylinder, "Vertex B")!.Value.Set(new NifVector4(0f, 0f, 1f, 0.25f));
+            model.FindItem(cylinder, "Cylinder Radius")!.Value.SetFloat(0.25f);
+
+            model.SetRef(body, "Shape", cylinder);
+
+            NifModel rebuilt = RoundTrip(model);
+
+            NifItem after = Assert.Single(rebuilt.Blocks, b => b.Name == "bhkCylinderShape");
+
+            NifVector4 a = rebuilt.FindItem(after, "Vertex A")!.Value.Get<NifVector4>();
+            NifVector4 b = rebuilt.FindItem(after, "Vertex B")!.Value.Get<NifVector4>();
+
+            // The ends are the discs themselves, not a radius short of them: reading a
+            // cylinder as a capsule would bring these back at -0.75 and 0.75.
+            Assert.Equal(-1f, a.Z, 2);
+            Assert.Equal(1f, b.Z, 2);
+            Assert.Equal(0.25f, rebuilt.FindItem(after, "Cylinder Radius")!.Value.ToFloat(), 2);
+
+            // And the body above it survived, which is the whole point.
+            Assert.Single(rebuilt.Blocks, x => x.Name == "bhkCollisionObject");
+        }
+
+        [Fact]
         public void ANodeThatClaimsToBeGeometryIsStillANode()
         {
             // Geometry is built on the mesh path, from a mesh. A node that names a

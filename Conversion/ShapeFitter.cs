@@ -123,6 +123,35 @@ namespace SECmd.Conversion
         }
 
         /// <summary>
+        /// The two end points and radius of a cylinder fitted to a point cloud.
+        /// </summary>
+        /// <remarks>
+        /// The same fit as a capsule but for where the ends go. A capsule's points are
+        /// the centres of its hemispherical caps, so they sit a radius *inside* the
+        /// cloud; a cylinder's are on the flat end discs themselves, at the extremes.
+        /// Reusing the capsule fit here would shorten every cylinder by two radii.
+        /// </remarks>
+        public static (NifVector3 First, NifVector3 Second, float Radius) FitCylinder(
+            IReadOnlyList<NifVector3> points)
+        {
+            (NifVector3 first, NifVector3 second, float radius) = FitCapsule(points);
+
+            // Push the ends back out to where the cloud actually reaches.
+            var axis = new NifVector3(second.X - first.X, second.Y - first.Y, second.Z - first.Z);
+            float length = MathF.Sqrt(axis.X * axis.X + axis.Y * axis.Y + axis.Z * axis.Z);
+
+            if (length < 1e-6f)
+                return (first, second, radius);
+
+            float ux = axis.X / length, uy = axis.Y / length, uz = axis.Z / length;
+
+            return (
+                new NifVector3(first.X - ux * radius, first.Y - uy * radius, first.Z - uz * radius),
+                new NifVector3(second.X + ux * radius, second.Y + uy * radius, second.Z + uz * radius),
+                radius);
+        }
+
+        /// <summary>
         /// The vertices and outward face planes of a convex hull, which is what
         /// <c>bhkConvexVerticesShape</c> stores.
         /// </summary>

@@ -95,6 +95,7 @@ The FBX → NIF direction keys entirely off node names:
 | `_attach_point` | Suffix of a constraint node |
 | `_support` | Interposed node holding a mesh attribute |
 | `_transform`, `_list`, `_convex_list`, `_mopp`, `_sphere`, `_box`, `_capsule`, `_convex`, `_mesh` | Collision shape nodes, appended by `recursive_convert` |
+| `_cylinder` | A `bhkCylinderShape`. This port only; ck-cmd converts none |
 | `_geometry` | The mesh attribute of a collision shape node |
 | `BoundingBox` | Becomes a `BSBound` extra datum |
 | `x_…` | Added to the Havok skeleton, not the NIF |
@@ -392,6 +393,7 @@ recurse; leaf shapes append geometry.
 | `bhkSphereShape` | `_sphere` | Tessellated sphere of `radius` |
 | `bhkBoxShape` | `_box` | Tessellated box of `dimensions`, `radius` |
 | `bhkCapsuleShape` | `_capsule` | Tessellated capsule between the two points |
+| `bhkCylinderShape` | `_cylinder` | Tessellated cylinder between the two points. **Not in ck-cmd**, which has no case for one at all, so a body whose shape is a cylinder leaves with no geometry and the collision object is lost with it — see §10 |
 | `bhkConvexVerticesShape` | `_convex` | Convex hull of the vertices |
 | `bhkCompressedMeshShape` | `_mesh` | Decoded chunks, see below |
 
@@ -1233,6 +1235,32 @@ carried property still comes back with its 24 blend objects and its flags at `0x
 A blend object that arrives without gains is given 1 for both, as ck-cmd does: a zero
 gain is a bone that does not follow.
 
+#### 5.7.0A Two shapes that used to lose the whole body
+
+A leaf shape that tessellates to nothing takes its body and its collision object with
+it: there is no node for the import to find, and `no collision shape found beneath it`
+is all that is said. Two cases did that.
+
+**A cylinder is not a capsule.** ck-cmd's `recursive_convert` has no `bhkCylinderShape`
+case, so this port had none either, and the shape fell through to "not a shape this
+converts yet". It converts them now — and the distinction that matters is where the ends
+go. A capsule's two points are the *centres* of its hemispherical caps, so they sit a
+radius inside the shape; a cylinder's are on the flat end discs themselves. Fitting one
+as the other shortens every cylinder by two radii, which is exactly the kind of error
+nothing reports.
+
+Havok stores both points as four-component vectors, and the fourth component is not
+padding: it holds the radius again, and Havok reads it.
+
+**A flat hull is not broken input.** `byohwrdoorload01` draws its load door as four
+coplanar points — a `bhkConvexVerticesShape` with no volume. The incremental hull starts
+from a tetrahedron, and a flat point set has none, so it yielded an empty mesh. It is
+tessellated as the polygon it is instead: the points ordered around their common plane
+and fanned, wound **both ways**, since the import refits from those triangles and a
+one-sided fan would give the fit a surface rather than a solid.
+
+Fewer than three points is genuinely nothing and stays nothing.
+
 #### 5.7.1 Convex hull plane equations
 
 `bhkConvexVerticesShape` stores the hull's faces as half spaces, and the convention is
@@ -1758,7 +1786,7 @@ node to a sphere, a convex node to a hull. Nest the suffixes to nest the shapes.
 | --- | --- |
 | `_rb` | `bhkCollisionObject` + `bhkRigidBody` — the body everything below hangs from |
 | `_sp` | `bhkSPCollisionObject` — a simple shape phantom |
-| `_box`, `_sphere`, `_capsule`, `_convex`, `_mesh` | The leaf shape, fitted to the mesh under it |
+| `_box`, `_sphere`, `_capsule`, `_cylinder`, `_convex`, `_mesh` | The leaf shape, fitted to the mesh under it |
 | `_transform`, `_list`, `_convex_list`, `_mopp` | A container; recurse into its children |
 | `_geometry` | The mesh attribute of a collision node, not a shape of its own |
 | `_con_`, `_attach_point` | A constraint and its attach point |
@@ -2141,6 +2169,7 @@ Reproduced only where behaviour depends on them; otherwise fixed and noted.
 | Havok | No SDK link. MOPP generation goes through `NifMopp.dll` as NifSkope does; shape tessellation and convex hulls are implemented directly. See §8. |
 | Reference defects | Fixed unless behaviour depends on them, and listed in §9. |
 | Havok material | Carried as ck-cmd carries it (§4.8): an FBX material on the collision mesh named after the enum, with the layer as a `CollisionLayer` property. The names come from nif.xml's own `SkyrimHavokMaterial` and `SkyrimLayer` rather than the table ck-cmd hand-wrote, so the two spellings cannot drift. |
+| Cylinders and flat hulls | Converted (§5.7.0A). ck-cmd has no `bhkCylinderShape` case, and a hull with no volume has no tetrahedron to seed from, so in both cases the shape tessellated to nothing and the body and collision object above it were lost with it. |
 | Effect shaders | Carried in both directions (§4.3.1, §5.3.2). The reference drops them: its export casts to `BSLightingShaderProperty` and takes the null, its import only builds lighting shaders. |
 | Tangent space | Generated from NifSkope's `spTangentSpace` (§5.3.1) rather than obtained from the FBX SDK, which also removes the need for ck-cmd's tangent/binormal swap. |
 | Inertia tensors | Computed directly (§5.7.2) rather than obtained from Havok, and held to the numbers ck-cmd's generated files carry. |
