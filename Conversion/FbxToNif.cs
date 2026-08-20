@@ -1399,11 +1399,15 @@ namespace SECmd.Conversion
         /// </summary>
         private void BuildPendingSkins(NifItem root)
         {
+            // Shapes that shared a skin data block in the source share one here, keyed
+            // on which block it was rather than on what is in it (§5.2.1).
+            var shared = new Dictionary<int, (NifItem Data, NifItem Partition)>();
+
             foreach ((NifItem shape, SkinData skin, int vertexCount, var triangles) in _pendingSkins)
             {
                 var missing = _model.WriteSkin(
                     shape, skin, _nodesByName, root, vertexCount, triangles,
-                    _options.SkinInstanceType);
+                    _options.SkinInstanceType, shared);
 
                 foreach (string bone in missing)
                     Warnings.Add($"{_model.GetName(shape)}: no node named \"{bone}\", its influence is dropped");

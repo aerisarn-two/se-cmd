@@ -53,6 +53,16 @@ namespace SECmd.Fbx
         /// </remarks>
         public const string InstanceTypeProperty = "nif_skin_instance";
 
+        /// <summary>
+        /// The property naming which skin data block this skin shared.
+        /// </summary>
+        /// <remarks>
+        /// Two shapes naming the same one get a single <c>NiSkinData</c> and a single
+        /// <c>NiSkinPartition</c> back, as the game's own files have. See
+        /// <see cref="SkinData.SkinDataId"/>.
+        /// </remarks>
+        public const string DataIdProperty = "nif_skin_data";
+
         private const int SkinVersion = 101;
         private const int ClusterVersion = 100;
 
@@ -81,6 +91,14 @@ namespace SECmd.Fbx
             // The class the shape had, when the scene came from a NIF at all.
             if (skin.InstanceType.Length > 0)
                 skinObject.Properties.SetUserString(InstanceTypeProperty, skin.InstanceType);
+
+            // Which skin data it shared, so two shapes that shared one still do.
+            if (skin.SkinDataId >= 0)
+            {
+                skinObject.Properties.SetUserString(
+                    DataIdProperty,
+                    skin.SkinDataId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
 
             // The body slots, named rather than numbered so a reader can check them.
             if (skin.BodySlots.Count > 0)
@@ -161,7 +179,14 @@ namespace SECmd.Fbx
 
             var skin = new SkinData
             {
-                InstanceType = skinObject.Properties.GetString(InstanceTypeProperty)
+                InstanceType = skinObject.Properties.GetString(InstanceTypeProperty),
+                SkinDataId = int.TryParse(
+                    skinObject.Properties.GetString(DataIdProperty),
+                    System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out int dataId)
+                    ? dataId
+                    : -1
             };
 
             if (int.TryParse(

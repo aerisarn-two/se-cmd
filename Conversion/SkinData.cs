@@ -49,6 +49,24 @@ namespace SECmd.Conversion
         public string InstanceType { get; set; } = string.Empty;
 
         /// <summary>
+        /// Which <c>NiSkinData</c> this skin used, when it came from a NIF.
+        /// </summary>
+        /// <remarks>
+        /// Bethesda's files point two shapes at one skin data and one partition — a
+        /// facegen head's two scar marks are the same weights on the same bone, so the
+        /// blocks are shared rather than duplicated. Rebuilding each shape's skin on
+        /// its own turns one block into two, which is the file changed.
+        ///
+        /// Identity rather than content, as a texture set is (§5.2.1): the game also
+        /// ships identical skins side by side on purpose, and merging those would be
+        /// as wrong as never merging at all.
+        ///
+        /// -1 when the scene did not say, which is what a skin authored in a DCC tool
+        /// has, and means "this shape's own".
+        /// </remarks>
+        public int SkinDataId { get; set; } = -1;
+
+        /// <summary>
         /// The body slot each skin partition occupies, in partition order.
         /// </summary>
         /// <remarks>

@@ -46,7 +46,15 @@ namespace SECmd.Nif
             if (bones.Count == 0)
                 return null;
 
-            var result = new SkinData { InstanceType = skin.Name };
+            var result = new SkinData
+            {
+                InstanceType = skin.Name,
+
+                // Which data block this skin used, so shapes that shared one still
+                // share it after the trip. The game's facegen heads do: two scar
+                // marks are the same weights on the same bone.
+                SkinDataId = model.GetRef(skin, "Data") is { } shared ? model.IndexOf(shared) : -1
+            };
 
             // The slots, by name rather than by number: the enum is what a reader can
             // check, and the numbers differ between creature skeletons.

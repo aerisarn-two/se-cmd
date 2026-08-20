@@ -49,7 +49,8 @@ namespace SECmd.Nif
             NifItem skeletonRoot,
             int vertexCount,
             IReadOnlyList<NifTriangle> triangles,
-            string fallbackInstanceType = "BSDismemberSkinInstance")
+            string fallbackInstanceType = "BSDismemberSkinInstance",
+            Dictionary<int, (NifItem Data, NifItem Partition)>? shared = null)
         {
             var missing = new List<string>();
 
@@ -91,8 +92,23 @@ namespace SECmd.Nif
                         : fallbackInstanceType;
 
             NifItem instance = model.InsertBlock(type);
-            NifItem data = model.InsertBlock("NiSkinData");
-            NifItem partition = model.InsertBlock("NiSkinPartition");
+
+            // Bethesda's files point two shapes at one skin data and one partition --
+            // a facegen head's two scar marks are the same weights on the same bone --
+            // so a shape whose skin named one already built gets that one rather than
+            // a copy of it. Keyed on which block it was, not on what is in it: the
+            // game also ships identical skins side by side on purpose (§5.2.1).
+            (NifItem Data, NifItem Partition) found = default;
+
+            bool reused = skin.SkinDataId >= 0
+                          && shared is not null
+                          && shared.TryGetValue(skin.SkinDataId, out found);
+
+            NifItem data = reused ? found.Data : model.InsertBlock("NiSkinData");
+            NifItem partition = reused ? found.Partition : model.InsertBlock("NiSkinPartition");
+
+            if (!reused && skin.SkinDataId >= 0 && shared is not null)
+                shared[skin.SkinDataId] = (data, partition);
 
             model.SetRef(instance, "Data", data);
             model.SetRef(instance, "Skin Partition", partition);
@@ -104,10 +120,16 @@ namespace SECmd.Nif
                     boneRefs.Children[i].Value.SetLink(model.IndexOf(nodes[i]));
             }
 
-            WriteSkinData(model, data, skin, bones);
-
             var groups = SplitIntoPartitions(skin, bones.Count, vertexCount, triangles);
-            WriteSkinPartitions(model, partition, skin, bones, groups);
+
+            // A reused block is already filled, by the shape that got there first.
+            // Writing it again would be writing the same thing twice, and the second
+            // shape's partitions are the first's -- that is what sharing means.
+            if (!reused)
+            {
+                WriteSkinData(model, data, skin, bones);
+                WriteSkinPartitions(model, partition, skin, bones, groups);
+            }
 
             // One body-part entry per partition. The slots are what make this a
             // dismember instance rather than a plain skin, so they are written here,

@@ -346,5 +346,102 @@ namespace SECmd.Tests
             NifItem weights = model.FindItem(entry, "Vertex Weights")!;
             Assert.All(weights.Children, w => Assert.Equal(NifSkinWriter.MaxInfluences, w.Children.Count));
         }
+
+        [Fact]
+        public void TwoShapesThatSharedASkinDataStillShareIt()
+        {
+            // Bethesda's files point two shapes at one NiSkinData and one
+            // NiSkinPartition -- a facegen head's two scar marks are the same weights
+            // on the same bone, so the blocks are shared rather than duplicated.
+            // Rebuilding each shape's skin on its own turns one block into two.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("NiNode");
+            model.SetString(root, "Name", "root");
+
+            NifItem bone = model.InsertBlock("NiNode");
+            model.SetString(bone, "Name", "Bone0");
+
+            var children = new List<NifItem> { bone };
+            var shapes = new List<NifItem>();
+
+            for (int i = 0; i < 2; i++)
+            {
+                NifItem shape = model.InsertBlock("BSTriShape");
+                model.SetString(shape, "Name", $"Mark{i}");
+                shapes.Add(shape);
+                children.Add(shape);
+            }
+
+            if (model.SetArraySize(root, "Num Children", "Children", children.Count) is { } array)
+            {
+                for (int i = 0; i < children.Count; i++)
+                    array.Children[i].Value.SetLink(model.IndexOf(children[i]));
+            }
+
+            var nodes = new Dictionary<string, NifItem>(StringComparer.Ordinal) { ["Bone0"] = bone };
+            var triangles = new List<NifTriangle> { new(0, 1, 2) };
+            var shared = new Dictionary<int, (NifItem Data, NifItem Partition)>();
+
+            // Both skins name the same source block, which is what sharing is.
+            foreach (NifItem shape in shapes)
+            {
+                var skin = new SkinData { SkinDataId = 42 };
+                var influenced = new SkinBone { Name = "Bone0" };
+
+                influenced.Weights.Add((0, 1f));
+                influenced.Weights.Add((1, 1f));
+                influenced.Weights.Add((2, 1f));
+                skin.Bones.Add(influenced);
+
+                Assert.Empty(model.WriteSkin(shape, skin, nodes, root, 3, triangles, "NiSkinInstance", shared));
+            }
+
+            // Two instances, one data, one partition -- as the source has.
+            Assert.Equal(2, model.Blocks.Count(b => b.Name == "NiSkinInstance"));
+            NifItem data = Assert.Single(model.Blocks, b => b.Name == "NiSkinData");
+            Assert.Single(model.Blocks, b => b.Name == "NiSkinPartition");
+
+            // And both instances point at it, rather than one pointing at nothing.
+            foreach (NifItem shape in shapes)
+                Assert.Equal(data, model.GetRef(model.GetRef(shape, "Skin")!, "Data"));
+        }
+
+        [Fact]
+        public void ASkinThatNamesNoSourceBlockGetsItsOwn()
+        {
+            // A skin authored in a DCC tool shared nothing, and -1 has to mean "its
+            // own" rather than "the same as every other unmarked skin".
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("NiNode");
+            model.SetString(root, "Name", "root");
+
+            NifItem bone = model.InsertBlock("NiNode");
+            model.SetString(bone, "Name", "Bone0");
+
+            var nodes = new Dictionary<string, NifItem>(StringComparer.Ordinal) { ["Bone0"] = bone };
+            var triangles = new List<NifTriangle> { new(0, 1, 2) };
+            var shared = new Dictionary<int, (NifItem Data, NifItem Partition)>();
+
+            for (int i = 0; i < 2; i++)
+            {
+                NifItem shape = model.InsertBlock("BSTriShape");
+                model.SetString(shape, "Name", $"Mesh{i}");
+
+                var skin = new SkinData();
+                var influenced = new SkinBone { Name = "Bone0" };
+
+                influenced.Weights.Add((0, 1f));
+                influenced.Weights.Add((1, 1f));
+                influenced.Weights.Add((2, 1f));
+                skin.Bones.Add(influenced);
+
+                model.WriteSkin(shape, skin, nodes, root, 3, triangles, "NiSkinInstance", shared);
+            }
+
+            Assert.Equal(2, model.Blocks.Count(b => b.Name == "NiSkinData"));
+            Assert.Equal(2, model.Blocks.Count(b => b.Name == "NiSkinPartition"));
+        }
     }
 }
