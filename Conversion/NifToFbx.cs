@@ -53,6 +53,11 @@ namespace SECmd.Conversion
             foreach (NifItem root in FindRootBlocks())
                 ConvertNode(scene, root, parent: null);
 
+            // After the tree, for the same reason as the two below: a skin cluster
+            // names a bone node, and a shape whose bones sit later in the tree found
+            // none of them and left a deformer with no clusters at all.
+            ConvertPendingSkins(scene);
+
             // After the tree, because a track binds to a model by name and every
             // model has to exist before anything can be bound to it.
             // Both need the whole tree: a constraint joins two bodies and a track
@@ -959,7 +964,32 @@ namespace SECmd.Conversion
         /// before any geometry beneath it. A bone the walk never reached is reported
         /// rather than silently dropping that bone's influence.
         /// </remarks>
+        /// <summary>Shapes whose skin is waiting for the rest of the tree.</summary>
+        private readonly List<(NifItem Shape, FbxObject Geometry)> _pendingSkins = [];
+
+        /// <summary>Remembers a shape's skin, to be written once every node exists.</summary>
+        /// <remarks>
+        /// A cluster names a bone node, and the walk reaches a shape before it reaches
+        /// everything else. `wrdrawbridge01`'s chains hang from four bones that come
+        /// after it, so all four were missing and the shape left with a skin deformer
+        /// holding no clusters -- which is not a skin, and came back as no skin at all.
+        /// </remarks>
         private void ConvertSkin(FbxScene scene, NifItem shape, FbxObject geometry)
+        {
+            if (_model.ReadSkin(shape) is not null)
+                _pendingSkins.Add((shape, geometry));
+        }
+
+        /// <summary>Writes every deferred skin, now that the whole tree exists.</summary>
+        private void ConvertPendingSkins(FbxScene scene)
+        {
+            foreach ((NifItem shape, FbxObject geometry) in _pendingSkins)
+                WriteSkin(scene, shape, geometry);
+
+            _pendingSkins.Clear();
+        }
+
+        private void WriteSkin(FbxScene scene, NifItem shape, FbxObject geometry)
         {
             SkinData? skin = _model.ReadSkin(shape);
 

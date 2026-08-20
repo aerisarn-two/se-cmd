@@ -615,6 +615,23 @@ an ordinary node produces, and those are not the same thing. On the way back a
 `NiTriBasedGeom` still gets its data block, empty — the class keeps its vertices there and
 a null `Data` is not a shape the engine will load.
 
+#### 5.5.1 A skin is written after the tree, not with the shape
+
+A cluster names a bone node, and the export's walk reaches a shape before it reaches
+everything else in the file. `wrdrawbridge01`'s chains hang from four bones that come
+*after* the shape, so all four were missing when the skin was written and the mesh left
+with a skin deformer holding no clusters — which is not a skin, and came back as no skin
+at all.
+
+So skins are deferred to the end of the walk, for the same reason constraints and
+animation already are: a constraint joins two bodies, a track binds to a model by name,
+and a cluster names a bone. None of them can be written until every node that could be
+their target exists.
+
+The diagnostic was there and unheard: `AddSkin` reports every bone it could not find. A
+shape that loses all of them reports all of them, which is a loud enough signal — it was
+being written into the export's warnings, which the round trip was not reading.
+
 #### 5.2.1 Shared property blocks
 
 Bethesda's files point several shapes at one `BSShaderTextureSet` or one
@@ -1815,6 +1832,7 @@ mass of a static. Typing them would be typing something the import overwrites (�
 
 | Property | On | Effect |
 | --- | --- | --- |
+| `nif_skin_data` | mesh geometry | Which skin data block this skin shared. Two shapes naming the same one get a single `NiSkinData` and a single `NiSkinPartition` back, as a facegen head's two scar marks have. Absent means "its own" (§5.2.1) |
 | `nif_skin_instance` | mesh geometry | `NiSkinInstance` or `BSDismemberSkinInstance`. Absent, the class follows whether body slots were given (§5.2.3) |
 | `body_slots` | mesh geometry | How many dismember partitions follow |
 | `body_slot_<i>` | mesh geometry | The body part of partition *i*, from nif.xml's `BSDismemberBodyPartType` |

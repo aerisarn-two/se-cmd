@@ -443,5 +443,77 @@ namespace SECmd.Tests
             Assert.Equal(2, model.Blocks.Count(b => b.Name == "NiSkinData"));
             Assert.Equal(2, model.Blocks.Count(b => b.Name == "NiSkinPartition"));
         }
+
+        [Fact]
+        public void ASkinFindsBonesThatComeAfterItInTheTree()
+        {
+            // A cluster names a bone node, and the walk reaches a shape before it
+            // reaches everything else. wrdrawbridge01's chains hang from four bones
+            // that come after the shape, so all four were missing and the mesh left
+            // with a skin deformer holding no clusters -- which is not a skin, and
+            // came back as no skin at all.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("NiNode");
+            model.SetString(root, "Name", "root");
+
+            // Real geometry, so the shape travels as a mesh rather than as the
+            // node an empty shape becomes.
+            NifItem shape = model.InsertBlock("NiTriShape");
+            model.SetString(shape, "Name", "Chains");
+
+            NifItem data = model.InsertBlock("NiTriShapeData");
+            model.FindItem(data, "Num Vertices")!.Value.SetCount(3);
+            model.FindItem(data, "Has Vertices")!.Value.SetCount(1);
+
+            NifItem positions = model.FindItem(data, "Vertices")!;
+            positions.InvalidateConditionsRecursive();
+            model.UpdateArraySize(positions);
+
+            for (int i = 0; i < 3; i++)
+                positions.Children[i].Value.Set(new NifVector3(i, i * 2, 0f));
+
+            model.FindItem(data, "Num Triangles")!.Value.SetCount(1);
+            model.FindItem(data, "Num Triangle Points")!.Value.SetCount(3);
+            model.FindItem(data, "Has Triangles")!.Value.SetCount(1);
+
+            NifItem list = model.FindItem(data, "Triangles")!;
+            list.InvalidateConditionsRecursive();
+            model.UpdateArraySize(list);
+            list.Children[0].Value.Set(new NifTriangle(0, 1, 2));
+
+            model.SetRef(shape, "Data", data);
+
+            NifItem bone = model.InsertBlock("NiNode");
+            model.SetString(bone, "Name", "ChainTop");
+
+            // The shape first, the bone second: the order that used to lose the skin.
+            if (model.SetArraySize(root, "Num Children", "Children", 2) is { } children)
+            {
+                children.Children[0].Value.SetLink(model.IndexOf(shape));
+                children.Children[1].Value.SetLink(model.IndexOf(bone));
+            }
+
+            var skin = new SkinData();
+            var influenced = new SkinBone { Name = "ChainTop" };
+
+            influenced.Weights.Add((0, 1f));
+            influenced.Weights.Add((1, 1f));
+            influenced.Weights.Add((2, 1f));
+            skin.Bones.Add(influenced);
+
+            var nodes = new Dictionary<string, NifItem>(StringComparer.Ordinal) { ["ChainTop"] = bone };
+
+            model.WriteSkin(shape, skin, nodes, root, 3, [new NifTriangle(0, 1, 2)], "NiSkinInstance");
+            model.SetRoots([root]);
+
+            var scene = new FbxScene(new NifToFbx(model).Convert());
+
+            FbxObject deformer = Assert.Single(
+                scene.Objects, o => o.Class == "Deformer" && o.SubClass == "Skin");
+
+            // A skin with no clusters is not a skin.
+            Assert.NotEmpty(scene.ChildrenOf(deformer.Id).Where(o => o.SubClass == "Cluster"));
+        }
     }
 }
