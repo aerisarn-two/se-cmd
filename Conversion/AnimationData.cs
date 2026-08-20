@@ -93,6 +93,20 @@ namespace SECmd.Conversion
         /// </remarks>
         public bool Empty { get; init; }
 
+        /// <summary>
+        /// The whole interpolator, when this layer cannot model what it drives.
+        /// </summary>
+        /// <remarks>
+        /// Four kinds of interpolator become curves, because those are the four a curve
+        /// can express. A <c>NiPathInterpolator</c> walks a node along a spline and a
+        /// <c>NiLookAtInterpolator</c> aims it at another node; neither is a curve, and
+        /// converting them would mean inventing one.
+        ///
+        /// So the block is not converted at all — it is carried, as flat fields, and
+        /// put back exactly. See <see cref="Fbx.FbxInterpolatorCodec"/>.
+        /// </remarks>
+        public IReadOnlyDictionary<string, string>? CarriedInterpolator { get; init; }
+
         /// <summary>The NIF controller class, e.g. <c>NiPSysEmitterCtlr</c>.</summary>
         public string ControllerType { get; init; } = string.Empty;
 
@@ -239,7 +253,9 @@ namespace SECmd.Conversion
         /// controlled blocks and interpolators that carried them.
         /// </remarks>
         public bool Says =>
-            HasKeys || Pose is not null || Properties.Any(p => p.Constant is not null || p.Empty);
+            HasKeys
+            || Pose is not null
+            || Properties.Any(p => p.Constant is not null || p.Empty || p.CarriedInterpolator is not null);
     }
 
     /// <summary>

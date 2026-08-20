@@ -90,6 +90,63 @@ namespace SECmd.Fbx
             }
         }
 
+        /// <summary>Reads the interpolators carried whole.</summary>
+        /// <remarks>See <see cref="FbxAnimWriter.AddCarried"/>.</remarks>
+        private static void ReadCarried(FbxObject stack, Dictionary<string, AnimTrack> tracks)
+        {
+            if (!int.TryParse(
+                    stack.Properties.GetString(FbxAnimWriter.CarriedCountProperty),
+                    System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out int count))
+            {
+                return;
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                string prefix = $"{FbxAnimWriter.CarriedPrefix}{i}_";
+                string nodeName = stack.Properties.GetString($"{prefix}node");
+                string propertyName = stack.Properties.GetString($"{prefix}property");
+
+                if (nodeName.Length == 0)
+                    continue;
+
+                var fields = new Dictionary<string, string>(StringComparer.Ordinal);
+                string fieldPrefix = $"{prefix}f_";
+
+                foreach (FbxProperty70 property in stack.Properties.All)
+                {
+                    if (property.Name.StartsWith(fieldPrefix, StringComparison.Ordinal)
+                        && property.Values.FirstOrDefault() is string value)
+                    {
+                        fields[property.Name[fieldPrefix.Length..]] = value;
+                    }
+                }
+
+                if (fields.Count == 0)
+                    continue;
+
+                if (!tracks.TryGetValue(nodeName, out AnimTrack? track))
+                    tracks[nodeName] = track = new AnimTrack { NodeName = nodeName };
+
+                (string type, string id, string interpolatorId, string propertyType) =
+                    AnimProperty.FromPropertyName(propertyName);
+
+                track.Properties.Add(new AnimProperty
+                {
+                    Name = propertyName,
+                    InterpolatorType = fields.GetValueOrDefault(
+                        FbxInterpolatorCodec.TypeSuffix, string.Empty),
+                    ControllerType = type,
+                    ControllerId = id,
+                    InterpolatorId = interpolatorId,
+                    PropertyType = propertyType,
+                    CarriedInterpolator = fields
+                });
+            }
+        }
+
         /// <summary>Reads the tracks whose interpolator holds nothing.</summary>
         /// <remarks>See <see cref="FbxAnimWriter.AddEmpty"/>.</remarks>
         private static void ReadEmpties(FbxObject stack, Dictionary<string, AnimTrack> tracks)
@@ -220,6 +277,7 @@ namespace SECmd.Fbx
 
             ReadConstants(stack, tracks);
             ReadEmpties(stack, tracks);
+            ReadCarried(stack, tracks);
             ReadPoses(stack, tracks);
             ReadInterpolatorTypes(stack, tracks);
 

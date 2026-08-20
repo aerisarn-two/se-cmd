@@ -1,3 +1,4 @@
+using SECmd.Fbx;
 using SECmd.Conversion;
 
 namespace SECmd.Nif
@@ -412,7 +413,28 @@ namespace SECmd.Nif
             bool colour = model.BlockInherits(interpolator, "NiPoint3Interpolator");
 
             if (!boolean && !colour && !model.BlockInherits(interpolator, "NiFloatInterpolator"))
+            {
+                // Not a kind a curve can express -- a path walked along a spline, a
+                // node aimed at another. The entry is still in the file and still has
+                // to come back, so the interpolator travels whole rather than being
+                // converted into something it is not.
+                TrackFor(tracks, name).Properties.Add(new AnimProperty
+                {
+                    Name = AnimProperty.ToPropertyName(
+                        model.GetString(controlled, "Controller Type"),
+                        model.GetString(controlled, "Controller ID"),
+                        model.GetString(controlled, "Interpolator ID"),
+                        model.GetString(controlled, "Property Type")),
+                    InterpolatorType = interpolator.Name,
+                    ControllerType = model.GetString(controlled, "Controller Type"),
+                    ControllerId = model.GetString(controlled, "Controller ID"),
+                    InterpolatorId = model.GetString(controlled, "Interpolator ID"),
+                    PropertyType = model.GetString(controlled, "Property Type"),
+                    CarriedInterpolator = FbxInterpolatorCodec.Capture(model, interpolator)
+                });
+
                 return;
+            }
 
             var property = new AnimProperty(colour ? 3 : 1)
             {

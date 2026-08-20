@@ -95,7 +95,9 @@ namespace SECmd.Fbx
 
                 foreach (AnimProperty property in track.Properties)
                 {
-                    if (property.Empty)
+                    if (property.CarriedInterpolator is { } carried)
+                        AddCarried(stack, track.NodeName, property, carried);
+                    else if (property.Empty)
                         AddEmpty(stack, track.NodeName, property);
                     else if (property.Constant is { } value)
                         AddConstant(stack, track.NodeName, property, value);
@@ -167,6 +169,54 @@ namespace SECmd.Fbx
             stack.Properties.SetUserString(
                 $"{EmptyPrefix}{nodeName}{AnimProperty.Separator}{property.Name}",
                 property.InterpolatorType);
+        }
+
+        /// <summary>Prefix on the stack properties holding a carried interpolator.</summary>
+        /// <remarks>
+        /// Numbered rather than keyed by node and property, as the other stack
+        /// carriers are: the fields have names of their own and would need a third
+        /// separator inside a name that already has two.
+        /// </remarks>
+        public const string CarriedPrefix = "xi_";
+
+        /// <summary>The property counting the carried interpolators on a stack.</summary>
+        public const string CarriedCountProperty = "xi_count";
+
+        /// <summary>
+        /// Records an interpolator this layer cannot model, whole.
+        /// </summary>
+        /// <remarks>
+        /// A `NiPathInterpolator` walks a node along a spline; nothing about that is a
+        /// curve on an FBX property, so the block is carried rather than converted
+        /// (see <see cref="FbxInterpolatorCodec"/>). It sits on the stack because it
+        /// belongs to one sequence's entry, not to the model.
+        /// </remarks>
+        private static void AddCarried(
+            FbxObject stack, string nodeName, AnimProperty property,
+            IReadOnlyDictionary<string, string> fields)
+        {
+            int at = 0;
+
+            if (int.TryParse(
+                    stack.Properties.GetString(CarriedCountProperty),
+                    System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out int count))
+            {
+                at = count;
+            }
+
+            string prefix = $"{CarriedPrefix}{at}_";
+
+            stack.Properties.SetUserString($"{prefix}node", nodeName);
+            stack.Properties.SetUserString($"{prefix}property", property.Name);
+
+            foreach ((string name, string value) in fields)
+                stack.Properties.SetUserString($"{prefix}f_{name}", value);
+
+            stack.Properties.SetUserString(
+                CarriedCountProperty,
+                (at + 1).ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
 
         /// <summary>Prefix on a stack property naming a track's interpolator class.</summary>

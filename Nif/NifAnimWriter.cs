@@ -1,3 +1,4 @@
+using SECmd.Fbx;
 using SECmd.Conversion;
 
 namespace SECmd.Nif
@@ -466,7 +467,10 @@ namespace SECmd.Nif
         /// </remarks>
         private static bool Carries(AnimProperty property) =>
             property.ControllerType.Length > 0
-            && (property.Curves.Any(c => c.HasKeys) || property.Constant is not null || property.Empty);
+            && (property.Curves.Any(c => c.HasKeys)
+                || property.Constant is not null
+                || property.Empty
+                || property.CarriedInterpolator is not null);
 
         /// <summary>
         /// Records which of several same-typed controllers on a target this one is.
@@ -663,7 +667,10 @@ namespace SECmd.Nif
                     entries.Add((track, node, null));
 
                 foreach (AnimProperty property in track.Properties.Where(
-                             p => p.Curves.Any(c => c.HasKeys) || p.Constant is not null || p.Empty))
+                             p => p.Curves.Any(c => c.HasKeys)
+                                  || p.Constant is not null
+                                  || p.Empty
+                                  || p.CarriedInterpolator is not null))
                 {
                     entries.Add((track, node, property));
                 }
@@ -704,8 +711,17 @@ namespace SECmd.Nif
                 // interpolator rather than keys -- that is the slot the manager mixes
                 // every playing sequence into. Without it the sequences describe an
                 // animation with nothing to apply it.
-                if (AttachedController(model, node, property, attached) is { } controller)
+                // A carried interpolator is put back into the entry that named it and
+                // nothing more. What owned it in the source is the sequence machinery
+                // -- a fish walking a spline is driven from the multi-target
+                // controller, not from one attached to its node -- and inventing an
+                // attached controller here gave every one a transform controller and a
+                // blend interpolator the file never had.
+                if (property.CarriedInterpolator is null
+                    && AttachedController(model, node, property, attached) is { } controller)
+                {
                     model.SetRef(entry, "Controller", controller);
+                }
             }
 
             return block;
@@ -727,6 +743,15 @@ namespace SECmd.Nif
             // at all -- that absence is the representation, not a missing piece of
             // one, so writing a one-key block instead would be a different animation
             // that happens to look the same.
+            // An interpolator this layer never modelled, put back as it was. Nothing
+            // about a spline path or a look-at is a curve, so there is nothing to
+            // rebuild it from except the fields themselves.
+            if (property.CarriedInterpolator is { } carried
+                && FbxInterpolatorCodec.Rebuild(model, carried) is { } whole)
+            {
+                return whole;
+            }
+
             // An interpolator that holds nothing: no data block, and its Value left at
             // the default nif.xml gives it, which is the sentinel meaning "none".
             // The block exists because the file had one, and says as little.

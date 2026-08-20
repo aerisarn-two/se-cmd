@@ -1540,6 +1540,88 @@ namespace SECmd.Tests
             Assert.Single(rebuilt.Blocks, x => x.Name == "bhkCollisionObject");
         }
 
+        /// <summary>
+        /// A sequence entry whose interpolator this layer cannot model.
+        /// </summary>
+        /// <remarks>
+        /// The counterpart of the attached case. `fxambwatersalmon01b` hangs a
+        /// NiPathInterpolator on a controller, and `fxambwaterfallsalmon02` names six
+        /// of them from three sequences with no attached controller at all -- so both
+        /// routes have to be able to carry one, and neither could.
+        /// </remarks>
+        [Fact]
+        public void ASequenceKeepsAnInterpolatorThisLayerCannotModel()
+        {
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("NiNode");
+            model.SetString(root, "Name", "root");
+
+            NifItem node = model.InsertBlock("NiNode");
+            model.SetString(node, "Name", "FishController01");
+
+            if (model.SetArraySize(root, "Num Children", "Children", 1) is { } children)
+                children.Children[0].Value.SetLink(model.IndexOf(node));
+
+            NifItem data = model.InsertBlock("NiPosData");
+            NifItem keys = model.SetArraySize(data, @"Data\Num Keys", @"Data\Keys", 2)!;
+
+            keys.Children[0].Children.First(c => c.Name == "Time").Value.SetFloat(0f);
+            keys.Children[0].Children.First(c => c.Name == "Value").Value.Set(new NifVector3(1f, 2f, 3f));
+            keys.Children[1].Children.First(c => c.Name == "Time").Value.SetFloat(1f);
+            keys.Children[1].Children.First(c => c.Name == "Value").Value.Set(new NifVector3(4f, 5f, 6f));
+
+            // Two sequences naming one path, which is what the waterfall does: the
+            // same fish path played three times over.
+            var interpolators = new List<NifItem>();
+
+            for (int i = 0; i < 2; i++)
+            {
+                NifItem interpolator = model.InsertBlock("NiPathInterpolator");
+
+                model.FindItem(interpolator, "Max Bank Angle")!.Value.SetFloat(0.5f);
+                model.SetRef(interpolator, "Path Data", data);
+                interpolators.Add(interpolator);
+
+                NifItem sequence = model.InsertBlock("NiControllerSequence");
+                model.SetString(sequence, "Name", $"swim{i}");
+                model.FindItem(sequence, "Start Time")?.Value.SetFloat(0f);
+                model.FindItem(sequence, "Stop Time")?.Value.SetFloat(1f);
+
+                NifItem entry = model
+                    .SetArraySize(sequence, "Num Controlled Blocks", "Controlled Blocks", 1)!
+                    .Children[0];
+
+                model.SetRef(entry, "Interpolator", interpolator);
+                model.SetString(entry, "Node Name", "FishController01");
+                model.SetString(entry, "Controller Type", "NiTransformController");
+            }
+
+            model.SetRoots([root]);
+
+            NifModel rebuilt = RoundTrip(model);
+
+            // Both interpolators back, with their own fields.
+            Assert.Equal(2, rebuilt.Blocks.Count(b => b.Name == "NiPathInterpolator"));
+
+            foreach (NifItem back in rebuilt.Blocks.Where(b => b.Name == "NiPathInterpolator"))
+                Assert.Equal(0.5f, rebuilt.FindItem(back, "Max Bank Angle")!.Value.ToFloat(), 3);
+
+            // And the path they shared is still one block, not two.
+            NifItem backData = Assert.Single(rebuilt.Blocks, b => b.Name == "NiPosData");
+
+            Assert.Equal(2u, rebuilt.GetUInt(backData, @"Data\Num Keys"));
+            Assert.Equal(
+                4f,
+                rebuilt.FindItem(backData, @"Data\Keys")!.Children[1]
+                    .Children.First(c => c.Name == "Value").Value.Get<NifVector3>().X,
+                3);
+
+            // Nothing was invented to own it: the sequence machinery drives these, not
+            // a controller attached to the node.
+            Assert.DoesNotContain(rebuilt.Blocks, b => b.Name == "NiBlendFloatInterpolator");
+        }
+
         [Fact]
         public void ANodeThatClaimsToBeGeometryIsStillANode()
         {

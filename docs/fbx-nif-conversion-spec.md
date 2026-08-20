@@ -1666,6 +1666,39 @@ modifier. With no id to tell them apart the import keys them all to one slot and
 one controller where there were four, which halved the bool interpolators of every effect
 mesh with more than one emitter.
 
+#### An interpolator this layer cannot model
+
+Four kinds become curves — transform, float, boolean, point — because those are the four
+a curve on an FBX property can express. A file may hold others: a `NiPathInterpolator`
+walks a node along a spline, a `NiLookAtInterpolator` aims one node at another. Neither
+is a curve, and converting them would mean inventing one.
+
+So they are **not converted**. The block travels as its own fields, two levels deep — the
+interpolator, then whatever data block it points at, which is where its keys are — and is
+put back exactly. Nothing is interpreted, so nothing has to be understood, and a class
+this port has never heard of travels as well as one it has.
+
+Both routes need it, and the two vanilla files that led here are one of each:
+
+| File | Where the interpolator hangs | Carrier |
+| --- | --- | --- |
+| `fxambwatersalmon01b` | On a controller, no sequence | The structural carrier (§4.9A) |
+| `fxambwaterfallsalmon02` | Named by three sequences, no attached controller at all | The animation carrier, on the stack |
+
+Between them they had fallen through every route: the animation layer declined the
+interpolator, and the structural carrier only looks at controller chains.
+
+Two things the carried form has to get right, and both were wrong first:
+
+- **Shared blocks stay shared.** `fxambwaterfallsalmon02` points six path interpolators
+  at *two* `NiPosData` blocks — the same two fish paths, played by three sequences — so
+  the carried form records which block each was, and rebuilding one per interpolator
+  turned two into six. Identity rather than content, as everywhere else (§5.2.1).
+- **Nothing is invented to own it.** A sequence entry's carried interpolator is put back
+  into that entry and no further. What drives these is the multi-target controller, not
+  one attached to the node, and building an attached controller here gave every fish a
+  `NiTransformController` and a `NiBlendFloatInterpolator` the file never had.
+
 ### 5A.7 Known limits
 
 | Limit | Consequence |
