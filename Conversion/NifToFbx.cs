@@ -189,6 +189,7 @@ namespace SECmd.Conversion
             // by. Where it is not the block's own, `nif_name` carries the real one.
             string name = NameEncoding.Sanitize(NifAnimAccess.TrackName(_model, block));
 
+
             FbxObject node = FbxMeshWriter.AddModel(scene, name, "Null", _model.GetTransform(block));
             _built[block] = node;
             Remember(block, node);

@@ -421,15 +421,29 @@ namespace SECmd.Conversion
         ///
         /// Fewer than three points is genuinely nothing, and stays nothing.
         /// </remarks>
-        public static MeshGeometry ConvexHull(IReadOnlyList<NifVector3> points)
+        public static MeshGeometry ConvexHull(IReadOnlyList<NifVector3> raw)
         {
             var mesh = new MeshGeometry();
+
+            // Points that sit on top of one another make faces with no area, and the
+            // hull cannot use them for anything. Collision hulls arrive with them: the
+            // game's own shapes are quantised, so what were distinct corners in the
+            // authoring tool arrive equal.
+            List<NifVector3> points = Distinct(raw);
 
             if (points.Count < 3)
                 return mesh;
 
+            // How far outside the surface a point has to be before it is treated as
+            // outside at all. Relative to the shape, because a Havok shape may be a
+            // centimetre across or ten metres, and an absolute tolerance is either
+            // meaningless on one or ruinous on the other.
+            float tolerance = Tolerance(points);
+
+
             if (points.Count < 4 || !FindInitialTetrahedron(points, out int[] seed))
                 return PlanarHull(points);
+
 
             var vertices = new List<NifVector3>(points);
             var faces = new List<(int A, int B, int C)>
@@ -451,6 +465,7 @@ namespace SECmd.Conversion
 
             for (int p = 0; p < vertices.Count; p++)
             {
+
                 if (seed.Contains(p))
                     continue;
 
@@ -460,7 +475,16 @@ namespace SECmd.Conversion
 
                 foreach ((int A, int B, int C) face in faces)
                 {
-                    if (SignedDistance(vertices, face, point) > 1e-6f)
+                    float distance = SignedDistance(vertices, face, point);
+
+                    // A face with no area is removed rather than kept. It cannot be
+                    // part of a hull, and leaving it in is what breaks the surface:
+                    // nothing can see it, so nothing ever takes it away, and every
+                    // later point stitches its boundary edges onto a hole that never
+                    // closes. `snowdriftm01int` turned 222 points into 309,394 faces
+                    // that way, where a hull of 222 points has at most 440, and the
+                    // sweep ran for hours on one mesh.
+                    if (float.IsNaN(distance) || distance > tolerance)
                         visible.Add(face);
                 }
 
@@ -488,6 +512,15 @@ namespace SECmd.Conversion
 
                 foreach ((int from, int to) in boundary)
                     faces.Add((from, to, p));
+
+                // A hull of n points has at most 2n - 4 faces. Past that the surface
+                // has stopped being closed and every further point makes it worse, so
+                // there is nothing to be gained by going on -- and a great deal to
+                // lose: this is what ran for hours on one mesh rather than failing.
+                if (faces.Count > 2 * points.Count)
+                {
+                    break;
+                }
             }
 
             // Keep only the vertices the hull actually uses, renumbered.
@@ -611,6 +644,71 @@ namespace SECmd.Conversion
             return best;
         }
 
+        /// <summary>The scale below which two points are the same point.</summary>
+        private static float Tolerance(IReadOnlyList<NifVector3> points)
+        {
+            if (points.Count == 0)
+                return 1e-9f;
+
+            float minX = points[0].X, minY = points[0].Y, minZ = points[0].Z;
+            float maxX = minX, maxY = minY, maxZ = minZ;
+
+            foreach (NifVector3 p in points)
+            {
+                minX = MathF.Min(minX, p.X); maxX = MathF.Max(maxX, p.X);
+                minY = MathF.Min(minY, p.Y); maxY = MathF.Max(maxY, p.Y);
+                minZ = MathF.Min(minZ, p.Z); maxZ = MathF.Max(maxZ, p.Z);
+            }
+
+            float extent = MathF.Max(maxX - minX, MathF.Max(maxY - minY, maxZ - minZ));
+
+            return MathF.Max(extent * 1e-5f, 1e-9f);
+        }
+
+        /// <summary>
+        /// The points with near-duplicates merged.
+        /// </summary>
+        /// <remarks>
+        /// Two points closer together than the shape's own scale can distinguish are
+        /// one point as far as a hull is concerned, and keeping both makes faces with
+        /// no area. The tolerance is relative to the extent, since a Havok shape may
+        /// be a centimetre across or ten metres.
+        /// </remarks>
+        private static List<NifVector3> Distinct(IReadOnlyList<NifVector3> points)
+        {
+            if (points.Count == 0)
+                return [];
+
+            float minX = points[0].X, minY = points[0].Y, minZ = points[0].Z;
+            float maxX = minX, maxY = minY, maxZ = minZ;
+
+            foreach (NifVector3 p in points)
+            {
+                minX = MathF.Min(minX, p.X); maxX = MathF.Max(maxX, p.X);
+                minY = MathF.Min(minY, p.Y); maxY = MathF.Max(maxY, p.Y);
+                minZ = MathF.Min(minZ, p.Z); maxZ = MathF.Max(maxZ, p.Z);
+            }
+
+            float extent = MathF.Max(maxX - minX, MathF.Max(maxY - minY, maxZ - minZ));
+            float tolerance = MathF.Max(extent * 1e-5f, 1e-9f);
+
+            var seen = new HashSet<(int, int, int)>();
+            var kept = new List<NifVector3>(points.Count);
+
+            foreach (NifVector3 p in points)
+            {
+                var cell = (
+                    (int)MathF.Round(p.X / tolerance),
+                    (int)MathF.Round(p.Y / tolerance),
+                    (int)MathF.Round(p.Z / tolerance));
+
+                if (seen.Add(cell))
+                    kept.Add(p);
+            }
+
+            return kept;
+        }
+
         /// <summary>
         /// Finds four points that are not coplanar, to seed the hull.
         /// </summary>
@@ -694,8 +792,12 @@ namespace SECmd.Conversion
 
             float length = MathF.Sqrt(nx * nx + ny * ny + nz * nz);
 
+            // A face with no area has no normal, so there is no answer -- not "zero",
+            // which would read as "the point is exactly on it". The difference is the
+            // whole of the bug below: a sliver that reads as zero is visible from
+            // nowhere, so nothing ever removes it.
             if (length < 1e-12f)
-                return 0f;
+                return float.NaN;
 
             return ((point.X - a.X) * nx + (point.Y - a.Y) * ny + (point.Z - a.Z) * nz) / length;
         }

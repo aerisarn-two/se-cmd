@@ -234,6 +234,67 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void AHullNeverGrowsBeyondWhatAHullCanBe()
+        {
+            // A hull of n points has at most 2n - 4 faces. snowdriftm01int has one
+            // collision shape, a 222-point hull, and it produced 309,394 faces -- the
+            // surface stopped being closed and every further point stitched more onto
+            // it. A sweep of the corpus ran for three and a half hours on that one
+            // mesh before anyone noticed it was not going to finish.
+            //
+            // The input that does it is quantised: the game's collision points are
+            // stored coarsely, so corners that were distinct in the authoring tool
+            // arrive equal or nearly so. This reproduces that shape of input.
+            var random = new Random(20260821);
+            var points = new List<NifVector3>();
+
+            for (int i = 0; i < 400; i++)
+            {
+                double theta = random.NextDouble() * Math.Tau;
+                double phi = Math.Acos(2 * random.NextDouble() - 1);
+
+                // Snapped to a coarse grid, which is what makes near-duplicates and
+                // slivers rather than a clean cloud.
+                points.Add(new NifVector3(
+                    Snap((float)(Math.Sin(phi) * Math.Cos(theta))),
+                    Snap((float)(Math.Sin(phi) * Math.Sin(theta))),
+                    Snap((float)Math.Cos(phi))));
+            }
+
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            MeshGeometry hull = ShapeTessellator.ConvexHull(points);
+
+            // Seconds, not hours. The number is loose on purpose: what is being
+            // asserted is that it terminates at all.
+            Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), $"took {watch.Elapsed}");
+
+            Assert.NotEmpty(hull.Triangles);
+            Assert.True(
+                hull.Triangles.Count <= 2 * points.Count,
+                $"{hull.Triangles.Count} faces for {points.Count} points");
+
+            static float Snap(float value) => MathF.Round(value * 64f) / 64f;
+        }
+
+        [Fact]
+        public void ANearDuplicatePointIsOnePoint()
+        {
+            // Two points the shape's own scale cannot tell apart make a face with no
+            // area, and a face with no area has no normal -- so no point can see it,
+            // and nothing ever removes it. That is how the surface opens up.
+            MeshGeometry hull = ShapeTessellator.ConvexHull(
+            [
+                new(-1, -1, -1), new(1, -1, -1), new(1, 1, -1), new(-1, 1, -1),
+                new(-1, -1, 1), new(1, -1, 1), new(1, 1, 1), new(-1, 1, 1),
+                new(1, 1, 1.0000001f), new(1, 1, 1.0000002f)
+            ]);
+
+            Assert.Equal(8, hull.Vertices.Count);
+            Assert.Equal(12, hull.Triangles.Count);
+            AssertClosed(hull);
+        }
+
+        [Fact]
         public void TooFewPointsAreStillNothing()
         {
             // Two points span no polygon, however it is wound.
