@@ -123,6 +123,27 @@ namespace SECmd.Nif
         }
 
         /// <summary>
+        /// Whether this layer can carry what an interpolator drives.
+        /// </summary>
+        /// <remarks>
+        /// Four kinds, and the list is the whole of what a track can be: a transform,
+        /// a float, a boolean, a point. Anything else — a <c>NiPathInterpolator</c>
+        /// walking a curve, a <c>NiLookAtInterpolator</c> aiming a node at another one
+        /// — is not something a curve on an FBX property can express, so this layer
+        /// declines it and the structural carrier takes the whole controller instead.
+        ///
+        /// Declining is not the same as dropping. Before this was asked, such a
+        /// controller fell between the two routes: the animation layer would not carry
+        /// it because it could not read the interpolator, and the structural carrier
+        /// would not carry it because it *had* one.
+        /// </remarks>
+        public static bool ReadsInterpolator(NifModel model, NifItem interpolator) =>
+            model.BlockInherits(interpolator, "NiTransformInterpolator")
+            || model.BlockInherits(interpolator, "NiFloatInterpolator")
+            || model.BlockInherits(interpolator, "NiBoolInterpolator")
+            || model.BlockInherits(interpolator, "NiPoint3Interpolator");
+
+        /// <summary>
         /// The controllers a sequence names, which the sequence rebuilds.
         /// </summary>
         /// <remarks>

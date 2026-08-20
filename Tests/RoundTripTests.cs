@@ -1154,6 +1154,52 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void AnInterpolatorThisLayerCannotReadIsCarriedWhole()
+        {
+            // A NiPathInterpolator walks a node along a curve. Nothing about that is a
+            // curve on an FBX property, so the animation layer declines it -- and it
+            // used to fall between the two routes: not animation, because the
+            // interpolator could not be read, and not structural either, because the
+            // controller *had* one. Both routes passed and the controller vanished.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("NiNode");
+            model.SetString(root, "Name", "root");
+
+            NifItem node = model.InsertBlock("NiNode");
+            model.SetString(node, "Name", "Fish");
+
+            if (model.SetArraySize(root, "Num Children", "Children", 1) is { } children)
+                children.Children[0].Value.SetLink(model.IndexOf(node));
+
+            NifItem controller = model.InsertBlock("NiTransformController");
+            NifItem interpolator = model.InsertBlock("NiPathInterpolator");
+
+            model.FindItem(interpolator, "Max Bank Angle")!.Value.SetFloat(0.75f);
+            model.FindItem(interpolator, "Follow Axis")!.Value.SetCount(2);
+            model.SetRef(interpolator, "Path Data", model.InsertBlock("NiPosData"));
+
+            model.SetRef(controller, "Interpolator", interpolator);
+            model.SetRef(controller, "Target", node);
+            model.SetRef(node, "Controller", controller);
+
+            model.SetRoots([root]);
+
+            NifModel rebuilt = RoundTrip(model);
+
+            NifItem after = Assert.Single(rebuilt.Blocks, b => b.Name == "NiPathInterpolator");
+
+            Assert.Equal(0.75f, rebuilt.FindItem(after, "Max Bank Angle")!.Value.ToFloat(), 4);
+            Assert.Equal(2u, rebuilt.GetUInt(after, "Follow Axis"));
+            Assert.NotNull(rebuilt.GetRef(after, "Path Data"));
+
+            // On the node's chain, through the controller that held it.
+            NifItem back = Assert.Single(rebuilt.Blocks, b => b.Name == "NiTransformController");
+
+            Assert.Equal(after, rebuilt.GetRef(back, "Interpolator"));
+        }
+
+        [Fact]
         public void ANodeThatClaimsToBeGeometryIsStillANode()
         {
             // Geometry is built on the mesh path, from a mesh. A node that names a

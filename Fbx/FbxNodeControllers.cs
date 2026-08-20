@@ -48,10 +48,32 @@ namespace SECmd.Fbx
         /// <c>BSProceduralLightningController</c> holds nine, none of them called
         /// `Interpolator`, and every one of them is driven from a sequence.
         private static bool IsStructural(NifModel model, NifItem controller) =>
-            model.GetRef(controller, "Interpolator") is null
-            && model.GetRef(controller, "Visibility Interpolator") is null
+            !Animated(model, controller, "Interpolator")
+            && !Animated(model, controller, "Visibility Interpolator")
             && !model.BlockInherits(controller, "NiControllerManager")
             && !model.BlockInherits(controller, "NiMultiTargetTransformController");
+
+        /// <summary>Whether a slot holds something the animation layer can carry.</summary>
+        /// <remarks>
+        /// Holding an interpolator is not enough. A <c>NiTransformController</c> whose
+        /// interpolator is a <c>NiPathInterpolator</c> or a
+        /// <c>NiLookAtInterpolator</c> drives nothing a curve on an FBX property can
+        /// express, so the animation layer declines it — and it used to fall between
+        /// the two routes, carried by neither.
+        /// </remarks>
+        private static bool Animated(NifModel model, NifItem controller, string field)
+        {
+            if (model.GetRef(controller, field) is not { } interpolator)
+                return false;
+
+            // A blend interpolator holds no keys: it is the slot a controller manager
+            // mixes every playing sequence into, so it is the animation layer's own
+            // mark that this controller is half of a sequenced pair. An LE file names
+            // its controllers by type string rather than by reference, so the pair
+            // cannot always be found from the sequence end.
+            return model.BlockInherits(interpolator, "NiBlendInterpolator")
+                   || NifAnimAccess.ReadsInterpolator(model, interpolator);
+        }
 
         /// <summary>Fields rebuilt from the chain rather than carried.</summary>
         private static bool Rebuilt(NifItem child) => child.Name is "Next Controller" or "Target";
