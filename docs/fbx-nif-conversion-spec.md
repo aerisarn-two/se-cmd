@@ -453,6 +453,16 @@ something about the system, not about a timeline.
 
 `Target` and `Next Controller` are not carried, since both are rebuilt from the chain.
 
+**References are followed, two levels.** The flat codec moves fields and drops links,
+which is right for almost everything — a link is a block index and means nothing once
+exported. One case needs more: a `BSProceduralLightningController` holds nine
+interpolators under names of its own (`Interpolator 2: Mutation`), and when no sequence
+drives them nothing else in the file would bring them back. So a link that points at an
+interpolator is followed to the interpolator's own fields, and then to its data block's —
+where the keys are, and the codec sizes an array from the count field it read a moment
+before, so they travel whole. This is the shape §5.2.2 already uses for node → bound →
+volume.
+
 ##### Nothing about this is particular to particle systems
 
 A `BSLagBoneController` makes a bone trail behind the one above it by a fixed amount.
@@ -463,8 +473,15 @@ node**, and the particle system is one caller of it.
 Two things are excluded rather than carried, and both are exclusions the animation route
 would otherwise duplicate:
 
-- **A controller holding an interpolator**, in either slot — the second matters, since an
-  emitter's on/off track lives there (§5A.6). That is animation and goes the other way.
+- **A controller holding an interpolator this layer can carry**, in either slot — the
+  second matters, since an emitter's on/off track lives there (§5A.6). That is animation
+  and goes the other way. *Holding* one is not the test: a `NiTransformController` whose
+  interpolator is a `NiPathInterpolator` or a `NiLookAtInterpolator` drives nothing a
+  curve on an FBX property can express, and such a controller used to fall between the
+  two routes and be carried by neither. A **blend** interpolator counts as the animation
+  layer's own — it holds no keys and is the slot a manager mixes into — which is how a
+  sequenced pair is recognised in an LE file, where a sequence names its controllers by
+  type string rather than by reference.
 - **A controller a sequence names.** Holding no field called `Interpolator` is not enough:
   a `BSProceduralLightningController` holds nine interpolators, none of them called that,
   and every one is driven from a sequence. The animation route rebuilds it from the
@@ -1481,6 +1498,15 @@ same way, as eight numbers on the stack (`constxf_<node>`), written as the quate
 file holds rather than as a matrix so a file nobody edited comes back with the numbers it
 went out with.
 
+**An interpolator that holds nothing at all.** Not keys, not a pose — a file can store
+one with no data block and its `Value` left at the sentinel, and the controlled block
+naming it is in the file too. The game's lightning effects are full of them: a "loop"
+sequence that drives nothing, spelled out rather than left out. That is a *third* state,
+distinct from a constant, which says one thing, and from an absent property, which is not
+there at all. It travels as `noval_<node>|<property>` on the stack, whose value is the
+interpolator class — a track that holds nothing is entirely described by what kind of
+nothing it is.
+
 **The sentinel that means neither.** nif.xml calls the field "Pose value if lacking
 NiFloatData" and gives it a default that means *none*: `#INV_FLT#` for a float, `2` for a
 bool — a bool being 0 or 1 and never 2, and a transform component being `float.MinValue`.
@@ -1529,8 +1555,6 @@ mesh with more than one emitter.
 | --- | --- |
 | A track binds by node name | Duplicate names cannot be told apart, in either format. A block with **no** name is bound by its class name instead, and the name itself travels as `nif_name` (§5.2.5) |
 | One layer per stack | Layered animation is not represented |
-| `NiPathInterpolator`, `NiLookAtInterpolator` | Neither drives a float, a boolean, a point or a transform, so this layer does not recognise them and the controllers holding them are lost. Three of the sampled meshes: a camera path, a fish |
-| A structural controller's own interpolators | `BSProceduralLightningController` holds nine, under names of its own. The flat carrier that brings the controller across carries fields, not references, so the interpolators and their data are lost |
 
 ---
 
@@ -1879,6 +1903,7 @@ per take and a node property is one per node:
 | --- | --- | --- |
 | `const_<node>\|<property name>` | stack | A track holding one value for the whole take. Typed `bool`, `Number` or `ColorRGB` — a boolean constant and a float one are the same number and different animations |
 | `constxf_<node>` | stack | A transform held for the whole take: eight numbers, `tx ty tz qw qx qy qz scale` |
+| `noval_<node>\|<property name>` | stack | A track whose interpolator holds nothing — no keys, no pose. The value is the interpolator class |
 | `interp_<node>\|<property name>` | stack | The interpolator class the track should rebuild as, when it is not the default for the value kind — `NiBoolTimelineInterpolator` rather than `NiBoolInterpolator` |
 
 ### 5D.10 What is calculated, and cannot be authored
@@ -1978,8 +2003,6 @@ Real gaps, each with its reason recorded where it bites.
 | --- | --- | --- |
 | A controller with no interpolator, outside a particle system | Not recognised as animation, and only particle systems carry these structurally so far | §5A.6, §4.9A |
 | Array order within a rebuilt convex hull | The vertices and planes agree, but arrive in the fit's order rather than Havok's, which nif.xml says is lexicographic | §5.7.1 |
-| A `NiPathInterpolator` or `NiLookAtInterpolator` | Neither drives a float, a boolean, a point or a transform, so the animation layer does not recognise them and the controller holding one is lost | §5A.7 |
-| A structural controller's own interpolators | `BSProceduralLightningController` holds nine under names of its own; the flat carrier moves fields, not references | §5A.7 |
 | The second and later materials of a multi-material render mesh | A NIF shape has one material, and the import keeps the first rather than splitting the mesh into one shape per material. Authoring means splitting it in the DCC tool | §5.3.4 |
 
 ---
