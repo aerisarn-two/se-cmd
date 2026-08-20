@@ -1493,6 +1493,54 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void APlaneShapeComesBackAPlane()
+        {
+            // A bhkPlaneShape is an infinite plane with a box saying which part of it
+            // is real -- what the game puts under water and under a fish egg cluster.
+            // ck-cmd converts none, so it tessellated to nothing and the body above it
+            // was lost.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("BSFadeNode");
+            model.SetString(root, "Name", "root");
+            model.SetRoots([root]);
+
+            NifItem body = model.InsertBlock("bhkRigidBody");
+            NifItem collision = model.InsertBlock("bhkCollisionObject");
+
+            model.SetRef(collision, "Body", body);
+            model.SetRef(collision, "Target", root);
+            model.SetRef(root, "Collision Object", collision);
+
+            NifItem plane = model.InsertBlock("bhkPlaneShape");
+
+            model.FindItem(plane, "Plane Normal")!.Value.Set(new NifVector3(0f, 0f, 1f));
+            model.FindItem(plane, "Plane Constant")!.Value.SetFloat(2f);
+            model.FindItem(plane, "AABB Center")!.Value.Set(new NifVector4(0f, 0f, 2f, 0f));
+            model.FindItem(plane, "AABB Half Extents")!.Value.Set(new NifVector4(3f, 4f, 0f, 0f));
+
+            model.SetRef(body, "Shape", plane);
+
+            NifModel rebuilt = RoundTrip(model);
+
+            NifItem after = Assert.Single(rebuilt.Blocks, b => b.Name == "bhkPlaneShape");
+
+            NifVector3 normal = rebuilt.FindItem(after, "Plane Normal")!.Value.Get<NifVector3>();
+
+            // The plane it was: facing the same way, the same distance out.
+            Assert.Equal(1f, MathF.Abs(normal.Z), 2);
+            Assert.Equal(2f, MathF.Abs(rebuilt.FindItem(after, "Plane Constant")!.Value.ToFloat()), 2);
+
+            NifVector4 half = rebuilt.FindItem(after, "AABB Half Extents")!.Value.Get<NifVector4>();
+
+            Assert.Equal(3f, half.X, 1);
+            Assert.Equal(4f, half.Y, 1);
+
+            // And the body above it survived, which is the whole point.
+            Assert.Single(rebuilt.Blocks, x => x.Name == "bhkCollisionObject");
+        }
+
+        [Fact]
         public void ANodeThatClaimsToBeGeometryIsStillANode()
         {
             // Geometry is built on the mesh path, from a mesh. A node that names a

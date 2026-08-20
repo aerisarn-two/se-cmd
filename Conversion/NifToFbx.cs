@@ -631,6 +631,7 @@ namespace SECmd.Conversion
             "bhkCapsuleShape" => "_capsule",
             "bhkCylinderShape" => "_cylinder",
             "bhkConvexVerticesShape" => "_convex",
+            "bhkPlaneShape" => "_plane",
             "bhkNiTriStripsShape" => "_strips",
             "bhkCompressedMeshShape" => "_mesh",
             _ => "_shape"
@@ -659,6 +660,14 @@ namespace SECmd.Conversion
                 _model.FindItem(shape, "Cylinder Radius")?.Value.ToFloat() ?? 0f),
 
             "bhkConvexVerticesShape" => ShapeTessellator.ConvexHull(ReadConvexVertices(shape)),
+
+            // An infinite plane bounded by a box, which is what the game puts under
+            // water and under a few things that must not fall.
+            "bhkPlaneShape" => ShapeTessellator.Plane(
+                _model.FindItem(shape, "Plane Normal")?.Value.Get<NifVector3>() ?? new NifVector3(),
+                _model.FindItem(shape, "Plane Constant")?.Value.ToFloat() ?? 0f,
+                Vector3Of(_model.FindItem(shape, "AABB Center")),
+                Vector3Of(_model.FindItem(shape, "AABB Half Extents"))),
 
             // The LE-era mesh collision, still in a handful of SE files. Its geometry
             // is real triangles rather than the chunked form a compressed mesh uses,

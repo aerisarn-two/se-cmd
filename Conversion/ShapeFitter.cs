@@ -152,6 +152,49 @@ namespace SECmd.Conversion
         }
 
         /// <summary>
+        /// The plane a flat point cloud lies in, and the box bounding it.
+        /// </summary>
+        /// <remarks>
+        /// The normal comes from the widest triangle the cloud spans, which for the
+        /// rectangle a plane shape tessellates to is exact. The constant is the
+        /// plane's distance from the origin along that normal — nif.xml's own wording,
+        /// and *not* the negated convention a convex hull's face planes use.
+        /// </remarks>
+        public static (NifVector3 Normal, float Constant, NifVector3 Center, NifVector3 HalfExtents)
+            FitPlane(IReadOnlyList<NifVector3> points)
+        {
+            (NifVector3 center, NifVector3 half) = FitBox(points);
+
+            var normal = new NifVector3(0f, 0f, 1f);
+            float best = 0f;
+
+            for (int i = 0; i + 2 < points.Count; i++)
+            {
+                NifVector3 a = points[i], b = points[i + 1], c = points[i + 2];
+
+                var u = new NifVector3(b.X - a.X, b.Y - a.Y, b.Z - a.Z);
+                var v = new NifVector3(c.X - a.X, c.Y - a.Y, c.Z - a.Z);
+
+                var cross = new NifVector3(
+                    u.Y * v.Z - u.Z * v.Y,
+                    u.Z * v.X - u.X * v.Z,
+                    u.X * v.Y - u.Y * v.X);
+
+                float size = MathF.Sqrt(cross.X * cross.X + cross.Y * cross.Y + cross.Z * cross.Z);
+
+                if (size > best)
+                {
+                    best = size;
+                    normal = new NifVector3(cross.X / size, cross.Y / size, cross.Z / size);
+                }
+            }
+
+            float constant = center.X * normal.X + center.Y * normal.Y + center.Z * normal.Z;
+
+            return (normal, constant, center, half);
+        }
+
+        /// <summary>
         /// The vertices and outward face planes of a convex hull, which is what
         /// <c>bhkConvexVerticesShape</c> stores.
         /// </summary>

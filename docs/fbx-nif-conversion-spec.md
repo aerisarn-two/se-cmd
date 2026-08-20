@@ -395,6 +395,7 @@ recurse; leaf shapes append geometry.
 | `bhkCapsuleShape` | `_capsule` | Tessellated capsule between the two points |
 | `bhkCylinderShape` | `_cylinder` | Tessellated cylinder between the two points. **Not in ck-cmd**, which has no case for one at all, so a body whose shape is a cylinder leaves with no geometry and the collision object is lost with it — see §10 |
 | `bhkConvexVerticesShape` | `_convex` | Convex hull of the vertices |
+| `bhkPlaneShape` | `_plane` | The rectangle its bounding box cuts out of the plane. **Not in ck-cmd** |
 | `bhkNiTriStripsShape` | `_strips` | Strips unwound to triangles. **Not in ck-cmd**; the LE-era mesh collision, still in a handful of SE files |
 | `bhkCompressedMeshShape` | `_mesh` | Decoded chunks, see below |
 
@@ -1284,6 +1285,13 @@ nothing reports.
 Havok stores both points as four-component vectors, and the fourth component is not
 padding: it holds the radius again, and Havok reads it.
 
+**A plane is infinite and FBX has no infinite anything.** A `bhkPlaneShape` is a plane
+plus an AABB saying which part of it is real — what the game puts under water, and under
+a fish egg cluster that must not fall. It travels as the rectangle the box cuts out of
+the plane, and the fit reads the plane back from that rectangle's own face. Note the
+sign: nif.xml calls `Plane Constant` "distance from the origin to the plane", which is
+**not** the negated convention a convex hull's face planes use (§5.7.1).
+
 **A flat hull is not broken input.** `byohwrdoorload01` draws its load door as four
 coplanar points — a `bhkConvexVerticesShape` with no volume. The incremental hull starts
 from a tetrahedron, and a flat point set has none, so it yielded an empty mesh. It is
@@ -1867,7 +1875,7 @@ node to a sphere, a convex node to a hull. Nest the suffixes to nest the shapes.
 | --- | --- |
 | `_rb` | `bhkCollisionObject` + `bhkRigidBody` — the body everything below hangs from |
 | `_sp` | `bhkSPCollisionObject` — a simple shape phantom |
-| `_box`, `_sphere`, `_capsule`, `_cylinder`, `_convex`, `_strips`, `_mesh` | The leaf shape, fitted to the mesh under it |
+| `_box`, `_sphere`, `_capsule`, `_cylinder`, `_plane`, `_convex`, `_strips`, `_mesh` | The leaf shape, fitted to the mesh under it |
 | `_transform`, `_list`, `_convex_list`, `_mopp` | A container; recurse into its children |
 | `_geometry` | The mesh attribute of a collision node, not a shape of its own |
 | `_con_`, `_attach_point` | A constraint and its attach point |

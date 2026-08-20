@@ -152,6 +152,85 @@ namespace SECmd.Conversion
         /// with no geometry and the whole collision object is lost. The game ships
         /// them, so this port converts them.
         /// </remarks>
+        /// <summary>
+        /// A plane, bounded by the box it is given.
+        /// </summary>
+        /// <remarks>
+        /// A `bhkPlaneShape` is an infinite plane with an AABB saying which part of it
+        /// is real — the game uses them for water surfaces and for the invisible floor
+        /// a fish egg cluster sits on. FBX has no infinite anything, so it travels as
+        /// the rectangle the box cuts out of it.
+        ///
+        /// Wound both ways, as a flat hull is: the import refits from these triangles,
+        /// and a one-sided quad gives the fit a surface rather than a solid.
+        /// </remarks>
+        public static MeshGeometry Plane(
+            NifVector3 normal, float constant, NifVector3 centre, NifVector3 halfExtents)
+        {
+            var mesh = new MeshGeometry();
+
+            float length = MathF.Sqrt(
+                normal.X * normal.X + normal.Y * normal.Y + normal.Z * normal.Z);
+
+            if (length < 1e-9f)
+                return mesh;
+
+            var n = new NifVector3(normal.X / length, normal.Y / length, normal.Z / length);
+
+            // Two axes in the plane. The cross with whichever world axis the normal
+            // leans on least is the one that does not collapse.
+            NifVector3 seed = MathF.Abs(n.X) <= MathF.Abs(n.Y) && MathF.Abs(n.X) <= MathF.Abs(n.Z)
+                ? new NifVector3(1f, 0f, 0f)
+                : MathF.Abs(n.Y) <= MathF.Abs(n.Z)
+                    ? new NifVector3(0f, 1f, 0f)
+                    : new NifVector3(0f, 0f, 1f);
+
+            NifVector3 u = Normalize(Cross(n, seed));
+            NifVector3 v = Cross(n, u);
+
+            // The box's reach along each in-plane axis, and its centre pulled onto the
+            // plane so the rectangle lies in it rather than beside it.
+            float du = MathF.Abs(u.X * halfExtents.X) + MathF.Abs(u.Y * halfExtents.Y)
+                       + MathF.Abs(u.Z * halfExtents.Z);
+
+            float dv = MathF.Abs(v.X * halfExtents.X) + MathF.Abs(v.Y * halfExtents.Y)
+                       + MathF.Abs(v.Z * halfExtents.Z);
+
+            float off = centre.X * n.X + centre.Y * n.Y + centre.Z * n.Z - constant;
+
+            var origin = new NifVector3(
+                centre.X - n.X * off, centre.Y - n.Y * off, centre.Z - n.Z * off);
+
+            foreach ((float su, float sv) in new[] { (-1f, -1f), (1f, -1f), (1f, 1f), (-1f, 1f) })
+            {
+                mesh.Vertices.Add(new NifVector3(
+                    origin.X + u.X * du * su + v.X * dv * sv,
+                    origin.Y + u.Y * du * su + v.Y * dv * sv,
+                    origin.Z + u.Z * du * su + v.Z * dv * sv));
+            }
+
+            mesh.Triangles.Add(new NifTriangle(0, 1, 2));
+            mesh.Triangles.Add(new NifTriangle(0, 2, 3));
+            mesh.Triangles.Add(new NifTriangle(0, 2, 1));
+            mesh.Triangles.Add(new NifTriangle(0, 3, 2));
+
+            mesh.RecalculateNormals();
+
+            return mesh;
+        }
+
+        private static NifVector3 Cross(NifVector3 a, NifVector3 b) => new(
+            a.Y * b.Z - a.Z * b.Y,
+            a.Z * b.X - a.X * b.Z,
+            a.X * b.Y - a.Y * b.X);
+
+        private static NifVector3 Normalize(NifVector3 v)
+        {
+            float length = Length(v);
+
+            return length < 1e-9f ? v : new NifVector3(v.X / length, v.Y / length, v.Z / length);
+        }
+
         public static MeshGeometry Cylinder(NifVector3 first, NifVector3 second, float radius, int segments = 16)
         {
             segments = Math.Max(3, segments);
