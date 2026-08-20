@@ -1093,6 +1093,67 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void AStructuralControllerBringsItsInterpolatorsWithIt()
+        {
+            // The flat carrier moves fields, not references, which is right for almost
+            // everything -- a link is a block index and means nothing once exported.
+            // A BSProceduralLightningController is the exception: it holds nine
+            // interpolators under names of its own, and when no sequence drives them
+            // they hang off the controller and nothing else would bring them back.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("NiNode");
+            model.SetString(root, "Name", "root");
+
+            NifItem node = model.InsertBlock("NiNode");
+            model.SetString(node, "Name", "ProceduralGeometry");
+
+            if (model.SetArraySize(root, "Num Children", "Children", 1) is { } children)
+                children.Children[0].Value.SetLink(model.IndexOf(node));
+
+            NifItem controller = model.InsertBlock("BSProceduralLightningController");
+            model.FindItem(controller, "Length")?.Value.SetFloat(512f);
+            model.SetRef(controller, "Target", node);
+            model.SetRef(node, "Controller", controller);
+
+            NifItem interpolator = model.InsertBlock("NiFloatInterpolator");
+            NifItem data = model.InsertBlock("NiFloatData");
+
+            NifItem keys = model.SetArraySize(data, @"Data\Num Keys", @"Data\Keys", 2)!;
+            keys.Children[0].Children.First(c => c.Name == "Time").Value.SetFloat(0f);
+            keys.Children[0].Children.First(c => c.Name == "Value").Value.SetFloat(3f);
+            keys.Children[1].Children.First(c => c.Name == "Time").Value.SetFloat(1f);
+            keys.Children[1].Children.First(c => c.Name == "Value").Value.SetFloat(9f);
+
+            model.SetRef(interpolator, "Data", data);
+            model.SetRef(controller, "Interpolator 9: Arc Offset", interpolator);
+
+            model.SetRoots([root]);
+
+            NifModel rebuilt = RoundTrip(model);
+
+            NifItem after = Assert.Single(rebuilt.Blocks, b => b.Name == "BSProceduralLightningController");
+
+            Assert.Equal(512f, rebuilt.FindItem(after, "Length")!.Value.ToFloat(), 3);
+
+            // In the slot it came from, not merely present somewhere.
+            NifItem back = Assert.Single(rebuilt.Blocks, b => b.Name == "NiFloatInterpolator");
+
+            Assert.Equal(back, rebuilt.GetRef(after, "Interpolator 9: Arc Offset"));
+
+            // And its keys travelled with it -- the codec sizes the array from the
+            // count field it read a moment before.
+            NifItem backData = Assert.Single(rebuilt.Blocks, b => b.Name == "NiFloatData");
+
+            Assert.Equal(2u, rebuilt.GetUInt(backData, @"Data\Num Keys"));
+            Assert.Equal(
+                9f,
+                rebuilt.FindItem(backData, @"Data\Keys")!.Children[1]
+                    .Children.First(c => c.Name == "Value").Value.ToFloat(),
+                3);
+        }
+
+        [Fact]
         public void ANodeThatClaimsToBeGeometryIsStillANode()
         {
             // Geometry is built on the mesh path, from a mesh. A node that names a

@@ -88,11 +88,83 @@ namespace SECmd.Fbx
 
                 node.Properties.SetUserString($"{prefix}type", controllers[i].Name);
 
+                void Sink(string name, string value) => node.Properties.SetUserString(name, value);
+
                 NifFieldCodec.Write(
-                    model, controllers[i], prefix,
-                    (name, value) => node.Properties.SetUserString(name, value),
-                    Rebuilt);
+                    model, controllers[i], prefix, Sink, Rebuilt,
+                    (name, link) => WriteInterpolator(model, model.GetBlock(link), name, Sink));
             }
+        }
+
+        /// <summary>Suffix on the property naming a carried block's class.</summary>
+        private const string TypeSuffix = "_type";
+
+        /// <summary>Prefix on the fields of an interpolator's data block.</summary>
+        private const string DataPrefix = "_data";
+
+        /// <summary>
+        /// Carries an interpolator a structural controller points at.
+        /// </summary>
+        /// <remarks>
+        /// The flat codec moves fields, not references, which is right for almost
+        /// everything here — a link is a block index and means nothing once exported.
+        /// One case needs more. A <c>BSProceduralLightningController</c> holds **nine**
+        /// interpolators, under names of its own (`Interpolator 2: Mutation`), and when
+        /// no sequence drives them they hang off the controller and nothing else in the
+        /// file would bring them back. `impactshock02` lost eight blocks that way.
+        ///
+        /// So a link that points at an interpolator is followed, two levels: the
+        /// interpolator's own fields, then its data block's — which is where the keys
+        /// are, and the codec sizes an array from the count field it just read, so they
+        /// travel whole. This is the shape <see cref="FbxMultiBound"/> already uses for
+        /// node → bound → volume.
+        /// </remarks>
+        private static void WriteInterpolator(
+            NifModel model, NifItem? interpolator, string name, Action<string, string> sink)
+        {
+            if (interpolator is null || !model.BlockInherits(interpolator, "NiInterpolator"))
+                return;
+
+            sink($"{name}{TypeSuffix}", interpolator.Name);
+
+            NifFieldCodec.Write(
+                model, interpolator, $"{name}_", sink, null,
+                (field, link) => WriteData(model, model.GetBlock(link), field, sink));
+        }
+
+        /// <summary>Carries the data block an interpolator points at.</summary>
+        private static void WriteData(
+            NifModel model, NifItem? data, string name, Action<string, string> sink)
+        {
+            if (data is null)
+                return;
+
+            sink($"{name}{TypeSuffix}", data.Name);
+            NifFieldCodec.Write(model, data, $"{name}_", sink);
+        }
+
+        /// <summary>Rebuilds an interpolator, and its data, from what was carried.</summary>
+        private static NifItem? ReadInterpolator(
+            NifModel model, string name, Func<string, string?> source, string ancestor)
+        {
+            if (source($"{name}{TypeSuffix}") is not { Length: > 0 } type
+                || !model.KnowsBlock(type)
+                || !model.Database.Inherits(type, ancestor))
+            {
+                return null;
+            }
+
+            NifItem block = model.InsertBlock(type);
+
+            NifFieldCodec.Read(
+                model, block, $"{name}_", source, null,
+                (field, link) =>
+                {
+                    if (ReadInterpolator(model, field, source, "NiObject") is { } data)
+                        link.Value.SetLink(model.IndexOf(data));
+                });
+
+            return block;
         }
 
         /// <summary>Rebuilds the controllers that animate nothing, onto the block.</summary>
@@ -125,10 +197,16 @@ namespace SECmd.Fbx
 
                 NifItem controller = model.InsertBlock(type);
 
+                string? Source(string name) =>
+                    node.Properties.GetString(name) is { Length: > 0 } value ? value : null;
+
                 NifFieldCodec.Read(
-                    model, controller, prefix,
-                    name => node.Properties.GetString(name) is { Length: > 0 } value ? value : null,
-                    Rebuilt);
+                    model, controller, prefix, Source, Rebuilt,
+                    (name, link) =>
+                    {
+                        if (ReadInterpolator(model, name, Source, "NiInterpolator") is { } interpolator)
+                            link.Value.SetLink(model.IndexOf(interpolator));
+                    });
 
                 model.SetRef(controller, "Target", block);
 
