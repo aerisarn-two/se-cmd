@@ -993,10 +993,14 @@ namespace SECmd.Conversion
         /// </remarks>
         private void WriteMoppCode(NifItem mopp, MoppResult result)
         {
-            SetFloat(mopp, "Scale", result.Scale);
-
+            // The quantisation belongs in the code's own Offset, as its W: nif.xml
+            // says "the quantization factor is equal to 256*256 divided by this
+            // number", and NifSkope writes Vector4(origin, scale) there. The shape's
+            // own Scale is a different field, which every vanilla file leaves at 1 --
+            // writing mopper's number into it left W at zero, and a zero W is a
+            // quantisation the engine cannot divide by.
             _model.FindItem(mopp, @"MOPP Code\Offset")?.Value.Set(
-                new NifVector4(result.Origin.X, result.Origin.Y, result.Origin.Z, 0f));
+                new NifVector4(result.Origin.X, result.Origin.Y, result.Origin.Z, result.Scale));
 
             // mopper builds with chunk subdivision enabled.
             SetEnum(mopp, @"MOPP Code\Build Type", "hkMoppCodeBuildType", "BUILT_WITH_CHUNK_SUBDIVISION");
