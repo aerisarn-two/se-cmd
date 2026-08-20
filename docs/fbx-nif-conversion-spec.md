@@ -1598,7 +1598,11 @@ as a typed property on the **stack**, since a stack is the only per-take place F
 the model's resting value is one per model where this is one per take.
 
 **A constant transform.** A `NiTransformInterpolator` with no data block still carries a
-`Transform`, and that is the pose the node takes for the whole sequence. It travels the
+`Transform`, and that is the pose the node takes for the whole sequence. Whether it is a
+pose is a question about the node's **own** curves, not about the track's: a track carries
+the node's properties too, and asking whether any curve on it had keys said "this
+transform is animated" about a node whose transform is a pose and whose *visibility* is
+what moves. It travels the
 same way, as eight numbers on the stack (`constxf_<node>`), written as the quaternion the
 file holds rather than as a matrix so a file nobody edited comes back with the numbers it
 went out with.

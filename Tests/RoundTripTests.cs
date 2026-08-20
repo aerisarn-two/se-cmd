@@ -1431,6 +1431,68 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void APosedTransformSurvivesAnimatedPropertiesOnTheSameNode()
+        {
+            // A track carries the node's transform and its properties together. Asking
+            // whether *any* of its curves had keys said "this transform is animated"
+            // about a node whose transform is a pose and whose visibility is what
+            // moves -- and wrote an empty NiTransformData for a transform that has
+            // none. The blacksmith's forge marker has exactly one such node.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("NiNode");
+            model.SetString(root, "Name", "root");
+
+            NifItem node = model.InsertBlock("NiNode");
+            model.SetString(node, "Name", "MagicNode");
+
+            if (model.SetArraySize(root, "Num Children", "Children", 1) is { } children)
+                children.Children[0].Value.SetLink(model.IndexOf(node));
+
+            // A posed transform: no data block, a real transform in the interpolator.
+            NifItem transform = model.InsertBlock("NiTransformController");
+            NifItem posed = model.InsertBlock("NiTransformInterpolator");
+
+            model.FindItem(posed, @"Transform\Translation")!.Value.Set(new NifVector3(0.5f, -4.25f, 8.75f));
+            model.FindItem(posed, @"Transform\Scale")!.Value.SetFloat(1f);
+            model.SetRef(transform, "Interpolator", posed);
+            model.SetRef(transform, "Target", node);
+            model.SetRef(node, "Controller", transform);
+
+            // And a visibility controller on the same node that *is* keyed.
+            NifItem visibility = model.InsertBlock("NiVisController");
+            NifItem boolInterpolator = model.InsertBlock("NiBoolInterpolator");
+            NifItem boolData = model.InsertBlock("NiBoolData");
+
+            NifItem keys = model.SetArraySize(boolData, @"Data\Num Keys", @"Data\Keys", 2)!;
+            keys.Children[0].Children.First(c => c.Name == "Time").Value.SetFloat(0f);
+            keys.Children[0].Children.First(c => c.Name == "Value").Value.SetCount(1);
+            keys.Children[1].Children.First(c => c.Name == "Time").Value.SetFloat(1f);
+            keys.Children[1].Children.First(c => c.Name == "Value").Value.SetCount(0);
+
+            model.SetRef(boolInterpolator, "Data", boolData);
+            model.SetRef(visibility, "Interpolator", boolInterpolator);
+            model.SetRef(visibility, "Target", node);
+            model.SetRef(transform, "Next Controller", visibility);
+
+            model.SetRoots([root]);
+
+            NifModel rebuilt = RoundTrip(model);
+
+            NifItem after = Assert.Single(rebuilt.Blocks, b => b.Name == "NiTransformInterpolator");
+
+            // Still a pose: no data block invented for it.
+            Assert.Null(rebuilt.GetRef(after, "Data"));
+            Assert.DoesNotContain(rebuilt.Blocks, b => b.Name == "NiTransformData");
+
+            Assert.Equal(
+                0.5f, rebuilt.FindItem(after, @"Transform\Translation")!.Value.Get<NifVector3>().X, 3);
+
+            // And the visibility keys still came across.
+            Assert.Single(rebuilt.Blocks, b => b.Name == "NiBoolData");
+        }
+
+        [Fact]
         public void ANodeThatClaimsToBeGeometryIsStillANode()
         {
             // Geometry is built on the mesh path, from a mesh. A node that names a

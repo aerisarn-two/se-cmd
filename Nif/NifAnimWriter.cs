@@ -854,10 +854,15 @@ namespace SECmd.Nif
         {
             NifItem interpolator = model.InsertBlock("NiTransformInterpolator");
 
-            // A track with no keys holds a pose instead: the transform the node takes
-            // for the whole sequence, in the interpolator's own Transform, with no
-            // data block at all. That absence is the representation.
-            if (!track.HasKeys && track.Pose is { } pose)
+            // A track with no *transform* keys holds a pose instead: the transform the
+            // node takes for the whole sequence, in the interpolator's own Transform,
+            // with no data block at all. That absence is the representation.
+            //
+            // The node's own curves, not the track's every curve. A track carries the
+            // node's properties too -- a visibility controller, a shader fade -- and
+            // asking whether any of those had keys said "this transform is animated"
+            // about a transform that is not, and wrote an empty data block for it.
+            if (!track.Curves.Any(c => c.HasKeys) && track.Pose is { } pose)
             {
                 WriteTransform(model, interpolator, pose.Translation, pose.Rotation, pose.Scale);
                 return interpolator;
