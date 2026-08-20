@@ -391,6 +391,9 @@ namespace SECmd.Conversion
             FbxObject geometry = FbxMeshWriter.AddGeometry(scene, shapeName + "_geometry", mesh);
             scene.Connect(geometry, holder);
 
+            if (shape.Name == "bhkNiTriStripsShape")
+                FbxStripsParts.Write(holder, _stripsParts);
+
             AddCollisionMaterial(scene, shape, holder, geometry);
         }
 
@@ -628,6 +631,7 @@ namespace SECmd.Conversion
             "bhkCapsuleShape" => "_capsule",
             "bhkCylinderShape" => "_cylinder",
             "bhkConvexVerticesShape" => "_convex",
+            "bhkNiTriStripsShape" => "_strips",
             "bhkCompressedMeshShape" => "_mesh",
             _ => "_shape"
         };
@@ -655,6 +659,11 @@ namespace SECmd.Conversion
                 _model.FindItem(shape, "Cylinder Radius")?.Value.ToFloat() ?? 0f),
 
             "bhkConvexVerticesShape" => ShapeTessellator.ConvexHull(ReadConvexVertices(shape)),
+
+            // The LE-era mesh collision, still in a handful of SE files. Its geometry
+            // is real triangles rather than the chunked form a compressed mesh uses,
+            // so it needs no Havok to read -- only the strips unwound.
+            "bhkNiTriStripsShape" => ReadTriStrips(shape),
 
             "bhkCompressedMeshShape" => ReadCompressedMesh(shape),
 
@@ -807,6 +816,79 @@ namespace SECmd.Conversion
 
             return new NifVector3(v.X, v.Y, v.Z);
         }
+
+        /// <summary>
+        /// Decodes a <c>bhkNiTriStripsShape</c>, whose geometry is triangle strips.
+        /// </summary>
+        /// <remarks>
+        /// A strip alternates its winding: the first triangle is (0,1,2), the second
+        /// (1,3,2), and so on. Emitting them all the same way turns every other face
+        /// inside out, which for collision means a surface the engine lets things
+        /// through from one side.
+        ///
+        /// Degenerate triangles -- a repeated index -- are how a strip stitches to the
+        /// next one and are dropped rather than emitted.
+        /// </remarks>
+        private MeshGeometry? ReadTriStrips(NifItem shape)
+        {
+            var mesh = new MeshGeometry();
+
+            _stripsParts.Clear();
+
+            foreach (NifItem data in _model.GetRefArray(shape, "Strips Data"))
+            {
+                int first = mesh.Vertices.Count;
+                int firstTriangle = mesh.Triangles.Count;
+
+                if (_model.FindItem(data, "Vertices") is { } vertices)
+                {
+                    foreach (NifItem vertex in vertices.Children)
+                        mesh.Vertices.Add(vertex.Value.Get<NifVector3>());
+                }
+
+                if (_model.FindItem(data, "Points") is not { } strips)
+                    continue;
+
+                foreach (NifItem strip in strips.Children)
+                {
+                    for (int i = 0; i + 2 < strip.Children.Count; i++)
+                    {
+                        int a = first + (int)strip.Children[i].Value.ToUInt();
+                        int b = first + (int)strip.Children[i + 1].Value.ToUInt();
+                        int c = first + (int)strip.Children[i + 2].Value.ToUInt();
+
+                        if (a == b || b == c || a == c)
+                            continue;
+
+                        mesh.Triangles.Add(i % 2 == 0
+                            ? new NifTriangle((ushort)a, (ushort)b, (ushort)c)
+                            : new NifTriangle((ushort)a, (ushort)c, (ushort)b));
+                    }
+                }
+
+                _stripsParts.Add((
+                    mesh.Vertices.Count - first,
+                    mesh.Triangles.Count - firstTriangle));
+            }
+
+            if (mesh.Vertices.Count == 0)
+                return null;
+
+            mesh.RecalculateNormals();
+
+            return mesh;
+        }
+
+        /// <summary>
+        /// How the strips shape just decoded divided its geometry.
+        /// </summary>
+        /// <remarks>
+        /// Filled by <see cref="ReadTriStrips"/> and read immediately after, by the
+        /// caller that has the node to write it onto. One shape can hold several
+        /// `NiTriStripsData` blocks and FBX has one mesh per node, so the seams are
+        /// the one thing merging them loses.
+        /// </remarks>
+        private readonly List<(int Vertices, int Triangles)> _stripsParts = [];
 
         private List<NifVector3> ReadConvexVertices(NifItem shape)
         {

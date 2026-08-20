@@ -678,13 +678,16 @@ namespace SECmd.Conversion
                 // says it more directly.
                 if (IsPassThrough(name))
                 {
-                    // A MOPP tree is an index over the shape below it, and its code is
-                    // generated rather than carried, so the wrapper is walked through
-                    // and the shape underneath is what comes back.
-                    if (BuildShapeFrom(child, name, depth + 1) is { } inner)
+                    if (BuildShapeFrom(child, name, depth + 1) is not { } inner)
+                        continue;
+
+                    // The compressed-mesh path builds its own tree, because the same
+                    // Havok call that chunks the mesh returns one. Wrapping it again
+                    // would give the body two.
+                    if (inner.Name == "bhkMoppBvTreeShape")
                         return inner;
 
-                    continue;
+                    return BuildMoppTree(child, inner, name) ?? inner;
                 }
 
                 if (ContainerFor(name) is { } suffixed)
@@ -718,6 +721,8 @@ namespace SECmd.Conversion
                     built = BuildCylinder(points);
                 else if (name.EndsWith("_convex", StringComparison.Ordinal))
                     built = BuildConvex(points);
+                else if (name.EndsWith("_strips", StringComparison.Ordinal))
+                    built = BuildTriStrips(child, name);
                 else if (name.EndsWith("_mesh", StringComparison.Ordinal))
                     built = BuildCompressedMesh(child, name);
 
@@ -729,6 +734,88 @@ namespace SECmd.Conversion
                 ReadCollisionMaterial(built, child, name);
 
                 return built;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Rebuilds a MOPP tree over the shape it indexes, generating its code.
+        /// </summary>
+        /// <remarks>
+        /// The code is never carried. It is a Havok-proprietary index over a specific
+        /// arrangement of triangles, and a round trip refits every shape it covers, so
+        /// what came in describes a shape that no longer exactly exists. Regenerating
+        /// it against what was actually rebuilt is the only way it can be right — and
+        /// the measurement that settled it is worth recording: regenerated code never
+        /// matches vanilla byte for byte, on either the compressed-mesh path or this
+        /// one, so carrying bytes would only be preserving the *appearance* of
+        /// fidelity.
+        ///
+        /// mopper builds a tree over triangles. A tree over a collection of primitives
+        /// -- a `bhkListShape` of capsules, which 86 of the game's meshes have -- has
+        /// leaves that are child indices rather than triangle indices, and no backend
+        /// can produce one. Those pass through, with a warning that says so, rather
+        /// than getting a tree whose leaves point at children that do not exist.
+        /// </remarks>
+        private NifItem? BuildMoppTree(FbxObject node, NifItem inner, string name)
+        {
+            if (MoppGenerator.Resolve() is not { } generator)
+            {
+                Warnings.Add(
+                    $"{name}: the MOPP tree needs generating. {MoppGenerator.DescribeUnavailability()}");
+
+                return null;
+            }
+
+            if (TriangleGeometryUnder(node) is not { } mesh || mesh.Triangles.Count == 0)
+            {
+                Warnings.Add(
+                    $"{name}: a MOPP tree over {inner.Name} indexes child shapes rather than "
+                    + "triangles, which no backend can build, so the tree is dropped");
+
+                return null;
+            }
+
+            if (generator.GenerateSimpleMesh(mesh.Vertices, mesh.Triangles) is not { } built)
+            {
+                Warnings.Add($"{name}: MOPP generation failed, the tree is dropped");
+                return null;
+            }
+
+            NifItem mopp = _model.InsertBlock("bhkMoppBvTreeShape");
+
+            _model.SetRef(mopp, "Shape", inner);
+            WriteMoppCode(mopp, built);
+
+            return mopp;
+        }
+
+        /// <summary>
+        /// The triangles a MOPP tree would index, gathered from beneath a node.
+        /// </summary>
+        /// <remarks>
+        /// One mesh, however many nodes deep it sits: a tree wraps one shape, and the
+        /// only shapes it can index this way are the triangle ones.
+        /// </remarks>
+        private MeshGeometry? TriangleGeometryUnder(FbxObject node, int depth = 0)
+        {
+            if (depth > 8)
+                return null;
+
+            foreach (FbxObject child in _scene.ChildrenOf(node.Id).Where(o => o.Class == "Model"))
+            {
+                string name = NameEncoding.Unsanitize(child.Name);
+
+                if (name.EndsWith("_strips", StringComparison.Ordinal)
+                    || name.EndsWith("_mesh", StringComparison.Ordinal))
+                {
+                    if (ReadCollisionMesh(child) is { Triangles.Count: > 0 } mesh)
+                        return mesh;
+                }
+
+                if (TriangleGeometryUnder(child, depth + 1) is { } deeper)
+                    return deeper;
             }
 
             return null;
@@ -952,6 +1039,142 @@ namespace SECmd.Conversion
         /// shape is reported rather than approximated — a mesh collision fitted to a
         /// primitive would be silently wrong in a way that only shows up in game.
         /// </remarks>
+        /// <summary>
+        /// Rebuilds a <c>bhkNiTriStripsShape</c>, the LE-era mesh collision.
+        /// </summary>
+        /// <remarks>
+        /// Its geometry is real triangles rather than the chunked form a compressed
+        /// mesh uses, so no Havok is needed to build it — only to index it, which is
+        /// the MOPP tree above and is generated separately (§5.7.3).
+        ///
+        /// The strips are written one triangle each. A strip is a compression of the
+        /// index list and nothing reads it back as anything else; a three-point strip
+        /// per triangle says the same mesh, and reconstructing longer runs would be
+        /// guessing at how the original tool happened to split them.
+        /// </remarks>
+        private NifItem? BuildTriStrips(FbxObject node, string name)
+        {
+            if (ReadCollisionMesh(node) is not { } mesh || mesh.Triangles.Count == 0)
+            {
+                Warnings.Add($"{name}: strips collision node has no geometry");
+                return null;
+            }
+
+            NifItem shape = _model.InsertBlock("bhkNiTriStripsShape");
+
+            SetFloat(shape, "Radius", 0.1f);
+            _model.FindItem(shape, "Scale")?.Value.Set(new NifVector4(1f, 1f, 1f, 0f));
+
+            // One shape can hold several data blocks, and FBX has one mesh per node,
+            // so the seams travel as properties and the merged mesh is cut back along
+            // them. A mesh with none recorded is one block, which is what it is.
+            var parts = FbxStripsParts.Read(node, mesh.Vertices.Count, mesh.Triangles.Count);
+            var blocks = new List<NifItem>();
+            int vertexAt = 0, triangleAt = 0;
+
+            foreach ((int partVertices, int partTriangles) in
+                     parts.Count > 0 ? parts : [(mesh.Vertices.Count, mesh.Triangles.Count)])
+            {
+                var slice = new MeshGeometry();
+
+                for (int i = 0; i < partVertices; i++)
+                    slice.Vertices.Add(mesh.Vertices[vertexAt + i]);
+
+                for (int i = 0; i < partTriangles; i++)
+                {
+                    NifTriangle t = mesh.Triangles[triangleAt + i];
+
+                    slice.Triangles.Add(new NifTriangle(
+                        (ushort)(t.V1 - vertexAt), (ushort)(t.V2 - vertexAt), (ushort)(t.V3 - vertexAt)));
+                }
+
+                vertexAt += partVertices;
+                triangleAt += partTriangles;
+
+                blocks.Add(WriteStripsData(slice));
+            }
+
+            if (_model.SetArraySize(shape, "Num Strips Data", "Strips Data", blocks.Count) is { } refs)
+            {
+                for (int i = 0; i < blocks.Count && i < refs.Children.Count; i++)
+                    refs.Children[i].Value.SetLink(_model.IndexOf(blocks[i]));
+            }
+
+            _model.SetArraySize(shape, "Num Filters", "Filters", blocks.Count);
+
+            return shape;
+        }
+
+        /// <summary>Writes one <c>NiTriStripsData</c>, a three-point strip per triangle.</summary>
+        private NifItem WriteStripsData(MeshGeometry mesh)
+        {
+            NifItem data = _model.InsertBlock("NiTriStripsData");
+
+            SetCount(data, "Num Vertices", (uint)mesh.Vertices.Count);
+            SetBool(data, "Has Vertices", true);
+            WriteVector3Array(data, "Vertices", mesh.Vertices);
+
+            SetCount(data, "Num Triangles", (uint)mesh.Triangles.Count);
+            SetCount(data, "Num Strips", (uint)mesh.Triangles.Count);
+            SetBool(data, "Has Points", true);
+
+            if (_model.SetArraySize(data, "Num Strips", "Strip Lengths", mesh.Triangles.Count)
+                is { } lengths)
+            {
+                foreach (NifItem length in lengths.Children)
+                    length.Value.SetCount(3);
+            }
+
+            if (_model.FindItem(data, "Points") is { } points)
+            {
+                points.InvalidateConditionsRecursive();
+                _model.UpdateArraySize(points);
+
+                for (int i = 0; i < mesh.Triangles.Count && i < points.Children.Count; i++)
+                {
+                    NifItem strip = points.Children[i];
+                    _model.UpdateArraySize(strip);
+
+                    if (strip.Children.Count < 3)
+                        continue;
+
+                    strip.Children[0].Value.SetCount(mesh.Triangles[i].V1);
+                    strip.Children[1].Value.SetCount(mesh.Triangles[i].V2);
+                    strip.Children[2].Value.SetCount(mesh.Triangles[i].V3);
+                }
+            }
+
+            (NifVector3 centre, float radius) = mesh.ComputeBoundingSphere();
+            _model.FindItem(data, @"Bounding Sphere\Center")?.Value.Set(centre);
+            _model.FindItem(data, @"Bounding Sphere\Radius")?.Value.SetFloat(radius);
+
+            return data;
+        }
+
+        /// <summary>
+        /// The mesh under a collision node, in Havok units.
+        /// </summary>
+        /// <remarks>
+        /// The export scales collision geometry into game units so it sits with the
+        /// rest of the scene; everything a Havok block stores is in metres, so it
+        /// comes back down again here.
+        /// </remarks>
+        private MeshGeometry? ReadCollisionMesh(FbxObject node)
+        {
+            FbxObject? geometry = _scene.ChildrenOf(node.Id).FirstOrDefault(o => o.Class == "Geometry");
+
+            MeshGeometry? mesh = geometry is null
+                ? null
+                : FbxMeshReader.Read(geometry, new FbxMeshReader.Options { InvertU = false, InvertV = false });
+
+            if (mesh is null)
+                return null;
+
+            ShapeTessellator.Scale(mesh, ShapeTessellator.BhkScaleFactorInverse);
+
+            return mesh;
+        }
+
         private NifItem? BuildCompressedMesh(FbxObject node, string name)
         {
             IMoppGenerator? generator = MoppGenerator.Resolve();

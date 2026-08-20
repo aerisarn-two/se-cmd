@@ -1347,6 +1347,90 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void AStripsShapeKeepsItsSeams()
+        {
+            // One bhkNiTriStripsShape can reference several NiTriStripsData blocks --
+            // whprison02 has two shapes with two each -- and FBX has one mesh per
+            // node, so merging them lost where the seams were and rebuilt one block
+            // where there were two.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("BSFadeNode");
+            model.SetString(root, "Name", "root");
+            model.SetRoots([root]);
+
+            NifItem body = model.InsertBlock("bhkRigidBody");
+            NifItem collision = model.InsertBlock("bhkCollisionObject");
+
+            model.SetRef(collision, "Body", body);
+            model.SetRef(collision, "Target", root);
+            model.SetRef(root, "Collision Object", collision);
+
+            NifItem shape = model.InsertBlock("bhkNiTriStripsShape");
+            var blocks = new List<NifItem>();
+
+            // Two data blocks, two triangles each, at different heights so the merge
+            // and the split can be told apart.
+            for (int part = 0; part < 2; part++)
+            {
+                NifItem data = model.InsertBlock("NiTriStripsData");
+
+                model.FindItem(data, "Num Vertices")!.Value.SetCount(4);
+                model.FindItem(data, "Has Vertices")!.Value.SetCount(1);
+
+                NifItem vertices = model.FindItem(data, "Vertices")!;
+                vertices.InvalidateConditionsRecursive();
+                model.UpdateArraySize(vertices);
+
+                vertices.Children[0].Value.Set(new NifVector3(0f, 0f, part));
+                vertices.Children[1].Value.Set(new NifVector3(1f, 0f, part));
+                vertices.Children[2].Value.Set(new NifVector3(1f, 1f, part));
+                vertices.Children[3].Value.Set(new NifVector3(0f, 1f, part));
+
+                model.FindItem(data, "Num Triangles")!.Value.SetCount(2);
+                model.FindItem(data, "Num Strips")!.Value.SetCount(1);
+                model.FindItem(data, "Has Points")!.Value.SetCount(1);
+
+                NifItem lengths = model.SetArraySize(data, "Num Strips", "Strip Lengths", 1)!;
+                lengths.Children[0].Value.SetCount(4);
+
+                NifItem points = model.FindItem(data, "Points")!;
+                points.InvalidateConditionsRecursive();
+                model.UpdateArraySize(points);
+                model.UpdateArraySize(points.Children[0]);
+
+                for (int i = 0; i < 4; i++)
+                    points.Children[0].Children[i].Value.SetCount((uint)i);
+
+                blocks.Add(data);
+            }
+
+            if (model.SetArraySize(shape, "Num Strips Data", "Strips Data", 2) is { } refs)
+            {
+                for (int i = 0; i < 2; i++)
+                    refs.Children[i].Value.SetLink(model.IndexOf(blocks[i]));
+            }
+
+            model.SetArraySize(shape, "Num Filters", "Filters", 2);
+            model.SetRef(body, "Shape", shape);
+
+            NifModel rebuilt = RoundTrip(model);
+
+            Assert.Single(rebuilt.Blocks, b => b.Name == "bhkNiTriStripsShape");
+
+            // Two blocks back, not one merged one.
+            Assert.Equal(2, rebuilt.Blocks.Count(b => b.Name == "NiTriStripsData"));
+
+            NifItem after = rebuilt.Blocks.First(b => b.Name == "bhkNiTriStripsShape");
+
+            Assert.Equal(2, rebuilt.GetRefArray(after, "Strips Data").Count());
+
+            // And each holds its own four corners, with indices local to it.
+            foreach (NifItem data in rebuilt.GetRefArray(after, "Strips Data"))
+                Assert.Equal(4u, rebuilt.GetUInt(data, "Num Vertices"));
+        }
+
+        [Fact]
         public void ANodeThatClaimsToBeGeometryIsStillANode()
         {
             // Geometry is built on the mesh path, from a mesh. A node that names a
