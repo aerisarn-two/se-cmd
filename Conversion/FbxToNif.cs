@@ -795,7 +795,7 @@ namespace SECmd.Conversion
 
             if (built is null)
             {
-                Warnings.Add($"{name}: MOPP generation failed, the tree is dropped");
+                Warnings.Add($"{name}: MOPP generation failed, the tree is dropped{Said(generator)}");
                 return null;
             }
 
@@ -1188,6 +1188,17 @@ namespace SECmd.Conversion
         }
 
         /// <summary>
+        /// What the backend said for itself, ready to append to a warning.
+        /// </summary>
+        /// <remarks>
+        /// "Generation failed" on its own sends the reader to the wrong place. Havok
+        /// is usually willing to say what it did not like, and once said it had built
+        /// the thing and merely disapproved of the winding.
+        /// </remarks>
+        private static string Said(IMoppGenerator generator) =>
+            generator.LastDiagnostics is { Length: > 0 } said ? $" -- {said}" : string.Empty;
+
+        /// <summary>
         /// The mesh under a collision node, in Havok units.
         /// </summary>
         /// <remarks>
@@ -1248,7 +1259,9 @@ namespace SECmd.Conversion
 
             if (built is null)
             {
-                Warnings.Add($"{name}: MOPP generation failed for the mesh collision shape");
+                Warnings.Add(
+                    $"{name}: MOPP generation failed for the mesh collision shape{Said(generator)}");
+
                 return null;
             }
 

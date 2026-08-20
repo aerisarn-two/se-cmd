@@ -349,8 +349,24 @@ namespace SECmd.Havok
             private readonly string[] _lines;
             private int _at;
 
+            /// <remarks>
+            /// Every line the backend means as output is one number, so a line that
+            /// is not one is not output. Havok reports through a callback while it
+            /// works -- inconsistent triangle winding, which the game's own meshes
+            /// provoke by the dozen -- and an older mopper prints those to stdout,
+            /// where they land in the middle of the numbers. One dock building
+            /// produced 96 such lines among 17,637 numbers, and the whole collision
+            /// was dropped as a generation that failed.
+            ///
+            /// Filtering whole lines rather than tokens is what makes this safe: a
+            /// warning has numbers *in* it, so anything finer would read "triangle 40"
+            /// as the number 40.
+            /// </remarks>
             public NumberReader(string text) =>
-                _lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                _lines = [.. text
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Where(line => float.TryParse(
+                        line, NumberStyles.Float, CultureInfo.InvariantCulture, out _))];
 
             public bool TryFloat(out float value)
             {
@@ -626,9 +642,46 @@ namespace SECmd.Havok
             }
 
             // Wine writes its own diagnostics to stderr, so a non-empty stderr is not
-            // on its own a failure; the output parse decides.
-            _ = stderr;
+            // on its own a failure; the output parse decides. It is kept rather than
+            // dropped, because when the parse does fail this is the only account of
+            // why there is.
+            Diagnostics = Meaningful(stderr.Result);
+
             return stdout.Result;
+        }
+
+        /// <inheritdoc/>
+        public string? LastDiagnostics => Diagnostics;
+
+        [ThreadStatic]
+        private static string? Diagnostics;
+
+        /// <summary>Chatter about running Wine rather than about the shape.</summary>
+        private static readonly System.Text.RegularExpressions.Regex WineChatter =
+            new(@"^[0-9a-f]{3,4}:(fixme|err|warn|trace):", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        /// <summary>
+        /// The backend's own words, with the noise of running it stripped out.
+        /// </summary>
+        private static string? Meaningful(string stderr)
+        {
+            var lines = stderr
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(line => !WineChatter.IsMatch(line))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            if (lines.Count == 0)
+                return null;
+
+            // Havok repeats itself: one badly wound mesh is ninety-six near-identical
+            // complaints. Enough to know what it is, not enough to bury the warning
+            // this is attached to.
+            const int Keep = 3;
+
+            return lines.Count <= Keep
+                ? string.Join("; ", lines)
+                : string.Join("; ", lines.Take(Keep)) + $" (and {lines.Count - Keep} more)";
         }
 
         private static string Format(float value) =>

@@ -21,6 +21,22 @@ namespace SECmd.Havok
         /// <summary>True when this backend can actually run.</summary>
         bool IsAvailable { get; }
 
+        /// <summary>
+        /// What the backend said for itself on the last call from this thread.
+        /// </summary>
+        /// <remarks>
+        /// A generation that returns null says only that it failed. The backend
+        /// usually knows more and says so on its error stream, and throwing that away
+        /// cost hours once: a dock building's collision was reported as "MOPP
+        /// generation failed" when Havok had in fact built it and merely complained
+        /// about the mesh's winding — on standard output, where the complaint landed
+        /// among the numbers and broke the parse.
+        ///
+        /// Per thread, because a sweep converts in parallel and this belongs to the
+        /// call that just returned rather than to the backend.
+        /// </remarks>
+        string? LastDiagnostics => null;
+
         /// <summary>Why the backend is unusable, for reporting.</summary>
         string? UnavailableReason { get; }
 
