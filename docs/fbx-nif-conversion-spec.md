@@ -459,11 +459,17 @@ something about the system, not about a timeline.
 which is right for almost everything — a link is a block index and means nothing once
 exported. One case needs more: a `BSProceduralLightningController` holds nine
 interpolators under names of its own (`Interpolator 2: Mutation`), and when no sequence
-drives them nothing else in the file would bring them back. So a link that points at an
-interpolator is followed to the interpolator's own fields, and then to its data block's —
+drives them nothing else in the file would bring them back. So a **reference** that points
+at an interpolator is followed to the interpolator's own fields, and then to its data
+block's —
 where the keys are, and the codec sizes an array from the count field it read a moment
 before, so they travel whole. This is the shape §5.2.2 already uses for node → bound →
 volume.
+
+A **pointer** is not a reference and is never followed. It is the upward half of a
+two-way link: a `NiLookAtInterpolator`'s `Look At` names the node it aims at, and
+following it carried a copy of that node, which came back as a second node attached to
+nothing. The same rule the block-order walk uses (§5B), for the same reason.
 
 ##### Nothing about this is particular to particle systems
 

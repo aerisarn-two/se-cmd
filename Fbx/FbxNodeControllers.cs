@@ -114,7 +114,11 @@ namespace SECmd.Fbx
 
                 NifFieldCodec.Write(
                     model, controllers[i], prefix, Sink, Rebuilt,
-                    (name, link) => WriteInterpolator(model, model.GetBlock(link), name, Sink));
+                    (name, link) =>
+                    {
+                        if (link.Value.Type != NifValueType.UpLink)
+                            WriteInterpolator(model, model.GetBlock(link), name, Sink);
+                    });
             }
         }
 
@@ -151,7 +155,15 @@ namespace SECmd.Fbx
 
             NifFieldCodec.Write(
                 model, interpolator, $"{name}_", sink, null,
-                (field, link) => WriteData(model, model.GetBlock(link), field, sink));
+                (field, link) =>
+                {
+                    // References only. A pointer is the upward half of a two-way link
+                    // -- a NiLookAtInterpolator's Look At names the node it aims at --
+                    // and following one carries a copy of that node, which comes back
+                    // as a second node attached to nothing.
+                    if (link.Value.Type != NifValueType.UpLink)
+                        WriteData(model, model.GetBlock(link), field, sink);
+                });
         }
 
         /// <summary>Carries the data block an interpolator points at.</summary>
@@ -182,6 +194,9 @@ namespace SECmd.Fbx
                 model, block, $"{name}_", source, null,
                 (field, link) =>
                 {
+                    if (link.Value.Type == NifValueType.UpLink)
+                        return;
+
                     if (ReadInterpolator(model, field, source, "NiObject") is { } data)
                         link.Value.SetLink(model.IndexOf(data));
                 });
@@ -226,6 +241,9 @@ namespace SECmd.Fbx
                     model, controller, prefix, Source, Rebuilt,
                     (name, link) =>
                     {
+                        if (link.Value.Type == NifValueType.UpLink)
+                            return;
+
                         if (ReadInterpolator(model, name, Source, "NiInterpolator") is { } interpolator)
                             link.Value.SetLink(model.IndexOf(interpolator));
                     });

@@ -1303,6 +1303,50 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void AnInterpolatorsPointerIsNotFollowed()
+        {
+            // The carrier that brings a structural controller's interpolators across
+            // follows references two levels down. A pointer is not a reference: a
+            // NiLookAtInterpolator's Look At names the node it aims at, and following
+            // it carried a copy of that node, which came back as a second node
+            // attached to nothing.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("NiNode");
+            model.SetString(root, "Name", "root");
+
+            NifItem aimed = model.InsertBlock("NiNode");
+            model.SetString(aimed, "Name", "Target");
+
+            NifItem node = model.InsertBlock("NiNode");
+            model.SetString(node, "Name", "Watcher");
+
+            if (model.SetArraySize(root, "Num Children", "Children", 2) is { } children)
+            {
+                children.Children[0].Value.SetLink(model.IndexOf(aimed));
+                children.Children[1].Value.SetLink(model.IndexOf(node));
+            }
+
+            NifItem controller = model.InsertBlock("NiTransformController");
+            NifItem interpolator = model.InsertBlock("NiLookAtInterpolator");
+
+            model.FindItem(interpolator, "Look At")?.Value.SetLink(model.IndexOf(aimed));
+            model.SetRef(controller, "Interpolator", interpolator);
+            model.SetRef(controller, "Target", node);
+            model.SetRef(node, "Controller", controller);
+
+            model.SetRoots([root]);
+
+            int before = model.Blocks.Count(b => b.Name == "NiNode");
+
+            NifModel rebuilt = RoundTrip(model);
+
+            // The interpolator came across; the node it aims at did not come twice.
+            Assert.Single(rebuilt.Blocks, b => b.Name == "NiLookAtInterpolator");
+            Assert.Equal(before, rebuilt.Blocks.Count(b => b.Name == "NiNode"));
+        }
+
+        [Fact]
         public void ANodeThatClaimsToBeGeometryIsStillANode()
         {
             // Geometry is built on the mesh path, from a mesh. A node that names a
