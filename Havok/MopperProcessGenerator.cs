@@ -152,9 +152,7 @@ namespace SECmd.Havok
             if (!IsAvailable || vertices.Count == 0 || triangles.Count == 0)
                 return null;
 
-            string output = Run("-msm", BuildSimpleMeshInput(vertices, triangles));
-
-            return ParseSimpleMeshOutput(output);
+            return Attempt(() => ParseSimpleMeshOutput(Run("-msm", BuildSimpleMeshInput(vertices, triangles))));
         }
 
         /// <inheritdoc/>
@@ -165,7 +163,7 @@ namespace SECmd.Havok
 
             // The same output as -msm, with the welding count zero: a collection of
             // primitives has no triangles to weld.
-            return ParseSimpleMeshOutput(Run("-clm", description));
+            return Attempt(() => ParseSimpleMeshOutput(Run("-clm", description)));
         }
 
         /// <inheritdoc/>
@@ -174,9 +172,7 @@ namespace SECmd.Havok
             if (!IsAvailable || geometries.Count == 0)
                 return null;
 
-            string output = Run("-ccm", BuildCompressedMeshInput(geometries));
-
-            return ParseCompressedMeshOutput(output);
+            return Attempt(() => ParseCompressedMeshOutput(Run("-ccm", BuildCompressedMeshInput(geometries))));
         }
 
         /// <summary>
@@ -488,6 +484,32 @@ namespace SECmd.Havok
             return new MoppResult(code, new NifVector3(x, y, z), scale, welding);
         }
 
+        /// <summary>
+        /// Runs a generation, turning a hung or broken backend into "no result".
+        /// </summary>
+        /// <remarks>
+        /// The interface says null when generation was not possible, and a backend
+        /// that timed out is exactly that. Letting the exception out instead ends the
+        /// whole conversion over one shape, which for a sweep means one bad mesh
+        /// stops the run.
+        /// </remarks>
+        private static T? Attempt<T>(Func<T?> generate)
+            where T : class
+        {
+            try
+            {
+                return generate();
+            }
+            catch (TimeoutException)
+            {
+                return null;
+            }
+            catch (IOException)
+            {
+                return null;
+            }
+        }
+
         private string Run(string mode, string input)
         {
             string executable = NeedsWine && WineCommand.Length > 0 ? WineCommand : _resolvedPath!;
@@ -533,10 +555,30 @@ namespace SECmd.Havok
                 throw new TimeoutException($"mopper did not finish within {Timeout}.");
             }
 
+            // A process exiting does not mean its pipes closed. Under Wine the
+            // wineserver holds the write end open after the program is gone, and
+            // reading to the end then blocks for ever -- there is no timeout on a
+            // pipe read, so a sweep of the whole corpus simply stopped, three and a
+            // half hours with one batch half done and nothing to say why.
+            if (!Task.WhenAll(stdout, stderr).Wait(Timeout))
+            {
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+                catch (InvalidOperationException)
+                {
+                    // Already gone -- which is exactly the case this guards.
+                }
+
+                throw new TimeoutException(
+                    $"mopper exited but its output did not close within {Timeout}.");
+            }
+
             // Wine writes its own diagnostics to stderr, so a non-empty stderr is not
             // on its own a failure; the output parse decides.
             _ = stderr;
-            return stdout.GetAwaiter().GetResult();
+            return stdout.Result;
         }
 
         private static string Format(float value) =>
