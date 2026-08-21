@@ -727,6 +727,20 @@ namespace SECmd.Nif
             return block;
         }
 
+        /// <summary>Data blocks built so far, per model being written.</summary>
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<
+            NifModel, Dictionary<int, NifItem>> SharedData = [];
+
+        /// <summary>An interpolator of this track's kind, pointed at data already built.</summary>
+        private static NifItem Interpolator(NifModel model, AnimProperty property, NifItem data)
+        {
+            NifItem interpolator = model.InsertBlock(InterpolatorClass(model, property));
+
+            model.SetRef(interpolator, "Data", data);
+
+            return interpolator;
+        }
+
         /// <summary>Writes a named track as a float, boolean or point interpolator.</summary>
         /// <remarks>
         /// All three are the same shape — an interpolator pointing at a data block
@@ -768,7 +782,20 @@ namespace SECmd.Nif
                 _ => "NiFloatData"
             };
 
+            // Two interpolators can share one data block, and the game's files do it.
+            // Rebuilding each one's keys separately turns one block into two, which is
+            // the file changed -- keyed on which block it was rather than on the keys
+            // in it, since identical data side by side is also something the game
+            // ships (§5.2.1).
+            var shared = SharedData.GetOrCreateValue(model);
+
+            if (property.DataId >= 0 && shared.TryGetValue(property.DataId, out NifItem? already))
+                return Interpolator(model, property, already);
+
             NifItem data = model.InsertBlock(dataType);
+
+            if (property.DataId >= 0)
+                shared[property.DataId] = data;
 
             var times = property.IsColor
                 ? MergedTimes(property.Curves)

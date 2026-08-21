@@ -257,6 +257,39 @@ namespace SECmd.Fbx
             }
         }
 
+        /// <summary>Puts back which data block each track's keys shared.</summary>
+        /// <remarks>See <see cref="FbxAnimWriter.AddDataId"/>.</remarks>
+        private static void ReadDataIds(FbxObject stack, Dictionary<string, AnimTrack> tracks)
+        {
+            foreach (FbxProperty70 property in stack.Properties.All)
+            {
+                if (!property.Name.StartsWith(FbxAnimWriter.DataIdPrefix, StringComparison.Ordinal))
+                    continue;
+
+                string rest = property.Name[FbxAnimWriter.DataIdPrefix.Length..];
+                int bar = rest.IndexOf(AnimProperty.Separator);
+
+                if (bar <= 0 || !tracks.TryGetValue(rest[..bar], out AnimTrack? track))
+                    continue;
+
+                if (!int.TryParse(
+                        property.Values.FirstOrDefault()?.ToString(),
+                        System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out int id))
+                {
+                    continue;
+                }
+
+                string name = rest[(bar + 1)..];
+
+                // Written only when the name picks out one track, and applied on the
+                // same terms: sharing the wrong data block is worse than not sharing.
+                if (track.Properties.Count(p => p.Name == name) == 1)
+                    track.Properties.First(p => p.Name == name).DataId = id;
+            }
+        }
+
         private static AnimSequence? ReadStack(FbxScene scene, FbxObject stack)
         {
             var sequence = new AnimSequence
@@ -280,6 +313,7 @@ namespace SECmd.Fbx
             ReadCarried(stack, tracks);
             ReadPoses(stack, tracks);
             ReadInterpolatorTypes(stack, tracks);
+            ReadDataIds(stack, tracks);
 
             // A track with no keys is kept only when it holds a constant, which is an
             // animation with nothing to draw rather than an empty one.

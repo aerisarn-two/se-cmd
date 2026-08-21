@@ -1623,6 +1623,64 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void TwoTracksThatSharedTheirKeysStillShareThem()
+        {
+            // Two interpolators can point at one NiFloatData, and the game's files do
+            // it: dlc2scatteredembers has three data blocks for four interpolators.
+            // Rebuilding each one's keys separately turns one block into two.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("NiNode");
+            model.SetString(root, "Name", "root");
+
+            NifItem data = model.InsertBlock("NiFloatData");
+            NifItem keys = model.SetArraySize(data, @"Data\Num Keys", @"Data\Keys", 2)!;
+
+            keys.Children[0].Children.First(c => c.Name == "Time").Value.SetFloat(0f);
+            keys.Children[0].Children.First(c => c.Name == "Value").Value.SetFloat(1f);
+            keys.Children[1].Children.First(c => c.Name == "Time").Value.SetFloat(1f);
+            keys.Children[1].Children.First(c => c.Name == "Value").Value.SetFloat(7f);
+
+            // Two nodes, one controller each, both reading the same keys.
+            var children = new List<NifItem>();
+
+            for (int i = 0; i < 2; i++)
+            {
+                NifItem node = model.InsertBlock("NiNode");
+                model.SetString(node, "Name", $"Ember{i}");
+                children.Add(node);
+
+                NifItem interpolator = model.InsertBlock("NiFloatInterpolator");
+                model.SetRef(interpolator, "Data", data);
+
+                NifItem controller = model.InsertBlock("NiFloatExtraDataController");
+                model.SetString(controller, "Extra Data Name", "Glow");
+                model.SetRef(controller, "Interpolator", interpolator);
+                model.SetRef(controller, "Target", node);
+                model.SetRef(node, "Controller", controller);
+            }
+
+            if (model.SetArraySize(root, "Num Children", "Children", children.Count) is { } array)
+            {
+                for (int i = 0; i < children.Count; i++)
+                    array.Children[i].Value.SetLink(model.IndexOf(children[i]));
+            }
+
+            model.SetRoots([root]);
+
+            NifModel rebuilt = RoundTrip(model);
+
+            Assert.Equal(2, rebuilt.Blocks.Count(b => b.Name == "NiFloatInterpolator"));
+
+            // One data block, not two, and both interpolators reading it.
+            NifItem back = Assert.Single(rebuilt.Blocks, b => b.Name == "NiFloatData");
+
+            Assert.All(
+                rebuilt.Blocks.Where(b => b.Name == "NiFloatInterpolator"),
+                b => Assert.Equal(back, rebuilt.GetRef(b, "Data")));
+        }
+
+        [Fact]
         public void ANodeThatClaimsToBeGeometryIsStillANode()
         {
             // Geometry is built on the mesh path, from a mesh. A node that names a

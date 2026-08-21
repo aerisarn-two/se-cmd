@@ -1709,6 +1709,24 @@ shader carries several `BSEffectShaderPropertyFloatController`s, one fading and 
 scrolling, and nothing in a track tells them apart; grouping those by class alone
 rebuilds one where there were nine.
 
+#### Shared keys, and where the naming runs out
+
+Two interpolators can point at one data block, and the game's files do it —
+`dlc2scatteredembers` has three `NiFloatData` for four interpolators. Rebuilding each
+one's keys separately turns one block into two, so which block a track's keys came from
+travels as `datid_…`, keyed on identity as everything else of this kind is (§5.2.1).
+
+It is written **only when the name picks out one track**, and this is the interesting
+part. A node can carry several controllers whose encoded names are identical — a shader
+with four float controllers of the same class and no ids to separate them (§5A.6) — and
+there is nothing in the name to say which is which. Recorded anyway, one id is read back
+onto all of them and they collapse onto a single data block: `dlceclipsesky` went from
+twenty-five blocks to eleven in exactly that way, which is a far worse answer than the
+twenty-seven it had before.
+
+So the rule is to share only where the file can be asked unambiguously. `dlceclipsesky`
+keeps its two extra blocks, and §7.3 records why.
+
 #### Which controller is which
 
 nif.xml states per class what `NiInterpController::GetCtlrID()` returns, and it is not
@@ -2112,6 +2130,7 @@ per take and a node property is one per node:
 | --- | --- | --- |
 | `const_<node>\|<property name>` | stack | A track holding one value for the whole take. Typed `bool`, `Number` or `ColorRGB` — a boolean constant and a float one are the same number and different animations |
 | `constxf_<node>` | stack | A transform held for the whole take: eight numbers, `tx ty tz qw qx qy qz scale` |
+| `datid_<node>\|<property name>` | stack | Which data block a track's keys came from, so two interpolators that shared one still do. Written **only** when the name picks out one track — see below |
 | `noval_<node>\|<property name>` | stack | A track whose interpolator holds nothing — no keys, no pose. The value is the interpolator class |
 | `interp_<node>\|<property name>` | stack | The interpolator class the track should rebuild as, when it is not the default for the value kind — `NiBoolTimelineInterpolator` rather than `NiBoolInterpolator` |
 
@@ -2212,6 +2231,7 @@ Real gaps, each with its reason recorded where it bites.
 | --- | --- | --- |
 | A controller with no interpolator, outside a particle system | Not recognised as animation, and only particle systems carry these structurally so far | §5A.6, §4.9A |
 | Completeness of a convex hull over near-degenerate points | The incremental construction can leave the surface unclosed when quantised points make visibility inconsistent between neighbouring faces. It now stops instead of growing without bound, so the hull is of *some* of the points; one vanilla mesh is known to hit it | §5.7.0B |
+| Shared key data behind same-named controllers | Two interpolators sharing one data block stay shared only when the track's encoded name picks out one controller. Where a node carries several of one class with no ids, the name cannot say which is which, and each gets its own block — one vanilla sky gains two | §5A.6 |
 | Array order within a rebuilt convex hull | The vertices and planes agree, but arrive in the fit's order rather than Havok's, which nif.xml says is lexicographic | §5.7.1 |
 | The second and later materials of a multi-material render mesh | A NIF shape has one material, and the import keeps the first rather than splitting the mesh into one shape per material. Authoring means splitting it in the DCC tool | §5.3.4 |
 

@@ -105,6 +105,7 @@ namespace SECmd.Fbx
                         AddPropertyChannel(scene, layer, model, property);
 
                     AddInterpolatorType(stack, track.NodeName, property);
+                    AddDataId(stack, track, property);
                 }
             }
 
@@ -226,6 +227,36 @@ namespace SECmd.Fbx
         /// One entry per node and property, as constants are.
         /// </remarks>
         public const string InterpolatorPrefix = "interp_";
+
+        /// <summary>Prefix on a stack property naming which data block a track shared.</summary>
+        public const string DataIdPrefix = "datid_";
+
+        /// <summary>
+        /// Records which data block a track's keys came from.
+        /// </summary>
+        /// <remarks>
+        /// Two interpolators can share one, and the game's files do it — twenty-five
+        /// `NiFloatData` in `dlceclipsesky` serve twenty-seven interpolators. Without
+        /// this each gets its own on the way back and the file gains blocks.
+        /// </remarks>
+        private static void AddDataId(FbxObject stack, AnimTrack track, AnimProperty property)
+        {
+            if (property.DataId < 0)
+                return;
+
+            // Only when the name picks out one track. A node can carry several
+            // controllers whose encoded names are identical -- a shader with four
+            // float controllers of the same kind -- and there is nothing in the name
+            // to say which is which. Recorded anyway, the one id would be read back
+            // onto all of them and they would collapse onto a single data block:
+            // dlceclipsesky went from twenty-five to eleven that way.
+            if (track.Properties.Count(p => p.Name == property.Name) != 1)
+                return;
+
+            stack.Properties.SetUserString(
+                $"{DataIdPrefix}{track.NodeName}{AnimProperty.Separator}{property.Name}",
+                property.DataId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
 
         /// <summary>Records which interpolator class a track came from.</summary>
         private static void AddInterpolatorType(FbxObject stack, string nodeName, AnimProperty property)

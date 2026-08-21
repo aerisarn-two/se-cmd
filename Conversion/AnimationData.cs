@@ -107,6 +107,20 @@ namespace SECmd.Conversion
         /// </remarks>
         public IReadOnlyDictionary<string, string>? CarriedInterpolator { get; init; }
 
+        /// <summary>
+        /// Which data block this track's keys came from, when it came from a NIF.
+        /// </summary>
+        /// <remarks>
+        /// Two interpolators can share one <c>NiFloatData</c>, and the game's files do
+        /// it: `dlceclipsesky` has two such pairs among twenty-five. Rebuilding each
+        /// interpolator's keys on its own turns one block into two.
+        ///
+        /// Identity rather than content, as a texture set, an alpha property, a skin
+        /// data and a carried interpolator's data all are (§5.2.1). -1 when the scene
+        /// did not say, which is what a track authored in a DCC tool has.
+        /// </remarks>
+        public int DataId { get; set; } = -1;
+
         /// <summary>The NIF controller class, e.g. <c>NiPSysEmitterCtlr</c>.</summary>
         public string ControllerType { get; init; } = string.Empty;
 

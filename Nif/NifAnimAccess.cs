@@ -289,6 +289,7 @@ namespace SECmd.Nif
                     IsBoolean = boolean,
                     ControllerType = controller.Name,
                     InterpolatorType = interpolator.Name,
+                    DataId = DataIdOf(model, interpolator),
                     ControllerId = id,
                     InterpolatorId = interpolatorId
                 };
@@ -426,6 +427,7 @@ namespace SECmd.Nif
                         model.GetString(controlled, "Interpolator ID"),
                         model.GetString(controlled, "Property Type")),
                     InterpolatorType = interpolator.Name,
+                    DataId = DataIdOf(model, interpolator),
                     ControllerType = model.GetString(controlled, "Controller Type"),
                     ControllerId = model.GetString(controlled, "Controller ID"),
                     InterpolatorId = model.GetString(controlled, "Interpolator ID"),
@@ -445,6 +447,7 @@ namespace SECmd.Nif
                     model.GetString(controlled, "Property Type")),
                 IsBoolean = boolean,
                 InterpolatorType = interpolator.Name,
+                DataId = DataIdOf(model, interpolator),
                 ControllerType = model.GetString(controlled, "Controller Type"),
                 ControllerId = model.GetString(controlled, "Controller ID"),
                 InterpolatorId = model.GetString(controlled, "Interpolator ID"),
@@ -527,6 +530,10 @@ namespace SECmd.Nif
         /// can carry anyway; a point's three components become three curves, since
         /// FBX keys each one separately.
         /// </remarks>
+        /// <summary>The data block an interpolator reads its keys from, if any.</summary>
+        public static int DataIdOf(NifModel model, NifItem interpolator) =>
+            model.GetRef(interpolator, "Data") is { } data ? model.IndexOf(data) : -1;
+
         private static bool ReadValueKeys(NifModel model, NifItem interpolator, AnimProperty property)
         {
             if (model.GetRef(interpolator, "Data") is not { } block
