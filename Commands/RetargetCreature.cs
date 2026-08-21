@@ -304,8 +304,11 @@ namespace SECmd.Commands
 
             Dictionary<string, string> retargetMOVT = [];
             Dictionary<string, string> retargetRFCT = [];
-            while (behaviorQueue.TryDequeue(out string file))
+            while (behaviorQueue.TryDequeue(out string? file))
             {
+                if(file is null)
+                 continue;
+
                 FileInfo bFile = new(Path.Combine(srcDir, file));
 
                 // Used later for handling hacky behavior. The proper way of handling this would be to evaluate nested conditions 
