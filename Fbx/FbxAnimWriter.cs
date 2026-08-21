@@ -81,17 +81,25 @@ namespace SECmd.Fbx
 
             foreach (AnimTrack track in sequence.Tracks)
             {
-                if (!models.TryGetValue(track.NodeName, out FbxObject? model))
-                {
+                // A track naming a node the scene does not have still travels, as far
+                // as it can. Everything that lives on the *stack* -- a carried
+                // interpolator, a constant, a pose -- needs no model to hang on, and a
+                // sequence entry names its node by string, so the entry comes back
+                // even though nothing here can play it. What cannot travel is a curve,
+                // which animates a model and so needs one.
+                models.TryGetValue(track.NodeName, out FbxObject? model);
+
+                if (model is null && track.Properties.Any(p => p.Curves.Any(c => c.HasKeys)))
                     missing.Add(track.NodeName);
-                    continue;
-                }
 
                 AddPose(stack, track);
 
-                AddChannel(scene, layer, model, "T", "Lcl Translation", track.Translation);
-                AddChannel(scene, layer, model, "R", "Lcl Rotation", track.Rotation);
-                AddChannel(scene, layer, model, "S", "Lcl Scaling", track.Scale);
+                if (model is not null)
+                {
+                    AddChannel(scene, layer, model, "T", "Lcl Translation", track.Translation);
+                    AddChannel(scene, layer, model, "R", "Lcl Rotation", track.Rotation);
+                    AddChannel(scene, layer, model, "S", "Lcl Scaling", track.Scale);
+                }
 
                 foreach (AnimProperty property in track.Properties)
                 {
@@ -101,7 +109,7 @@ namespace SECmd.Fbx
                         AddEmpty(stack, track.NodeName, property);
                     else if (property.Constant is { } value)
                         AddConstant(stack, track.NodeName, property, value);
-                    else
+                    else if (model is not null)
                         AddPropertyChannel(scene, layer, model, property);
 
                     AddInterpolatorType(stack, track.NodeName, property);

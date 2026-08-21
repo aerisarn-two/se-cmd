@@ -1709,6 +1709,27 @@ shader carries several `BSEffectShaderPropertyFloatController`s, one fading and 
 scrolling, and nothing in a track tells them apart; grouping those by class alone
 rebuilds one where there were nine.
 
+#### A sequence can animate a node the file does not have
+
+A `NiControlledBlock` names its node by **string**, not by reference, so a sequence can
+animate something the mesh does not contain — and the game's do. `sprigganmatron` has
+eleven sequences, each with two entries for `SprigganBodyLeaves01:0` and `:1`, and
+neither node is anywhere in the file.
+
+Both directions used to require the node. The export dropped the track, because FBX
+animates a *model* and there was none; the import dropped it again for the same reason,
+and a sequence left with no tracks at all was dropped whole. `dragon_oh_bloodyhead` lost
+six of its fifteen sequences that way, and the spriggan half its interpolators.
+
+An entry like this now travels as a **carried interpolator** (§5A.6): everything that
+lives on the animation stack needs no model to hang on, and a sequence entry names its
+node by string at the far end too. What still cannot travel is a *curve*, which animates
+a model and therefore needs one — so a track with keys and no model is still reported as
+dropped.
+
+The one thing such an entry cannot have is a **controller attached to that node**, since
+there is no node to attach it to. See §7.3.
+
 #### Shared keys, and where the naming runs out
 
 Two interpolators can point at one data block, and the game's files do it —

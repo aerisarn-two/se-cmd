@@ -236,6 +236,37 @@ namespace SECmd.Nif
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<
             NifModel, Dictionary<NifItem, string>> _uniqueNames = [];
 
+        /// <summary>
+        /// Whether the file holds a node of this name at all.
+        /// </summary>
+        /// <remarks>
+        /// A <c>NiControlledBlock</c> names its node by *string*, so a sequence can
+        /// animate something the file does not contain — and the game's do.
+        /// `sprigganmatron` has eleven sequences, each with two entries for
+        /// `SprigganBodyLeaves01:0` and `:1`, and neither node is in the mesh.
+        ///
+        /// Cached per model, since every entry asks.
+        /// </remarks>
+        public static bool HasNode(NifModel model, string name)
+        {
+            if (!NodeNames.TryGetValue(model, out var names) || names.Count == 0)
+            {
+                names = model.Blocks
+                    .Where(b => model.BlockInherits(b, "NiAVObject"))
+                    .Select(model.GetName)
+                    .Where(n => n.Length > 0)
+                    .ToHashSet(StringComparer.Ordinal);
+
+                NodeNames.Remove(model);
+                NodeNames.Add(model, names);
+            }
+
+            return names.Contains(name);
+        }
+
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<
+            NifModel, HashSet<string>> NodeNames = [];
+
         /// <summary>Everything on a node that can carry a controller chain.</summary>
         public static IEnumerable<NifItem> ControllerHosts(NifModel model, NifItem block)
         {
@@ -413,7 +444,12 @@ namespace SECmd.Nif
             bool boolean = model.BlockInherits(interpolator, "NiBoolInterpolator");
             bool colour = model.BlockInherits(interpolator, "NiPoint3Interpolator");
 
-            if (!boolean && !colour && !model.BlockInherits(interpolator, "NiFloatInterpolator"))
+            // An entry naming a node this file does not have cannot be bound to
+            // anything: FBX animates a *model*, and there is none. It is still in the
+            // file and still has to come back, so it travels whole, the same way an
+            // interpolator this layer cannot model does.
+            if (!HasNode(model, name)
+                || (!boolean && !colour && !model.BlockInherits(interpolator, "NiFloatInterpolator")))
             {
                 // Not a kind a curve can express -- a path walked along a spline, a
                 // node aimed at another. The entry is still in the file and still has

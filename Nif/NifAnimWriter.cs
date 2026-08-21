@@ -76,18 +76,21 @@ namespace SECmd.Nif
                     continue;
                 }
 
-                var tracks = new List<(AnimTrack, NifItem)>();
+                var tracks = new List<(AnimTrack, NifItem?)>();
 
                 foreach (AnimTrack track in sequence.Tracks)
                 {
-                    if (!nodes.TryGetValue(track.NodeName, out NifItem? node))
-                    {
-                        warnings.Add(
-                            $"{sequence.Name}: no node named \"{track.NodeName}\", its animation is dropped");
-                        continue;
-                    }
+                    // A controlled block names its node by string, so an entry whose
+                    // node is not in this file is still a valid entry -- the game's
+                    // own meshes have them, eleven sequences of a spriggan naming two
+                    // leaf nodes that were never here. What it cannot have is a
+                    // controller attached to that node, which is handled below.
+                    nodes.TryGetValue(track.NodeName, out NifItem? node);
 
                     tracks.Add((track, node));
+
+                    if (node is null)
+                        continue;
 
                     // Only nodes whose transform moves belong in the target list: it
                     // is what the transform controller drives, and a node listed
@@ -657,9 +660,9 @@ namespace SECmd.Nif
 
             // A node's transform and each of its properties are separate blocks
             // here, though they arrived as one track.
-            var entries = new List<(AnimTrack Track, NifItem Node, AnimProperty? Property)>();
+            var entries = new List<(AnimTrack Track, NifItem? Node, AnimProperty? Property)>();
 
-            foreach ((AnimTrack track, NifItem node) in tracks)
+            foreach ((AnimTrack track, NifItem? node) in tracks)
             {
                 // Keys, or a pose held for the whole sequence -- both are the node's
                 // own transform rather than a property of it.
@@ -684,10 +687,12 @@ namespace SECmd.Nif
 
             for (int i = 0; i < entries.Count && i < controlled.Children.Count; i++)
             {
-                (AnimTrack track, NifItem node, AnimProperty? property) = entries[i];
+                (AnimTrack track, NifItem? node, AnimProperty? property) = entries[i];
                 NifItem entry = controlled.Children[i];
 
-                model.SetString(entry, "Node Name", model.GetName(node));
+                // The track's name rather than the node's: they agree when the node is
+                // here, and when it is not the track's is all there is.
+                model.SetString(entry, "Node Name", node is null ? track.NodeName : model.GetName(node));
 
                 if (property is null)
                 {
@@ -717,7 +722,8 @@ namespace SECmd.Nif
                 // controller, not from one attached to its node -- and inventing an
                 // attached controller here gave every one a transform controller and a
                 // blend interpolator the file never had.
-                if (property.CarriedInterpolator is null
+                if (node is not null
+                    && property.CarriedInterpolator is null
                     && AttachedController(model, node, property, attached) is { } controller)
                 {
                     model.SetRef(entry, "Controller", controller);
