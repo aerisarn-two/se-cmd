@@ -271,7 +271,13 @@ namespace SECmd.Tests
         /// How the two files' blocks differ, ignoring the differences that are meant
         /// to be there.
         /// </summary>
-        private static string? CompareBlocks(NifModel source, NifModel rebuilt)
+        /// <remarks>
+        /// Shared with <see cref="DivergentCorpusTests"/>, which examines the handful
+        /// of meshes this sweep reports. Two tools that answer the same question
+        /// differently is how an afternoon goes into a difference that was never
+        /// there.
+        /// </remarks>
+        internal static string? CompareBlocks(NifModel source, NifModel rebuilt)
         {
             var before = Census(source);
             var after = Census(rebuilt);

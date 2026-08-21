@@ -430,3 +430,9 @@ FodyWeavers.xsd
 # Local notes for coding agents, not part of the project
 CLAUDE.md
 docs/nif-fbx-knowledge-base.md
+
+# Meshes extracted from an installed copy of the game, for analysing the ones
+# that do not survive a round trip without sweeping all 22,047 every time. The
+# extraction writes them to the build output rather than here, so this is
+# insurance: the list of paths is committed, the meshes are Bethesda's.
+Tests/Resources/vanilla/*.nif
