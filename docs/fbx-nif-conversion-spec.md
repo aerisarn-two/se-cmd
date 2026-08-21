@@ -1727,8 +1727,16 @@ node by string at the far end too. What still cannot travel is a *curve*, which 
 a model and therefore needs one — so a track with keys and no model is still reported as
 dropped.
 
-The one thing such an entry cannot have is a **controller attached to that node**, since
-there is no node to attach it to. See §7.3.
+Such an entry's **controller** hangs on nothing, which is what the game does with it.
+`sprigganmatron` holds two `BSNiAlphaPropertyTestRefController` with no `Target`, on no
+chain, reachable only because eleven sequence entries each name them — so one is built
+per class, id **and node name**, unattached, with the blend interpolator the manager
+mixes into while the sequences play.
+
+The node name is part of the key because there is nothing else. An attached controller is
+told apart by the block it hangs on; one that hangs on nothing has only the name of the
+node it would have hung on, and the spriggan's two are the same class with no ids,
+distinguished solely by naming `SprigganBodyLeaves01:0` and `:1`.
 
 #### Shared keys, and where the naming runs out
 

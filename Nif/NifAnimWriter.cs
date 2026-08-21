@@ -127,8 +127,12 @@ namespace SECmd.Nif
             // drives once, and every sequence that animates it names that same block.
             var attached = new Dictionary<(NifItem Host, string Type, string Id), NifItem>();
 
+            // Controllers with nowhere to hang, for entries naming a node that is not
+            // in this file. Shared across sequences for the same reason.
+            var unattached = new Dictionary<(string, string, string), NifItem>();
+
             foreach ((AnimSequence sequence, var tracks) in resolved)
-                built.Add(WriteSequence(model, manager, sequence, tracks, attached));
+                built.Add(WriteSequence(model, manager, sequence, tracks, attached, unattached));
 
             if (model.SetArraySize(manager, "Num Controller Sequences", "Controller Sequences", built.Count)
                 is { } list)
@@ -441,6 +445,55 @@ namespace SECmd.Nif
         }
 
         /// <summary>
+        /// The controller a sequence entry names when its node is not in the file.
+        /// </summary>
+        /// <remarks>
+        /// A controller hangs on the thing it drives, and there is nothing here to
+        /// hang it on -- so it hangs on nothing, which is exactly what the game's own
+        /// files do. `sprigganmatron` holds two `BSNiAlphaPropertyTestRefController`
+        /// with no target, on no chain, reachable only because eleven sequence entries
+        /// each name them.
+        ///
+        /// It still gets a blend interpolator: that is the slot the manager mixes into
+        /// while the sequences play, and a controller without one is a controller the
+        /// sequences write nowhere.
+        ///
+        /// One per class and id, as an attached one is, so eleven entries naming the
+        /// same controller get the same controller.
+        /// </remarks>
+        private static NifItem? Unattached(
+            NifModel model,
+            string nodeName,
+            AnimProperty property,
+            Dictionary<(string, string, string), NifItem> unattached)
+        {
+            if (property.ControllerType.Length == 0 || !model.KnowsBlock(property.ControllerType))
+                return null;
+
+            // Keyed by the node too. An attached controller is told apart by the block
+            // it hangs on; one that hangs on nothing has only the name of the node it
+            // would have hung on, and the spriggan's two are the same class with no
+            // ids -- distinguished solely by naming SprigganBodyLeaves01:0 and :1.
+            var key = (nodeName, property.ControllerType, property.ControllerId);
+
+            if (unattached.TryGetValue(key, out NifItem? controller))
+                return controller;
+
+            controller = model.InsertBlock(property.ControllerType);
+
+            model.FindItem(controller, "Flags")?.Value.SetCount(StandaloneControllerFlags);
+            model.FindItem(controller, "Frequency")?.Value.SetFloat(1f);
+            model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
+
+            WriteControllerId(model, controller, property.ControllerId);
+            BlendInto(model, controller, property);
+
+            unattached[key] = controller;
+
+            return controller;
+        }
+
+        /// <summary>
         /// Which controller a track's property belongs to.
         /// </summary>
         /// <remarks>
@@ -637,8 +690,9 @@ namespace SECmd.Nif
 
         private static NifItem WriteSequence(
             NifModel model, NifItem manager, AnimSequence sequence,
-            List<(AnimTrack Track, NifItem Node)> tracks,
-            Dictionary<(NifItem Host, string Type, string Id), NifItem> attached)
+            List<(AnimTrack Track, NifItem? Node)> tracks,
+            Dictionary<(NifItem Host, string Type, string Id), NifItem> attached,
+            Dictionary<(string, string, string), NifItem> unattached)
         {
             NifItem block = model.InsertBlock("NiControllerSequence");
 
@@ -727,6 +781,11 @@ namespace SECmd.Nif
                     && AttachedController(model, node, property, attached) is { } controller)
                 {
                     model.SetRef(entry, "Controller", controller);
+                }
+                else if (node is null
+                         && Unattached(model, track.NodeName, property, unattached) is { } loose)
+                {
+                    model.SetRef(entry, "Controller", loose);
                 }
             }
 

@@ -1681,6 +1681,73 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void AnEntryForAMissingNodeKeepsItsControllerToo()
+        {
+            // A controller hangs on the thing it drives, and when that node is not in
+            // the file there is nothing to hang it on -- so the game hangs it on
+            // nothing. sprigganmatron holds two BSNiAlphaPropertyTestRefController
+            // with no target, on no chain, reachable only because eleven sequence
+            // entries each name them. Two, not one: they are the same class with no
+            // ids, told apart solely by the node their entries name.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("NiNode");
+            model.SetString(root, "Name", "root");
+            model.SetRoots([root]);
+
+            NifItem sequence = model.InsertBlock("NiControllerSequence");
+            model.SetString(sequence, "Name", "LeavesScared");
+            model.FindItem(sequence, "Start Time")?.Value.SetFloat(0f);
+            model.FindItem(sequence, "Stop Time")?.Value.SetFloat(1f);
+
+            NifItem entries = model
+                .SetArraySize(sequence, "Num Controlled Blocks", "Controlled Blocks", 2)!;
+
+            for (int i = 0; i < 2; i++)
+            {
+                NifItem controller = model.InsertBlock("BSNiAlphaPropertyTestRefController");
+                model.SetRef(controller, "Interpolator", model.InsertBlock("NiBlendFloatInterpolator"));
+
+                NifItem interpolator = model.InsertBlock("NiFloatInterpolator");
+                NifItem data = model.InsertBlock("NiFloatData");
+
+                NifItem keys = model.SetArraySize(data, @"Data\Num Keys", @"Data\Keys", 2)!;
+                keys.Children[0].Children.First(c => c.Name == "Time").Value.SetFloat(0f);
+                keys.Children[0].Children.First(c => c.Name == "Value").Value.SetFloat(0f);
+                keys.Children[1].Children.First(c => c.Name == "Time").Value.SetFloat(1f);
+                keys.Children[1].Children.First(c => c.Name == "Value").Value.SetFloat(1f);
+
+                model.SetRef(interpolator, "Data", data);
+
+                NifItem entry = entries.Children[i];
+                model.SetRef(entry, "Interpolator", interpolator);
+                model.SetRef(entry, "Controller", controller);
+
+                // The node is not in this file, which is the whole point.
+                model.SetString(entry, "Node Name", $"SprigganBodyLeaves01:{i}");
+                model.SetString(entry, "Controller Type", "BSNiAlphaPropertyTestRefController");
+                model.SetString(entry, "Property Type", "NiAlphaProperty");
+            }
+
+            NifModel rebuilt = RoundTrip(model);
+
+            // Both entries back, in one sequence.
+            NifItem back = Assert.Single(rebuilt.Blocks, b => b.Name == "NiControllerSequence");
+
+            Assert.Equal(2, rebuilt.FindItem(back, "Controlled Blocks")!.Children.Count);
+
+            // And two controllers, not one: the node name is what separates them.
+            Assert.Equal(
+                2,
+                rebuilt.Blocks.Count(b => b.Name == "BSNiAlphaPropertyTestRefController"));
+
+            // Hanging on nothing, as they were.
+            Assert.All(
+                rebuilt.Blocks.Where(b => b.Name == "BSNiAlphaPropertyTestRefController"),
+                b => Assert.Null(rebuilt.GetRef(b, "Target")));
+        }
+
+        [Fact]
         public void ANodeThatClaimsToBeGeometryIsStillANode()
         {
             // Geometry is built on the mesh path, from a mesh. A node that names a
