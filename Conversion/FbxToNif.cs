@@ -1104,28 +1104,39 @@ namespace SECmd.Conversion
             // One shape can hold several data blocks, and FBX has one mesh per node,
             // so the seams travel as properties and the merged mesh is cut back along
             // them. A mesh with none recorded is one block, which is what it is.
-            var parts = FbxStripsParts.Read(node, mesh.Vertices.Count, mesh.Triangles.Count);
+            var parts = FbxStripsParts.Read(node, mesh.Triangles.Count);
             var blocks = new List<NifItem>();
-            int vertexAt = 0, triangleAt = 0;
+            int at = 0;
 
-            foreach ((int partVertices, int partTriangles) in
-                     parts.Count > 0 ? parts : [(mesh.Vertices.Count, mesh.Triangles.Count)])
+            foreach (int count in parts.Count > 0 ? parts : [mesh.Triangles.Count])
             {
+                // Each part keeps only the vertices its own triangles use, renumbered.
+                // The vertices cannot simply be sliced: the mesh reader welds corners
+                // that agree, so a part's vertices are no longer a contiguous run of
+                // the merged list and there is no offset to subtract.
                 var slice = new MeshGeometry();
+                var moved = new Dictionary<ushort, ushort>();
 
-                for (int i = 0; i < partVertices; i++)
-                    slice.Vertices.Add(mesh.Vertices[vertexAt + i]);
-
-                for (int i = 0; i < partTriangles; i++)
+                ushort Keep(ushort original)
                 {
-                    NifTriangle t = mesh.Triangles[triangleAt + i];
+                    if (moved.TryGetValue(original, out ushort mapped))
+                        return mapped;
 
-                    slice.Triangles.Add(new NifTriangle(
-                        (ushort)(t.V1 - vertexAt), (ushort)(t.V2 - vertexAt), (ushort)(t.V3 - vertexAt)));
+                    mapped = (ushort)slice.Vertices.Count;
+                    moved[original] = mapped;
+                    slice.Vertices.Add(mesh.Vertices[original]);
+
+                    return mapped;
                 }
 
-                vertexAt += partVertices;
-                triangleAt += partTriangles;
+                for (int i = 0; i < count && at + i < mesh.Triangles.Count; i++)
+                {
+                    NifTriangle t = mesh.Triangles[at + i];
+
+                    slice.Triangles.Add(new NifTriangle(Keep(t.V1), Keep(t.V2), Keep(t.V3)));
+                }
+
+                at += count;
 
                 blocks.Add(WriteStripsData(slice));
             }

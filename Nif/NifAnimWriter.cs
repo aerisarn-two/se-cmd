@@ -497,18 +497,25 @@ namespace SECmd.Nif
         /// Which controller a track's property belongs to.
         /// </summary>
         /// <remarks>
-        /// Two properties share a controller only when the file said which controller
-        /// they belong to — an id naming the modifier, or a slot naming which of the
-        /// controller's two values this is. `NiPSysEmitterCtlr`'s `BirthRate` and
-        /// `EmitterActive` say both, and belong together.
+        /// Two properties share a controller only when they occupy *different slots*
+        /// of it, which is what a non-empty interpolator id says.
+        /// `NiPSysEmitterCtlr`'s `BirthRate` and `EmitterActive` name two slots of one
+        /// controller and belong together.
         ///
-        /// Where neither is said, each property gets its own. A shader can carry
+        /// Sharing a class and an id is not enough, and this is the trap: a skull lock
+        /// hangs two `NiFloatExtraDataController` on one node, both named
+        /// `hkVis:Skull01`, both driving the one slot such a controller has. They
+        /// cannot be the same controller — it would have to hold two interpolators in
+        /// a slot that takes one — so grouping on the id alone rebuilt one where there
+        /// were two.
+        ///
+        /// Where no slot is named, each property gets its own. A shader can carry
         /// several `BSEffectShaderPropertyFloatController`s — one fading, another
         /// scrolling — and nothing in a track distinguishes them, so grouping them by
         /// class alone would rebuild one where there were nine.
         /// </remarks>
         private static (string Type, string Id, int Ordinal) GroupKey(AnimProperty property, int index) =>
-            property.ControllerId.Length > 0 || property.InterpolatorId.Length > 0
+            property.InterpolatorId.Length > 0
                 ? (property.ControllerType, property.ControllerId, -1)
                 : (property.ControllerType, property.ControllerId, index);
 

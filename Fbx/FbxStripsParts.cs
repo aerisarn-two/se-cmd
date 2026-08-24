@@ -55,9 +55,15 @@ namespace SECmd.Fbx
         /// Empty when the node records no seams, which means one part. A recorded
         /// division that does not add up to the mesh in hand — an artist having edited
         /// it — is ignored rather than applied to the wrong triangles.
+        ///
+        /// Counted in triangles only, though vertex counts are recorded too. The mesh
+        /// reader welds corners that agree, so the vertex count that comes back is not
+        /// the one that went out and never matches; triangles survive one for one. A
+        /// nordic coffin's two data blocks were being merged into one for exactly that
+        /// reason — the division was recorded, checked against a vertex total that
+        /// could not agree, and thrown away.
         /// </remarks>
-        public static List<(int Vertices, int Triangles)> Read(
-            FbxObject node, int vertices, int triangles)
+        public static List<int> Read(FbxObject node, int triangles)
         {
             if (!int.TryParse(
                     node.Properties.GetString(CountProperty),
@@ -69,31 +75,25 @@ namespace SECmd.Fbx
                 return [];
             }
 
-            var parts = new List<(int Vertices, int Triangles)>(count);
-            int totalVertices = 0, totalTriangles = 0;
+            var parts = new List<int>(count);
+            int total = 0;
 
             for (int i = 0; i < count; i++)
             {
                 if (!int.TryParse(
-                        node.Properties.GetString($"{Prefix}{i}_vertices"),
-                        System.Globalization.NumberStyles.Integer,
-                        System.Globalization.CultureInfo.InvariantCulture,
-                        out int partVertices)
-                    || !int.TryParse(
                         node.Properties.GetString($"{Prefix}{i}_triangles"),
                         System.Globalization.NumberStyles.Integer,
                         System.Globalization.CultureInfo.InvariantCulture,
-                        out int partTriangles))
+                        out int part))
                 {
                     return [];
                 }
 
-                parts.Add((partVertices, partTriangles));
-                totalVertices += partVertices;
-                totalTriangles += partTriangles;
+                parts.Add(part);
+                total += part;
             }
 
-            return totalVertices == vertices && totalTriangles == triangles ? parts : [];
+            return total == triangles ? parts : [];
         }
     }
 }
