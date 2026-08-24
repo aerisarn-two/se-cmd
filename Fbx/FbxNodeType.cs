@@ -128,6 +128,27 @@ namespace SECmd.Fbx
         public static bool IsEmptyShape(FbxObject node) =>
             node.Properties.GetString(EmptyShapeProperty).Length > 0;
 
+        /// <summary>
+        /// Marks a node that is referenced but is not part of the scene tree.
+        /// </summary>
+        /// <remarks>
+        /// A NIF can hold node subtrees that nothing parents and the scene graph never
+        /// reaches, existing only because something points at them.
+        /// `fxdragoncrashfurrow01` has three: a `BSPSysHavokUpdateModifier` names each
+        /// as the debris its particles throw, and each is a node with a collision
+        /// object and a shaded mesh under it.
+        ///
+        /// FBX has no way to hold an object that is in the file but not in the scene,
+        /// so they are exported as scene roots and marked. On the way back the mark
+        /// says: build this, and do **not** make it a child of the root — whatever
+        /// pointed at it will claim it by name.
+        /// </remarks>
+        public const string DetachedProperty = "nif_detached";
+
+        /// <summary>Whether a node is referenced rather than parented.</summary>
+        public static bool IsDetached(FbxObject node) =>
+            node.Properties.GetString(DetachedProperty).Length > 0;
+
         /// <summary>The property holding a block's real name, when FBX cannot.</summary>
         /// <remarks>
         /// Almost every node's name survives as the FBX object's own, through

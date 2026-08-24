@@ -457,5 +457,63 @@ namespace SECmd.Tests
             Assert.Contains(converter.Warnings, w => w.Contains("NiNotAThing", StringComparison.Ordinal));
             Assert.Contains(model.Blocks, b => b.Name == "NiNode" && model.GetName(b) == "Cloud");
         }
+
+        [Fact]
+        public void AModifierNamedByAnotherComesBackWithoutJoiningTheStack()
+        {
+            // A modifier can point at one that is not in the stack. A dragon crash's
+            // BSPSysHavokUpdateModifier names the rotation modifier it applies to the
+            // debris it throws, and that one is in nobody's Modifiers array -- so
+            // walking the stack never reached it and three were lost.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("NiNode");
+            model.SetString(root, "Name", "root");
+
+            NifItem system = model.InsertBlock("NiParticleSystem");
+            model.SetString(system, "Name", "PArray02");
+
+            if (model.SetArraySize(root, "Num Children", "Children", 1) is { } children)
+                children.Children[0].Value.SetLink(model.IndexOf(system));
+
+            NifItem havok = model.InsertBlock("BSPSysHavokUpdateModifier");
+            model.SetString(havok, "Name", "BSPSysHavokUpdateModifier:0");
+            model.SetRef(havok, "Target", system);
+
+            // Referenced by the one above, and in no stack.
+            NifItem rotation = model.InsertBlock("NiPSysRotationModifier");
+            model.SetString(rotation, "Name", "NiPSysRotationModifier:5");
+            model.FindItem(rotation, "Rotation Speed")?.Value.SetFloat(2.5f);
+            model.SetRef(havok, "Modifier", rotation);
+
+            if (model.SetArraySize(system, "Num Modifiers", "Modifiers", 1) is { } mods)
+                mods.Children[0].Value.SetLink(model.IndexOf(havok));
+
+            model.SetRoots([root]);
+
+            var scene = new FbxScene(new NifToFbx(model).Convert());
+
+            NifModel rebuilt = new FbxToNif(
+                scene,
+                new FbxToNifOptions
+                {
+                    RootName = "root", Version = model.Version, UserVersion = model.UserVersion
+                }).Convert(Db);
+
+            NifItem back = Assert.Single(rebuilt.Blocks, b => b.Name == "NiPSysRotationModifier");
+
+            Assert.Equal(2.5f, rebuilt.FindItem(back, "Rotation Speed")!.Value.ToFloat(), 3);
+
+            // Named by the modifier that wanted it...
+            NifItem rebuiltHavok = Assert.Single(
+                rebuilt.Blocks, b => b.Name == "BSPSysHavokUpdateModifier");
+
+            Assert.Equal(back, rebuilt.GetRef(rebuiltHavok, "Modifier"));
+
+            // ...and not in the stack, which would change what the system does.
+            NifItem rebuiltSystem = Assert.Single(rebuilt.Blocks, b => b.Name == "NiParticleSystem");
+
+            Assert.DoesNotContain(back, rebuilt.GetRefArray(rebuiltSystem, "Modifiers"));
+        }
     }
 }

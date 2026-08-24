@@ -142,7 +142,11 @@ namespace SECmd.Nif
                 model.SetRef(modifier, "Target", system);
                 BuildColliders(model, scene, child, modifier, name, warnings, links);
 
-                built.Add(modifier);
+                // A modifier that is only referenced is a block, not a step: it comes
+                // back so whatever names it can find it, and stays out of the array
+                // the system runs.
+                if (!FbxParticleWriter.IsDetachedModifier(child))
+                    built.Add(modifier);
 
                 if (modifierName.Length > 0)
                     byName.TryAdd(modifierName, modifier);

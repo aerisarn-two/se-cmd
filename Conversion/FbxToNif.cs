@@ -115,7 +115,11 @@ namespace SECmd.Conversion
 
             // The root's kind is carried like any other node's, and matters more:
             // BSXFlags asks twice whether the root is exactly NiNode.
-            var sceneRoots = _scene.RootModels().ToList();
+            // A referenced-but-unparented subtree is a scene root in FBX because FBX
+            // has nowhere else to put it, and it is not one here: it must not decide
+            // whether the real root collapses, nor become a child of it (§5.2.5).
+            var detached = _scene.RootModels().Where(FbxNodeType.IsDetached).ToList();
+            var sceneRoots = _scene.RootModels().Where(o => !FbxNodeType.IsDetached(o)).ToList();
 
             string rootType = sceneRoots.Count == 1 && !HasGeometry(sceneRoots[0])
                 ? FbxNodeType.Read(sceneRoots[0], _model, "BSFadeNode")
@@ -163,6 +167,11 @@ namespace SECmd.Conversion
             }
 
             AttachChildren(root, children);
+
+            // Built after the tree so the names they will be claimed by are already
+            // taken, and kept out of the root's children on purpose.
+            foreach (FbxObject model in detached)
+                ConvertModel(model, []);
 
             // Collision sitting directly under the scene root belongs to the root
             // block, and would otherwise be left unattached.

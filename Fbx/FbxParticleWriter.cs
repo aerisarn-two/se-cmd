@@ -135,8 +135,24 @@ namespace SECmd.Fbx
                 Write(node, model, data, DataPrefix);
             }
 
-            foreach (NifItem modifier in model.GetRefArray(system, "Modifiers"))
-                AddModifier(scene, node, model, modifier);
+            var inStack = model.GetRefArray(system, "Modifiers").ToList();
+
+            foreach (NifItem modifier in inStack)
+                AddModifier(scene, node, model, modifier, detached: false);
+
+            // A modifier can point at another that is *not* in the stack. A
+            // BSPSysHavokUpdateModifier names the rotation modifier it applies to the
+            // debris it spawns, and that one is in nobody's Modifiers array -- so
+            // walking the stack alone never reaches it and it was lost, three times
+            // over in a dragon crash.
+            foreach (NifItem modifier in inStack)
+            {
+                foreach (NifItem referenced in ReferencedModifiers(model, modifier))
+                {
+                    if (!inStack.Contains(referenced))
+                        AddModifier(scene, node, model, referenced, detached: true);
+                }
+            }
 
             AddStructuralControllers(node, model, system);
         }
@@ -176,8 +192,36 @@ namespace SECmd.Fbx
         public static bool IsColliderNode(FbxObject node) =>
             node.Properties.GetString(ColliderTypeProperty).Length > 0;
 
+        /// <summary>The modifiers a modifier points at, which need not be in the stack.</summary>
+        private static IEnumerable<NifItem> ReferencedModifiers(NifModel model, NifItem modifier)
+        {
+            foreach (NifItem child in modifier.Children)
+            {
+                if (child.Value.Type == NifValueType.Link
+                    && model.GetBlock(child) is { } target
+                    && model.BlockInherits(target, "NiPSysModifier"))
+                {
+                    yield return target;
+                }
+            }
+        }
+
+        /// <summary>
+        /// The property marking a modifier that is not part of the stack.
+        /// </summary>
+        /// <remarks>
+        /// It exists because another modifier names it, not because the system runs
+        /// it, so it must come back as a block without joining the `Modifiers` array —
+        /// joining would change what the system does.
+        /// </remarks>
+        public const string ModifierDetachedProperty = "particle_modifier_detached";
+
+        /// <summary>Whether a modifier node is referenced rather than run.</summary>
+        public static bool IsDetachedModifier(FbxObject node) =>
+            node.Properties.GetString(ModifierDetachedProperty).Length > 0;
+
         private static void AddModifier(
-            FbxScene scene, FbxObject parent, NifModel model, NifItem modifier)
+            FbxScene scene, FbxObject parent, NifModel model, NifItem modifier, bool detached)
         {
             string name = model.GetString(modifier, "Name");
 
@@ -191,6 +235,9 @@ namespace SECmd.Fbx
 
             node.Properties.SetUserString(ModifierTypeProperty, modifier.Name);
             node.Properties.SetUserString(ModifierNameProperty, name);
+
+            if (detached)
+                node.Properties.SetUserString(ModifierDetachedProperty, "1");
 
             // No prefix: the node is the modifier, so there is nothing to
             // disambiguate it from.
@@ -247,7 +294,12 @@ namespace SECmd.Fbx
             if (model.GetBlock(item) is not { } target)
                 return;
 
-            string targetName = model.GetName(target);
+            // The unique name for a node, so several targets that share one can still
+            // be told apart: a dragon crash spawns three debris meshes and every one
+            // of them is called `NewRoot`.
+            string targetName = model.BlockInherits(target, "NiAVObject")
+                ? NifAnimAccess.TrackName(model, target)
+                : model.GetName(target);
 
             if (targetName.Length > 0)
                 node.Properties.SetUserString($"{name}{LinkSuffix}", targetName);

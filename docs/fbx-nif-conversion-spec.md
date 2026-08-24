@@ -623,6 +623,23 @@ back as *present or absent* rather than by its value, since an empty string is o
 things it has to be able to say, and every property getter answers absent and empty alike
 with its fallback.
 
+**A subtree nothing parents is still in the file.** The walk starts at the footer's roots
+and follows children, which is the scene — and a NIF can hold nodes that nothing parents,
+kept alive only because something points at them. `fxdragoncrashfurrow01` has three: a
+`BSPSysHavokUpdateModifier` names each as the debris its particles throw, and each is a
+node with a collision object and a shaded mesh beneath it. Six nodes, three shapes and
+three collision bodies were never visited at all.
+
+They are exported as scene **roots** — FBX has nowhere else to put an object that is in
+the file but not in the scene — and marked `nif_detached`. On the way back the mark says
+*build this, and do not make it a child of the root*; whatever pointed at it claims it by
+name. A detached root also takes no part in deciding whether the real root collapses
+(§5.2), since it is not a root of anything.
+
+Only nodes something actually **references** are converted this way. A pointer does not
+count: a collision object's `Target` names the node it hangs on, and a node kept alive
+only by one of those is referenced by nothing.
+
 **A shape with no vertices travels as a node.** nif.xml says why: a
 `BSProceduralLightningController` is "paired with dummy TriShapes", empty shapes the
 engine generates lightning into at runtime, and the game's staff bolts, rune projectiles
@@ -1906,6 +1923,7 @@ half**; the visible half is never read back.
 | Property | On | Carries |
 | --- | --- | --- |
 | `nif_name` | node | A name FBX cannot carry as the object's own, which in practice means an empty one. Read as present-or-absent, not by value (§5.2.5) |
+| `nif_detached` | node | This node is referenced by something but parented by nothing — a particle system's debris mesh. Built, but not made a child of the root (§5.2.5) |
 | `nif_empty_shape` | node | This node is a shape with no vertices — a dummy TriShape a controller generates geometry into (§5.2.5) |
 | `particle_controllers`, `npc_<i>_*` | node | Controllers that animate nothing: a particle system's update switch, a skeleton's lag bone. Excludes anything a sequence names (§4.9A) |
 | `const_<node>\|<property>` | animation stack | A track holding one value for the whole take, typed so a boolean constant and a float one stay different (§5A.6) |
@@ -2116,6 +2134,7 @@ sizes. Modifiers are child nodes.
 | `particle_data`, `npsd_<field>` | node | The `NiPSysData` class and its fields |
 | `particle_modifier`, `particle_modifier_name` | child node | One modifier's class and name. Sibling order is stack order |
 | `particle_collider` | child node | One collider of a chain |
+| `particle_modifier_detached` | child node | This modifier is *named by* another rather than run by the system. It comes back as a block and stays out of the `Modifiers` array — joining it would change what the system does |
 | `<field>_ref` | node | A modifier field that points at another node, carried by that node's **name** rather than by a block index — `emitter_object_ref`, `gravity_object_ref` |
 | `particle_controllers`, `npc_<i>_type`, `npc_<i>_<field>` | node | Controllers that animate nothing (§4.9A) |
 

@@ -53,6 +53,11 @@ namespace SECmd.Conversion
             foreach (NifItem root in FindRootBlocks())
                 ConvertNode(scene, root, parent: null);
 
+            // Subtrees nothing parents, which the walk above cannot reach. They are
+            // in the file because something points at them, so they are converted
+            // before anything that binds by name goes looking.
+            ConvertDetachedSubtrees(scene);
+
             // After the tree, for the same reason as the two below: a skin cluster
             // names a bone node, and a shape whose bones sit later in the tree found
             // none of them and left a deformer with no clusters at all.
@@ -1060,6 +1065,74 @@ namespace SECmd.Conversion
         /// before any geometry beneath it. A bone the walk never reached is reported
         /// rather than silently dropping that bone's influence.
         /// </remarks>
+        /// <summary>
+        /// Converts node subtrees that are referenced but never parented.
+        /// </summary>
+        /// <remarks>
+        /// The walk starts at the footer's roots and follows children, which is the
+        /// scene. A NIF can also hold nodes that nothing parents, kept alive only by
+        /// something pointing at them: `fxdragoncrashfurrow01` has three, each named
+        /// by a `BSPSysHavokUpdateModifier` as the debris its particles throw, each a
+        /// node with a collision object and a shaded mesh beneath it. Six nodes, three
+        /// shapes and three collision bodies were simply never visited.
+        ///
+        /// They become scene roots, marked so the import knows not to parent them
+        /// (§5.2.5). Only nodes something actually points at: an unreferenced block is
+        /// a file's problem to have, not this one's to invent a place for.
+        /// </remarks>
+        private void ConvertDetachedSubtrees(FbxScene scene)
+        {
+            foreach (NifItem block in Referenced())
+            {
+                if (_built.ContainsKey(block))
+                    continue;
+
+                if (ConvertNode(scene, block, parent: null) is { } node)
+                    node.Properties.SetUserString(FbxNodeType.DetachedProperty, "1");
+            }
+        }
+
+        /// <summary>
+        /// Every <c>NiAVObject</c> some reference in the file points at.
+        /// </summary>
+        /// <remarks>
+        /// References only. A pointer is the upward half of a two-way link — a
+        /// collision object's <c>Target</c> names the node it hangs on — and a node
+        /// kept alive only by one of those is not referenced by anything.
+        /// </remarks>
+        private IEnumerable<NifItem> Referenced()
+        {
+            var seen = new HashSet<NifItem>();
+
+            foreach (NifItem block in _model.Blocks)
+            {
+                foreach (NifItem link in LinksUnder(block))
+                {
+                    if (link.Value.Type != NifValueType.Link
+                        || _model.GetBlock(link) is not { } target
+                        || !_model.BlockInherits(target, "NiAVObject"))
+                    {
+                        continue;
+                    }
+
+                    if (seen.Add(target))
+                        yield return target;
+                }
+            }
+        }
+
+        private static IEnumerable<NifItem> LinksUnder(NifItem item)
+        {
+            foreach (NifItem child in item.Children)
+            {
+                if (child.Value.Type is NifValueType.Link or NifValueType.UpLink)
+                    yield return child;
+                else
+                    foreach (NifItem nested in LinksUnder(child))
+                        yield return nested;
+            }
+        }
+
         /// <summary>Shapes whose skin is waiting for the rest of the tree.</summary>
         private readonly List<(NifItem Shape, FbxObject Geometry)> _pendingSkins = [];
 
