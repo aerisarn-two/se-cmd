@@ -512,21 +512,32 @@ namespace SECmd.Havok
         private static T? Attempt<T>(Func<T?> generate)
             where T : class
         {
+            Failures = [];
+
             for (int attempt = 0; attempt < Attempts; attempt++)
             {
                 try
                 {
                     if (generate() is { } result)
                         return result;
+
+                    Note(attempt, "produced nothing this caller could read"
+                                  + (Diagnostics is { Length: > 0 } said ? $": {said}" : string.Empty));
                 }
-                catch (TimeoutException)
+                catch (MoppBackendException e)
+                {
+                    Note(attempt, e.Message);
+                }
+                catch (TimeoutException e)
                 {
                     // Try again: the usual cause is contention, not this geometry.
+                    Note(attempt, e.Message);
                 }
-                catch (IOException)
+                catch (IOException e)
                 {
                     // As above -- a pipe that broke rather than a shape that cannot
                     // be built.
+                    Note(attempt, e.Message);
                 }
 
                 if (attempt + 1 < Attempts)
@@ -534,6 +545,30 @@ namespace SECmd.Havok
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Records one attempt that did not work, whether or not a later one does.
+        /// </summary>
+        /// <remarks>
+        /// A retry that succeeds hides the attempt that did not, and a backend that
+        /// *crashed* on the first try is worth knowing about even when the second
+        /// worked: it means some model kills it, and the only way to find which is to
+        /// be told while the model is in hand.
+        /// </remarks>
+        private static void Note(int attempt, string what) =>
+            Failures = [.. Failures, $"attempt {attempt + 1} of {Attempts} {what}"];
+
+        /// <inheritdoc/>
+        public IReadOnlyList<string> LastFailures => Failures;
+
+        [ThreadStatic]
+        private static IReadOnlyList<string>? _failures;
+
+        private static IReadOnlyList<string> Failures
+        {
+            get => _failures ?? [];
+            set => _failures = value;
         }
 
         /// <summary>
@@ -604,8 +639,18 @@ namespace SECmd.Havok
             Task<string> stdout = process.StandardOutput.ReadToEndAsync();
             Task<string> stderr = process.StandardError.ReadToEndAsync();
 
-            process.StandardInput.Write(input);
-            process.StandardInput.Close();
+            try
+            {
+                process.StandardInput.Write(input);
+                process.StandardInput.Close();
+            }
+            catch (IOException)
+            {
+                // The backend is already gone -- it died before it had read its input.
+                // "Broken pipe" is what that looks like from here and says nothing
+                // useful; the exit code below says what actually happened, so let the
+                // process be waited on rather than reporting the symptom.
+            }
 
             if (!process.WaitForExit((int)Timeout.TotalMilliseconds))
             {
@@ -646,6 +691,18 @@ namespace SECmd.Havok
             // dropped, because when the parse does fail this is the only account of
             // why there is.
             Diagnostics = Meaningful(stderr.Result);
+
+            // An exit code is the one thing that says the backend *died* rather than
+            // declining. A crash under Wine leaves a plausible-looking empty stdout,
+            // and without this it is indistinguishable from a shape Havok would not
+            // index -- so a model that crashes mopper looks exactly like a model
+            // mopper dislikes, and neither gets found.
+            if (process.ExitCode != 0)
+            {
+                throw new MoppBackendException(
+                    $"{mode} exited with code {process.ExitCode}"
+                    + (Diagnostics is { Length: > 0 } said ? $": {said}" : string.Empty));
+            }
 
             return stdout.Result;
         }

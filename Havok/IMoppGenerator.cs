@@ -37,6 +37,18 @@ namespace SECmd.Havok
         /// </remarks>
         string? LastDiagnostics => null;
 
+        /// <summary>
+        /// The attempts that did not work on the last call from this thread.
+        /// </summary>
+        /// <remarks>
+        /// Non-empty even when the call *succeeded*, because a generation is retried
+        /// and a retry that works hides the attempt that did not. A backend that
+        /// crashed on the first try and answered on the second still means some model
+        /// kills it, and the only way to find which is to be told while that model is
+        /// in hand.
+        /// </remarks>
+        IReadOnlyList<string> LastFailures => [];
+
         /// <summary>Why the backend is unusable, for reporting.</summary>
         string? UnavailableReason { get; }
 

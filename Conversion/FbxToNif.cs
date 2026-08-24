@@ -808,6 +808,8 @@ namespace SECmd.Conversion
                 return null;
             }
 
+            ReportBackendTrouble(generator, name);
+
             NifItem mopp = _model.InsertBlock("bhkMoppBvTreeShape");
 
             _model.SetRef(mopp, "Shape", inner);
@@ -1219,6 +1221,25 @@ namespace SECmd.Conversion
             generator.LastDiagnostics is { Length: > 0 } said ? $" -- {said}" : string.Empty;
 
         /// <summary>
+        /// Reports a backend that failed, even when a later attempt succeeded.
+        /// </summary>
+        /// <remarks>
+        /// A generation is retried, so a backend that crashes on one model can be
+        /// hidden by the retry that works: the file comes out right and nothing says a
+        /// model just killed the tool. That is the case worth reporting loudest,
+        /// because it is the only chance to learn which model does it.
+        /// </remarks>
+        private void ReportBackendTrouble(IMoppGenerator generator, string name)
+        {
+            if (generator.LastFailures.Count == 0)
+                return;
+
+            Warnings.Add(
+                $"{name}: the MOPP backend failed and was retried -- "
+                + string.Join("; ", generator.LastFailures));
+        }
+
+        /// <summary>
         /// The mesh under a collision node, in Havok units.
         /// </summary>
         /// <remarks>
@@ -1284,6 +1305,8 @@ namespace SECmd.Conversion
 
                 return null;
             }
+
+            ReportBackendTrouble(generator, name);
 
             NifItem shape = _model.InsertBlock("bhkCompressedMeshShape");
             NifItem data = _model.InsertBlock("bhkCompressedMeshShapeData");

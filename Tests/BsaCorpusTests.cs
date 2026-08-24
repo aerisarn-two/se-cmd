@@ -263,7 +263,22 @@ namespace SECmd.Tests
                         LegendaryEdition = source.BSVersion < 100
                     });
 
-                return CompareBlocks(source, converter.Convert(db));
+                string? difference = CompareBlocks(source, converter.Convert(db));
+
+                // A backend that crashed is worth reporting even when the file came
+                // out right. Generation is retried, so a model that kills mopper can
+                // be hidden entirely by the attempt that works -- and a sweep that
+                // says nothing is how a crashing model stays unfound.
+                var trouble = converter.Warnings
+                    .Where(w => w.Contains("MOPP backend failed", StringComparison.Ordinal))
+                    .ToList();
+
+                if (trouble.Count == 0)
+                    return difference;
+
+                return difference is null
+                    ? string.Join("; ", trouble)
+                    : $"{difference}; {string.Join("; ", trouble)}";
             });
         }
 

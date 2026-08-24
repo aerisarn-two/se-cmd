@@ -1350,6 +1350,28 @@ and never touches the shape's `Scale`. This port had it the other way round, so 
 generated tree carried a `Scale` no vanilla file has and a W of **zero**, which is a
 quantisation the engine cannot divide by.
 
+##### Telling a backend that died from one that declined
+
+Both look the same from here: an output that will not parse. The difference matters —
+a shape Havok will not index is a fact about the shape, and a crash is a **bug with a
+model attached to it** that somebody could go and look at. The **exit code** is what
+separates them, and it was not being read at all.
+
+Two things follow, and the second is the one that finds the model:
+
+- A non-zero exit is reported as what it is. A backend that dies before reading its
+  input breaks the pipe first, and "Broken pipe" says nothing useful, so the write is
+  allowed to fail quietly and the exit code is what gets reported.
+- **Every failed attempt is recorded, even when a later one succeeds.** Generation is
+  retried three times (§5.7.3), so a model that crashes mopper can be hidden completely
+  by the attempt that works: the file comes out right and nothing says the tool was
+  killed. The conversion warns anyway, and the corpus sweep treats such a warning as a
+  finding — a file that converted perfectly is still reported when the backend fell over
+  on the way.
+
+That last point is why it is worth the noise. A crash the sweep passes over is a crash
+nobody can reproduce.
+
 ##### A tree over primitives, not triangles
 
 `hkpMoppUtility::buildCode` takes a **`hkpShapeContainer`**, not a mesh, so Havok indexes
