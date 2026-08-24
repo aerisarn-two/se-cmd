@@ -436,3 +436,11 @@ docs/nif-fbx-knowledge-base.md
 # extraction writes them to the build output rather than here, so this is
 # insurance: the list of paths is committed, the meshes are Bethesda's.
 Tests/Resources/vanilla/*.nif
+
+# Converted files left in the working tree by a manual run of the tool. The
+# fixtures under Tests/Resources are deliberate and stay tracked; these are
+# whatever the last "export this one and look at it" produced, and one of them
+# reached a commit already.
+/*.fbx
+/*.nif
+/*.hkx
