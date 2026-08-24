@@ -33,8 +33,7 @@ namespace SECmd.Tests
 
             foreach (string path in Directory.GetFiles(root, "*.nif", SearchOption.AllDirectories))
             {
-                // The corrupted fixture exists to fail loading.
-                if (!path.Contains("Corrupted", StringComparison.Ordinal))
+                if (FixtureFiles.IsFixture(path))
                     data.Add(Path.GetRelativePath(root, path));
             }
 

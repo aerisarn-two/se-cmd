@@ -1026,6 +1026,12 @@ namespace SECmd.Conversion
             // told apart; this says which name each really had.
             FbxNodeType.WriteName(geometry, _model, shape);
 
+            // A shape carries extra data as a node does, and it was going nowhere: a
+            // glow plant's two NiBooleanExtraData hang on its NiTriShape, not on the
+            // node above it. It rides on the geometry because that is what stands for
+            // the shape block -- the holder stands for the node.
+            FbxExtraDataWriter.AddExtraData(geometry, _model, shape);
+
             scene.Connect(geometry, holder);
 
             ConvertSkin(scene, shape, geometry);

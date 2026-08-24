@@ -52,7 +52,7 @@ namespace SECmd.Tests
                 .GetFiles(ResourceRoot, "*.nif", SearchOption.AllDirectories)
                 .OrderBy(f => f, StringComparer.Ordinal)
                 .Select(f => Path.GetRelativePath(ResourceRoot, f))
-                .Where(r => !r.Contains("Corrupted", StringComparison.Ordinal));
+                .Where(FixtureFiles.IsFixture);
 
         /// <summary>The skinned files, which are the ones with skin blocks.</summary>
         public static TheoryData<string> Skinned() =>

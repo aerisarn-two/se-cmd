@@ -86,7 +86,7 @@ namespace SECmd.Tests
 
             foreach (string path in Directory.GetFiles(root, "*.nif", SearchOption.AllDirectories))
             {
-                if (!path.Contains("Corrupted", StringComparison.Ordinal))
+                if (FixtureFiles.IsFixture(path))
                     data.Add(Path.GetRelativePath(root, path));
             }
 

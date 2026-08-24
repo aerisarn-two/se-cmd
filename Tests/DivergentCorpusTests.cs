@@ -95,14 +95,29 @@ namespace SECmd.Tests
             Assert.True(missing.Count == 0, $"not in the archives: {string.Join(", ", missing)}");
         }
 
+        /// <summary>
+        /// The extracted meshes, or one empty name when there are none.
+        /// </summary>
+        /// <remarks>
+        /// A theory with no cases is a *failure* in xunit, not a pass — and on a
+        /// machine with no copy of the game there are legitimately none. So the empty
+        /// case is a case, and the test returns from it having done nothing.
+        /// </remarks>
         public static TheoryData<string> Extracted()
         {
             var data = new TheoryData<string>();
 
-            if (!Directory.Exists(Folder))
-                return data;
+            var files = Directory.Exists(Folder)
+                ? Directory.GetFiles(Folder, "*.nif")
+                : [];
 
-            foreach (string file in Directory.GetFiles(Folder, "*.nif"))
+            if (files.Length == 0)
+            {
+                data.Add(string.Empty);
+                return data;
+            }
+
+            foreach (string file in files)
                 data.Add(Path.GetFileName(file));
 
             return data;
@@ -125,6 +140,10 @@ namespace SECmd.Tests
         [MemberData(nameof(Extracted))]
         public void ReportsWhatEachDivergentMeshDoes(string name)
         {
+            // Nothing extracted, which is what a machine without the game looks like.
+            if (name.Length == 0)
+                return;
+
             NifModel source = NifModel.Load(Path.Combine(Folder, name), Db);
             NifItem root = source.GetBlock(source.FindItem(source.Footer, "Roots")!.Children[0])!;
 

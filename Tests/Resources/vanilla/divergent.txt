@@ -1,12 +1,8 @@
-meshes/actors/dragon/character assets/dragon_oh_bloodyhead.nif
-meshes/actors/spriggan/character assets/sprigganmatron.nif
 meshes/clutter/coffins/nordiccoffinstatic03.nif
 meshes/clutter/sarcophagusboltlock/sarcophagusskulllock/sarcophagusskulllock01.nif
 meshes/dlc01/effects/dlc1falmerscorpion.nif
 meshes/dlc01/plants/dlc1houseingrdglowplant01.nif
 meshes/dlc01/sky/dlceclipsesky.nif
-meshes/dlc02/landscape/dlc2scatteredembers01.nif
-meshes/dlc02/landscape/dlc2scatteredembers02.nif
 meshes/effects/dragoncrash/fxdragoncrashfurrow01.nif
 meshes/furniture/blacksmithforgemarkerwr.nif
 meshes/furniture/clutter/milllogpile.nif

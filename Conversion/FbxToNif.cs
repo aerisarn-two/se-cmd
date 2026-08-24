@@ -1757,6 +1757,19 @@ namespace SECmd.Conversion
 
             _lodSizes = ReadLodMarking(geometry, mesh);
 
+            NifItem built = BuildGeometryBlock(geometry, mesh, skinned, carried);
+
+            // A shape carries extra data as a node does. Read after the block exists,
+            // whichever class it turned out to be.
+            FbxExtraDataWriter.ReadExtraData(geometry, _model, built, Warnings);
+
+            return built;
+        }
+
+        private NifItem BuildGeometryBlock(
+            FbxObject geometry, MeshGeometry mesh, bool skinned, string carried)
+        {
+
             if (carried.Length > 0 && _model.Database.Inherits(carried, "BSTriShape"))
             {
                 return _options.LegendaryEdition
