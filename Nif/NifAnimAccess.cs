@@ -212,7 +212,13 @@ namespace SECmd.Nif
             var names = new Dictionary<NifItem, string>();
             var seen = new Dictionary<string, int>(StringComparer.Ordinal);
 
-            foreach (NifItem block in model.Blocks)
+            // Only the blocks a track can name. Every block has a name field and
+            // plenty share one with a node -- a sequence called `back` beside a bone
+            // called `back`, which `dlc1falmerscorpion` has. Numbering across all of
+            // them let the sequence take the plain name and pushed the bone to
+            // `back#1`, so every sequence's entry for it bound to a model that was not
+            // there and its animation was dropped.
+            foreach (NifItem block in model.Blocks.Where(b => model.BlockInherits(b, "NiAVObject")))
             {
                 string name = model.GetName(block);
 

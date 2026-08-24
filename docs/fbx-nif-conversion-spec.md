@@ -594,8 +594,14 @@ One class is refused explicitly: geometry is built on the mesh path, from a mesh
 node naming a shape class would arrive there with no vertices to be one from. The one
 exception is a node marked as an empty shape, below.
 
-**A name is made unique before it is used.** A NIF is free to give two nodes the same
-name — `impactfrosticestorm` has five called `AddOnNode66`, each with a transform
+**A name is made unique before it is used, and only among nodes.** Every block in a NIF
+has a name and plenty share one with a node — `dlc1falmerscorpion` has a sequence called
+`back` beside a bone called `back`. Numbering across *all* blocks let the sequence take
+the plain name and pushed the bone to `back#1`, so every entry naming `back` bound to a
+model that was not there and seven animations were dropped. Only `NiAVObject`s are
+numbered, because only they are what a track binds to.
+
+A NIF is free to give two nodes the same name — `impactfrosticestorm` has five called `AddOnNode66`, each with a transform
 controller of its own — and a track binds to a node *by name*, so the shared name kept
 the first controller and dropped four. A repeat is numbered (`AddOnNode66#1`) and the
 block's real name travels as `nif_name`. The order is the block order, a property of the

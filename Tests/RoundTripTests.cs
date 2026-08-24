@@ -1748,6 +1748,69 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void ASequenceDoesNotStealANodesName()
+        {
+            // Every block has a name, and plenty share one with a node: a falmer
+            // scorpion has a sequence called "back" and a bone called "back". The name
+            // a track binds by is made unique, and numbering across every block let
+            // the sequence take the plain name and pushed the bone to "back#1" -- so
+            // each sequence's entry for it bound to a model that was not there, and
+            // seven animations were dropped.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("NiNode");
+            model.SetString(root, "Name", "root");
+
+            NifItem bone = model.InsertBlock("NiNode");
+            model.SetString(bone, "Name", "back");
+
+            if (model.SetArraySize(root, "Num Children", "Children", 1) is { } children)
+                children.Children[0].Value.SetLink(model.IndexOf(bone));
+
+            // A sequence of the same name, written first so it would win the race.
+            NifItem sequence = model.InsertBlock("NiControllerSequence");
+            model.SetString(sequence, "Name", "back");
+            model.FindItem(sequence, "Start Time")?.Value.SetFloat(0f);
+            model.FindItem(sequence, "Stop Time")?.Value.SetFloat(1f);
+
+            NifItem entry = model
+                .SetArraySize(sequence, "Num Controlled Blocks", "Controlled Blocks", 1)!
+                .Children[0];
+
+            NifItem interpolator = model.InsertBlock("NiTransformInterpolator");
+            NifItem data = model.InsertBlock("NiTransformData");
+
+            NifItem keys = model.SetArraySize(data, @"Translations\Num Keys", @"Translations\Keys", 2)!;
+
+            for (int k = 0; k < 2; k++)
+            {
+                keys.Children[k].Children.First(c => c.Name == "Time").Value.SetFloat(k);
+                keys.Children[k].Children.First(c => c.Name == "Value").Value
+                    .Set(new NifVector3(k * 5f, 0f, 0f));
+            }
+
+            model.SetRef(interpolator, "Data", data);
+            model.SetRef(entry, "Interpolator", interpolator);
+            model.SetString(entry, "Node Name", "back");
+            model.SetString(entry, "Controller Type", "NiTransformController");
+
+            model.SetRoots([root]);
+
+            NifModel rebuilt = RoundTrip(model);
+
+            // The bone keeps its own name, and the entry still finds it.
+            Assert.Contains(
+                rebuilt.Blocks,
+                b => b.Name == "NiNode" && rebuilt.GetName(b) == "back");
+
+            NifItem back = Assert.Single(rebuilt.Blocks, b => b.Name == "NiControllerSequence");
+            NifItem rebuiltEntry = Assert.Single(rebuilt.FindItem(back, "Controlled Blocks")!.Children);
+
+            Assert.Equal("back", rebuilt.GetString(rebuiltEntry, "Node Name"));
+            Assert.Single(rebuilt.Blocks, b => b.Name == "NiTransformData");
+        }
+
+        [Fact]
         public void ANodeThatClaimsToBeGeometryIsStillANode()
         {
             // Geometry is built on the mesh path, from a mesh. A node that names a

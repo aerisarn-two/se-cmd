@@ -89,8 +89,15 @@ namespace SECmd.Fbx
                 // which animates a model and so needs one.
                 models.TryGetValue(track.NodeName, out FbxObject? model);
 
-                if (model is null && track.Properties.Any(p => p.Curves.Any(c => c.HasKeys)))
+                // Keys need a model, whether they move the node itself or one of its
+                // properties. Reporting only the second let a whole transform track
+                // vanish without a word -- a falmer scorpion lost one from every
+                // sequence and nothing said so.
+                if (model is null
+                    && (track.HasKeys || track.Properties.Any(p => p.Curves.Any(c => c.HasKeys))))
+                {
                     missing.Add(track.NodeName);
+                }
 
                 AddPose(stack, track);
 
