@@ -1370,7 +1370,20 @@ Two things follow, and the second is the one that finds the model:
   on the way.
 
 That last point is why it is worth the noise. A crash the sweep passes over is a crash
-nobody can reproduce.
+nobody can reproduce — and the first one it caught, on `mrkmillbase01`, turned out to
+exonerate the model: `wine client error: recvmsg: Connection reset by peer` is the
+wineserver dropping the connection, not Havok objecting to the geometry. The same mesh
+converts identically ten times out of ten on its own.
+
+So the backend runs at most **a quarter of the cores** at once (`SECMD_MOPP_CONCURRENCY`
+overrides it). That is not a fix and is not meant to be one: a reset is contention, and
+running fewer at once only makes it less likely. The retry is what makes it survivable,
+the report is what makes it visible, and this only reduces how often either is needed.
+
+The two are worth telling apart by their exit codes. A Wine transport failure exits 1
+with a `wine client error` on stderr; a Havok crash exits with an access-violation code
+and says something quite different. If a model ever does kill the backend for its own
+reasons, that is what it will look like.
 
 ##### A tree over primitives, not triangles
 

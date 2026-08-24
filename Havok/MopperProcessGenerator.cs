@@ -590,12 +590,35 @@ namespace SECmd.Havok
         /// A sweep converts meshes in parallel and most of them want a MOPP tree, so
         /// without this there are as many Wine processes as the thread pool feels like
         /// starting. They contend for the same wineserver, and what comes back is a
-        /// timeout on a shape that converts perfectly well on its own.
+        /// timeout, or a connection reset, on a shape that converts perfectly well on
+        /// its own — `mrkmillbase01` did exactly that, ten times out of ten alone and
+        /// once in a sweep of the corpus.
         ///
-        /// Half the cores, since each backend is itself a process that wants one.
+        /// A quarter of the cores. Not a fix: a reset is contention, and running fewer
+        /// at once only makes it less likely. The retry is what makes it survivable
+        /// and the report is what makes it visible; this just reduces how often either
+        /// is needed.
+        ///
+        /// Override with <c>SECMD_MOPP_CONCURRENCY</c>, which is the knob to reach for
+        /// when a machine disagrees with the guess — either way round.
         /// </remarks>
-        private static readonly SemaphoreSlim Running =
-            new(Math.Max(1, Environment.ProcessorCount / 2));
+        private static readonly SemaphoreSlim Running = new(Concurrency());
+
+        /// <summary>How many backends this machine should run at once.</summary>
+        private static int Concurrency()
+        {
+            if (int.TryParse(
+                    Environment.GetEnvironmentVariable("SECMD_MOPP_CONCURRENCY"),
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out int configured)
+                && configured > 0)
+            {
+                return configured;
+            }
+
+            return Math.Max(1, Environment.ProcessorCount / 4);
+        }
 
         private string Run(string mode, string input)
         {
