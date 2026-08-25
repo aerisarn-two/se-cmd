@@ -158,6 +158,82 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void AShapeIsTheSameShapeWhereverItStands()
+        {
+            // Merging near-duplicate corners buckets them into cells of the shape's
+            // own scale, and the cell index used to be measured from the *origin*. A
+            // float that does not fit an int saturates at int.MaxValue instead of
+            // throwing, so every corner past int.MaxValue x tolerance shared one cell
+            // and merged into a single point.
+            //
+            // With the tolerance a hundred-millionth of the extent, that ceiling is
+            // about twenty-one times the shape's own size -- so a one-metre box
+            // twenty-two metres from the body origin came back as a flat quad, and a
+            // collision solid that is a plane does not collide. The corpus never saw
+            // it because a hull's corners are stored close to the body they hang from.
+            //
+            // Measured from the shape's own corner it cannot happen, and the merge is
+            // independent of where the shape stands -- which it always should have been.
+            foreach (float distance in new[] { 0f, 20f, 22f, 100f, 5000f })
+            {
+                var points = new List<NifVector3>();
+
+                foreach (float x in new[] { 0f, 1f })
+                foreach (float y in new[] { 0f, 1f })
+                foreach (float z in new[] { 0f, 1f })
+                    points.Add(new NifVector3(distance + x, y, z));
+
+                MeshGeometry hull = ShapeTessellator.ConvexHull(points);
+
+                Assert.True(
+                    hull.Vertices.Count == 8,
+                    $"a unit box {distance} from the origin kept {hull.Vertices.Count} of its 8 corners");
+
+                Assert.Equal(12, hull.Triangles.Count);
+                AssertClosed(hull);
+            }
+        }
+
+        [Fact]
+        public void ADenseHullDoesNotTakeQuadraticTime()
+        {
+            // Every round used to pick its next point by scanning every face ever
+            // created, dead ones included, which is quadratic in the input. A vanilla
+            // collision hull is a couple of hundred corners and never noticed, but
+            // ShapeFitter.FitConvex is handed every vertex of whatever mesh an author
+            // drew: twenty thousand points on a sphere took seven seconds, all of it
+            // in that scan.
+            var random = new Random(4242);
+            var points = new List<NifVector3>();
+
+            for (int i = 0; i < 20000; i++)
+            {
+                double theta = random.NextDouble() * Math.Tau;
+                double phi = Math.Acos(2 * random.NextDouble() - 1);
+
+                // On a sphere, so the hull keeps every one of them and the work is real.
+                points.Add(new NifVector3(
+                    (float)(Math.Sin(phi) * Math.Cos(theta)),
+                    (float)(Math.Sin(phi) * Math.Sin(theta)),
+                    (float)Math.Cos(phi)));
+            }
+
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            MeshGeometry hull = ShapeTessellator.ConvexHull(points);
+            watch.Stop();
+
+            Assert.NotEmpty(hull.Triangles);
+
+            // A wall clock in a suite that runs its classes in parallel is a blunt
+            // instrument: this same input measures 0.8s alone and 4s under the full
+            // suite. So the budget is nowhere near either figure -- it is here to catch
+            // a return to quadratic, where the scan version took seven seconds alone
+            // and correspondingly worse beside everything else, not to police a number.
+            // If this ever fails, look at the complexity rather than the threshold.
+            Assert.True(watch.Elapsed < TimeSpan.FromSeconds(20), $"took {watch.Elapsed}");
+        }
+
+        [Fact]
         public void TheHullOfAHullIsThatHull()
         {
             // The corners a `bhkConvexVerticesShape` stores are already a hull -- Qhull

@@ -514,6 +514,25 @@ namespace SECmd.Conversion
             var hull = new Hull(points);
             hull.Build(seed);
 
+            // A NIF triangle indexes its corners with a `ushort`, and the renumbering
+            // below casts to one. Past 65,535 that cast wraps in silence and every
+            // triangle after it points at the wrong corner — geometry that is not
+            // merely wrong but wrong without saying so. Nothing in the game comes near
+            // it (the largest vanilla hull is 222 corners), but `ShapeFitter.FitConvex`
+            // is handed every vertex of whatever collision mesh an author drew, and a
+            // hull of points on a sphere keeps all of them.
+            var used = new HashSet<int>();
+
+            foreach (Hull.Face face in hull.Live)
+            {
+                used.Add(face.A);
+                used.Add(face.B);
+                used.Add(face.C);
+            }
+
+            if (used.Count > ushort.MaxValue)
+                return mesh;
+
             // Keep only the vertices the hull actually uses, renumbered.
             var remap = new Dictionary<int, ushort>();
 
@@ -558,6 +577,19 @@ namespace SECmd.Conversion
                 internal double Nx, Ny, Nz, D;
                 internal bool Dead;
 
+                /// <summary>
+                /// Three collinear corners: no area, so no normal and no answer.
+                /// </summary>
+                /// <remarks>
+                /// Such a face reports every point as lying exactly on it, so nothing
+                /// can see it and nothing ever takes it away — and a face that cannot
+                /// be removed blocks the corners behind it for good. It is treated as
+                /// visible from everywhere instead, which is the one reading that lets
+                /// the next point sweep it up. The incremental version had the same
+                /// hole and answered it with a NaN distance; this is that answer kept.
+                /// </remarks>
+                internal bool Flat;
+
                 /// <summary>The points outside this face, and the furthest of them.</summary>
                 internal readonly List<int> Outside = [];
                 internal int Furthest = -1;
@@ -569,6 +601,20 @@ namespace SECmd.Conversion
             private readonly IReadOnlyList<NifVector3> _points;
             private readonly List<Face> _faces = [];
             private readonly double _tolerance;
+
+            /// <summary>
+            /// The faces that still have points outside them.
+            /// </summary>
+            /// <remarks>
+            /// Only these can be the next round's choice, and there are far fewer of
+            /// them than there are faces. Scanning `_faces` instead means scanning
+            /// every face ever created, dead ones included, once per point — which is
+            /// quadratic in the input and cost seven seconds on twenty thousand
+            /// points, where the collision mesh an author hands the importer is
+            /// exactly that shape of input. Dead and emptied entries are dropped as
+            /// they are met rather than tracked, since each is only ever found once.
+            /// </remarks>
+            private readonly List<Face> _pending = [];
 
             internal Hull(IReadOnlyList<NifVector3> points)
             {
@@ -657,7 +703,7 @@ namespace SECmd.Conversion
                         if (neighbour.Dead)
                             continue;
 
-                        if (Height(neighbour, point) > _tolerance)
+                        if (neighbour.Flat || Height(neighbour, point) > _tolerance)
                         {
                             neighbour.Dead = true;
                             visible.Add(neighbour);
@@ -727,13 +773,18 @@ namespace SECmd.Conversion
                 {
                     foreach (Face face in among)
                     {
-                        if (face.Dead)
+                        // A face with no area owns nothing: it reports every point as
+                        // on it, so it would swallow points that are genuinely outside.
+                        if (face.Dead || face.Flat)
                             continue;
 
                         double height = Height(face, p);
 
                         if (height <= _tolerance)
                             continue;
+
+                        if (face.Outside.Count == 0)
+                            _pending.Add(face);
 
                         face.Outside.Add(p);
 
@@ -752,12 +803,22 @@ namespace SECmd.Conversion
             private Face? Furthest()
             {
                 Face? best = null;
+                int keep = 0;
 
-                foreach (Face face in _faces)
+                for (int i = 0; i < _pending.Count; i++)
                 {
-                    if (!face.Dead && face.Furthest >= 0 && (best is null || face.Reach > best.Reach))
+                    Face face = _pending[i];
+
+                    if (face.Dead || face.Furthest < 0)
+                        continue;
+
+                    _pending[keep++] = face;
+
+                    if (best is null || face.Reach > best.Reach)
                         best = face;
                 }
+
+                _pending.RemoveRange(keep, _pending.Count - keep);
 
                 return best;
             }
@@ -782,6 +843,10 @@ namespace SECmd.Conversion
                     nx /= length;
                     ny /= length;
                     nz /= length;
+                }
+                else
+                {
+                    face.Flat = true;
                 }
 
                 face.Nx = nx;
@@ -979,6 +1044,18 @@ namespace SECmd.Conversion
         /// one point as far as a hull is concerned, and keeping both makes faces with
         /// no area. The tolerance is relative to the extent, since a Havok shape may
         /// be a centimetre across or ten metres.
+        ///
+        /// The cells are measured **from the shape's own corner, not from the origin**,
+        /// which matters more than it looks. A cell index is `(int)(coordinate /
+        /// tolerance)`, and a float that does not fit an int saturates silently at
+        /// `int.MaxValue` rather than throwing — so every point past
+        /// `int.MaxValue × tolerance` lands in the same cell and merges into one. With
+        /// the tolerance a hundred-millionth of the extent that ceiling is only about
+        /// twenty-one times the shape's own size: a one-metre box standing twenty-two
+        /// metres from the body origin collapsed to a flat quad, and a collision solid
+        /// that is a plane does not collide. Subtracting the minimum first bounds the
+        /// index by `1 / MergeScale` whatever the shape's coordinates are, and makes
+        /// merging independent of where the shape sits, which it always should have been.
         /// </remarks>
         private static List<NifVector3> Distinct(IReadOnlyList<NifVector3> points)
         {
@@ -1004,9 +1081,9 @@ namespace SECmd.Conversion
             foreach (NifVector3 p in points)
             {
                 var cell = (
-                    (int)MathF.Round(p.X / tolerance),
-                    (int)MathF.Round(p.Y / tolerance),
-                    (int)MathF.Round(p.Z / tolerance));
+                    (int)MathF.Round((p.X - minX) / tolerance),
+                    (int)MathF.Round((p.Y - minY) / tolerance),
+                    (int)MathF.Round((p.Z - minZ) / tolerance));
 
                 if (seen.Add(cell))
                     kept.Add(p);
