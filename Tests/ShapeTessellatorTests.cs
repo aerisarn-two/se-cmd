@@ -158,6 +158,75 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void TheHullOfAHullIsThatHull()
+        {
+            // The corners a `bhkConvexVerticesShape` stores are already a hull -- Qhull
+            // produced them when the shape was authored -- so hulling them again must
+            // return all of them. This is the property the corpus is measured against,
+            // and the one that says a shape survives a round trip.
+            var random = new Random(86420);
+            var points = new List<NifVector3>();
+
+            for (int i = 0; i < 120; i++)
+            {
+                points.Add(new NifVector3(
+                    (float)(random.NextDouble() * 2 - 1),
+                    (float)(random.NextDouble() * 2 - 1),
+                    (float)(random.NextDouble() * 2 - 1)));
+            }
+
+            MeshGeometry once = ShapeTessellator.ConvexHull(points);
+            MeshGeometry twice = ShapeTessellator.ConvexHull(once.Vertices);
+
+            AssertClosed(once);
+            AssertClosed(twice);
+
+            Assert.Equal(once.Vertices.Count, twice.Vertices.Count);
+
+            foreach (NifVector3 v in once.Vertices)
+            {
+                Assert.Contains(twice.Vertices, u =>
+                    MathF.Abs(u.X - v.X) < 1e-6f
+                    && MathF.Abs(u.Y - v.Y) < 1e-6f
+                    && MathF.Abs(u.Z - v.Z) < 1e-6f);
+            }
+        }
+
+        [Fact]
+        public void AWideThinShapeIsFlatRatherThanASliver()
+        {
+            // `dwecog01` is a cog: six tenths of a unit across and 2.4e-7 thick -- so
+            // thin that the hull's tolerance, then a hundred-thousandth of the shape,
+            // was twenty times its thickness. The seed tetrahedron came out flatter
+            // than the surface it was seeding, nothing was ever outside it, and the
+            // loop stopped at once: the cog's 48 corners came back as the seed's 4.
+            //
+            // Five hundred of the game's convex shapes were losing corners this way.
+            // What fixed it was the tolerance; the seed thresholds became relative at
+            // the same time and are worth a further third of a percent.
+            var points = new List<NifVector3>();
+
+            for (int i = 0; i < 24; i++)
+            {
+                double angle = i / 24.0 * Math.Tau;
+
+                // Two rings a quarter of a micron apart, which is the cog.
+                points.Add(new NifVector3((float)(Math.Cos(angle) * 0.3), (float)(Math.Sin(angle) * 0.3), 0.00126061f));
+                points.Add(new NifVector3((float)(Math.Cos(angle) * 0.3), (float)(Math.Sin(angle) * 0.3), 0.00126085f));
+            }
+
+            MeshGeometry hull = ShapeTessellator.ConvexHull(points);
+
+            Assert.NotEmpty(hull.Triangles);
+
+            // Every corner of the ring, not four of them. The two rings merge into one
+            // -- they are a quarter of a micron apart on a shape a third of a unit
+            // across -- so what must come back is the ring, not the pair.
+            Assert.True(hull.Vertices.Count >= 24,
+                $"a 48-corner disc came back with {hull.Vertices.Count} corners");
+        }
+
+        [Fact]
         public void HullOfACubesCornersIsThatCube()
         {
             NifVector3[] corners =

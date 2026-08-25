@@ -18,6 +18,35 @@ namespace SECmd.Conversion
     public static class ShapeTessellator
     {
         /// <summary>
+        /// How far outside a face a point must be, relative to the shape, before the
+        /// hull counts it as outside at all.
+        /// </summary>
+        /// <remarks>
+        /// Small, because a `bhkConvexVerticesShape`'s corners are *already* a hull —
+        /// NifSkope produces them with Qhull and the game ships what Qhull returned —
+        /// so taking the hull of them again has to give every one of them back. A
+        /// generous tolerance quietly shaves the shallowest corners off: at a
+        /// thousandth of the shape, one convex shape in seven lost at least one corner.
+        ///
+        /// NifSkope's own default is far coarser (a roundoff of 0.25 game units), but
+        /// it is doing the opposite job — reducing a dense mesh to a hull an author
+        /// wants small — and deliberately sheds corners to do it.
+        /// </remarks>
+        private const float HullScale = 1e-9f;
+
+        /// <summary>
+        /// How close, relative to the shape, two corners must be to be one corner.
+        /// </summary>
+        /// <remarks>
+        /// Merging exact duplicates alone is *worse* than merging near ones: a pair a
+        /// hair apart makes a face with no useful normal, and the surface built on it
+        /// comes out unclosed. Merging too eagerly is worse still — at a hundred
+        /// thousandth of the shape this collapsed thin plates onto themselves, and a
+        /// door 8 corners thick came back with 4.
+        /// </remarks>
+        private const float MergeScale = 1e-8f;
+
+        /// <summary>
         /// Havok works in metres, NIF in Skyrim units. This is the conversion
         /// FBXWrangler applies when emitting collision geometry.
         /// </summary>
@@ -26,18 +55,18 @@ namespace SECmd.Conversion
         /// <summary>Its reciprocal, for the journey back.</summary>
         /// <remarks>
         /// FBXWrangler spells this as a literal `0.01428f`, which is *not* the
-        /// reciprocal of the factor it multiplied by. The pair keeps 99.9475% of every
+        /// reciprocal of the factor it multiplied by. The pair loses 5.2e-4 of every
         /// collision coordinate per round trip — on a mill pond fifty units across,
         /// nearly three hundredths of a unit — so no convex shape in the game came back
-        /// where it started. It is the one error here that scales with the shape, which
-        /// is why no fixture ever caught it: the only hull among them is three
-        /// hundredths of a unit across, and moved by seven millionths.
+        /// where it started, however faithful the hull was. It was the larger half of
+        /// the error, and the harder one to see, because it scales with the shape and
+        /// so never looks like a bug in any particular one.
         ///
         /// **A deliberate departure from ck-cmd**, and one the knowledge base's §4.1
         /// already asks for: multiply going out, divide coming back. A shape authored
-        /// in a DCC tool now lands 0.05% from where ck-cmd would put it, well under the
-        /// tolerance anything here is measured to; a shape that came out of a NIF lands
-        /// back on itself.
+        /// in a DCC tool now lands 0.05% from where ck-cmd would put it, which is well
+        /// under the tolerance anything here is measured to; a shape that came out of a
+        /// NIF lands back on itself.
         /// </remarks>
         public const float BhkScaleFactorInverse = 1f / BhkScaleFactor;
 
@@ -424,15 +453,37 @@ namespace SECmd.Conversion
         /// The convex hull of a point set, as a triangle mesh.
         /// </summary>
         /// <remarks>
-        /// An incremental hull: start from a tetrahedron, then for each remaining
-        /// point delete every face it can see and stitch the resulting boundary back
-        /// to it.
+        /// Quickhull: seed a tetrahedron from the extremes, give every face the points
+        /// that lie outside it, then repeatedly take the point furthest outside any
+        /// face and pull the surface out to meet it.
+        ///
+        /// Two things hold it together where the plain incremental version did not.
+        ///
+        /// The **horizon is walked, not deduced**. The old version decided visibility
+        /// for each face independently and recovered the boundary by cancelling shared
+        /// edges, which is the horizon only if the visible faces form one connected
+        /// patch. Near-coplanar input makes neighbouring faces disagree about a point
+        /// lying almost exactly in their shared plane; the visible set comes apart into
+        /// islands, the surviving edges are several loops rather than one, and fanning
+        /// across all of them leaves a surface with holes in it. Here the region is
+        /// grown outward from a single face through adjacency, so it is connected by
+        /// construction and its boundary is one loop whatever the arithmetic says.
+        /// Roughly a fifth of the game's convex shapes came out unclosed before.
+        ///
+        /// The **furthest point goes in first**, which keeps the arithmetic away from
+        /// the margin: the further outside a point is, the less any sign involving it
+        /// is in doubt. Together with doing the determinants in double — the points
+        /// arrive as float, so the subtractions are exact — that is what a set of
+        /// adaptive predicates would otherwise have been needed for.
+        ///
+        /// Faces carry their neighbours rather than the topology being rebuilt from an
+        /// edge list each round, which is also what turns the inner loop from a scan of
+        /// the whole surface into a walk over the part of it involved.
         ///
         /// A *flat* hull is not broken input. The game ships them — `byohwrdoorload01`
         /// draws its load door as four coplanar points — and a hull with no volume has
-        /// no tetrahedron to start from, so it used to yield an empty mesh, which lost
-        /// the shape, the body and the collision object above it. It is tessellated as
-        /// the polygon it is instead, wound both ways so it exists from either side.
+        /// no tetrahedron to start from, so it is tessellated as the polygon it is,
+        /// wound both ways so it exists from either side.
         ///
         /// Fewer than three points is genuinely nothing, and stays nothing.
         /// </remarks>
@@ -457,102 +508,17 @@ namespace SECmd.Conversion
             if (points.Count < 3)
                 return mesh;
 
-            // How far outside the surface a point has to be before it is treated as
-            // outside at all. Relative to the shape, because a Havok shape may be a
-            // centimetre across or ten metres, and an absolute tolerance is either
-            // meaningless on one or ruinous on the other.
-            float tolerance = Tolerance(points);
-
-
             if (points.Count < 4 || !FindInitialTetrahedron(points, out int[] seed))
                 return PlanarHull(points);
 
-
-            var vertices = new List<NifVector3>(points);
-            var faces = new List<(int A, int B, int C)>
-            {
-                (seed[0], seed[1], seed[2]),
-                (seed[0], seed[2], seed[3]),
-                (seed[0], seed[3], seed[1]),
-                (seed[1], seed[3], seed[2])
-            };
-
-            // Wind every seed face away from the centroid.
-            NifVector3 inside = Average([vertices[seed[0]], vertices[seed[1]], vertices[seed[2]], vertices[seed[3]]]);
-
-            for (int i = 0; i < faces.Count; i++)
-            {
-                if (SignedDistance(vertices, faces[i], inside) > 0)
-                    faces[i] = (faces[i].A, faces[i].C, faces[i].B);
-            }
-
-            for (int p = 0; p < vertices.Count; p++)
-            {
-
-                if (seed.Contains(p))
-                    continue;
-
-                NifVector3 point = vertices[p];
-
-                var visible = new List<(int A, int B, int C)>();
-
-                foreach ((int A, int B, int C) face in faces)
-                {
-                    float distance = SignedDistance(vertices, face, point);
-
-                    // A face with no area is removed rather than kept. It cannot be
-                    // part of a hull, and leaving it in is what breaks the surface:
-                    // nothing can see it, so nothing ever takes it away, and every
-                    // later point stitches its boundary edges onto a hole that never
-                    // closes. `snowdriftm01int` turned 222 points into 309,394 faces
-                    // that way, where a hull of 222 points has at most 440, and the
-                    // sweep ran for hours on one mesh.
-                    if (float.IsNaN(distance) || distance > tolerance)
-                        visible.Add(face);
-                }
-
-                if (visible.Count == 0)
-                    continue;
-
-                // Edges on the boundary of the visible region appear exactly once
-                // across it; interior edges appear twice and cancel.
-                var boundary = new List<(int From, int To)>();
-
-                foreach ((int A, int B, int C) face in visible)
-                {
-                    foreach ((int From, int To) edge in new[] { (face.A, face.B), (face.B, face.C), (face.C, face.A) })
-                    {
-                        int at = boundary.FindIndex(e => e.From == edge.To && e.To == edge.From);
-
-                        if (at >= 0)
-                            boundary.RemoveAt(at);
-                        else
-                            boundary.Add(edge);
-                    }
-                }
-
-                faces.RemoveAll(visible.Contains);
-
-                foreach ((int from, int to) in boundary)
-                    faces.Add((from, to, p));
-
-                // A hull of n points has at most 2n - 4 faces. Past that the surface
-                // has stopped being closed and every further point makes it worse, so
-                // there is nothing to be gained by going on -- and a great deal to
-                // lose: this is what ran for hours on one mesh rather than failing.
-                if (faces.Count > 2 * points.Count)
-                {
-                    break;
-                }
-            }
+            var hull = new Hull(points);
+            hull.Build(seed);
 
             // Keep only the vertices the hull actually uses, renumbered.
             var remap = new Dictionary<int, ushort>();
 
-            foreach ((int A, int B, int C) face in faces)
-            {
+            foreach (Hull.Face face in hull.Live)
                 mesh.Triangles.Add(new NifTriangle(Index(face.A), Index(face.B), Index(face.C)));
-            }
 
             mesh.RecalculateNormals();
             return mesh;
@@ -564,8 +530,325 @@ namespace SECmd.Conversion
 
                 mapped = (ushort)mesh.Vertices.Count;
                 remap[original] = mapped;
-                mesh.Vertices.Add(vertices[original]);
+                mesh.Vertices.Add(points[original]);
                 return mapped;
+            }
+        }
+
+        /// <summary>
+        /// A hull under construction: triangles that know their neighbours, and the
+        /// points still waiting outside each of them.
+        /// </summary>
+        private sealed class Hull
+        {
+            /// <summary>
+            /// A triangle, and across each edge the triangle on the far side.
+            /// </summary>
+            /// <remarks>
+            /// <c>Beyond[i]</c> is whoever shares the edge leaving vertex <c>i</c>: so
+            /// <c>Beyond[0]</c> lies across A→B, <c>Beyond[1]</c> across B→C and
+            /// <c>Beyond[2]</c> across C→A. Every edge is shared by exactly two
+            /// triangles at every moment, which is the invariant the rest rests on.
+            /// </remarks>
+            internal sealed class Face
+            {
+                internal int Id;
+                internal int A, B, C;
+                internal readonly int[] Beyond = [-1, -1, -1];
+                internal double Nx, Ny, Nz, D;
+                internal bool Dead;
+
+                /// <summary>The points outside this face, and the furthest of them.</summary>
+                internal readonly List<int> Outside = [];
+                internal int Furthest = -1;
+                internal double Reach;
+
+                internal int Vertex(int i) => i == 0 ? A : i == 1 ? B : C;
+            }
+
+            private readonly IReadOnlyList<NifVector3> _points;
+            private readonly List<Face> _faces = [];
+            private readonly double _tolerance;
+
+            internal Hull(IReadOnlyList<NifVector3> points)
+            {
+                _points = points;
+
+                // How far outside the surface a point must be to count as outside at
+                // all. Relative to the shape, because a Havok shape may be a centimetre
+                // across or ten metres, and an absolute tolerance is either meaningless
+                // on one or ruinous on the other.
+                _tolerance = Tolerance(points);
+            }
+
+            internal IEnumerable<Face> Live => _faces.Where(f => !f.Dead);
+
+            internal void Build(int[] seed)
+            {
+                Seed(seed);
+
+                while (Furthest() is { } face)
+                {
+                    int point = face.Furthest;
+
+                    var visible = new List<Face>();
+                    var horizon = new List<(Face Face, int Edge)>();
+
+                    Spread(face, point, visible, horizon);
+                    Replace(point, visible, horizon);
+                }
+            }
+
+            /// <summary>Four faces of a tetrahedron, wound outward and linked up.</summary>
+            private void Seed(int[] seed)
+            {
+                // The fourth point tells the first three which way round they go: it is
+                // inside the hull, so it must be behind the face they form.
+                if (Volume(seed[0], seed[1], seed[2], seed[3]) > 0)
+                    (seed[1], seed[2]) = (seed[2], seed[1]);
+
+                Add(seed[0], seed[1], seed[2]);
+                Add(seed[0], seed[3], seed[1]);
+                Add(seed[1], seed[3], seed[2]);
+                Add(seed[2], seed[3], seed[0]);
+
+                Link(_faces);
+
+                var waiting = new List<int>();
+
+                for (int i = 0; i < _points.Count; i++)
+                {
+                    if (i != seed[0] && i != seed[1] && i != seed[2] && i != seed[3])
+                        waiting.Add(i);
+                }
+
+                Assign(waiting, _faces);
+            }
+
+            /// <summary>
+            /// Grows the visible region outward from one face the point can see.
+            /// </summary>
+            /// <remarks>
+            /// Only through adjacency, which is the whole point: a face the point can
+            /// see but which does not touch the region is left where it is. Where the
+            /// walk stops — a visible face whose neighbour is not visible — is the
+            /// horizon, collected on the way rather than worked out afterwards.
+            /// </remarks>
+            private void Spread(
+                Face from, int point, List<Face> visible, List<(Face, int)> horizon)
+            {
+                var stack = new Stack<Face>();
+
+                from.Dead = true;
+                visible.Add(from);
+                stack.Push(from);
+
+                while (stack.Count > 0)
+                {
+                    Face face = stack.Pop();
+
+                    for (int edge = 0; edge < 3; edge++)
+                    {
+                        if (face.Beyond[edge] < 0)
+                            continue;
+
+                        Face neighbour = _faces[face.Beyond[edge]];
+
+                        if (neighbour.Dead)
+                            continue;
+
+                        if (Height(neighbour, point) > _tolerance)
+                        {
+                            neighbour.Dead = true;
+                            visible.Add(neighbour);
+                            stack.Push(neighbour);
+                        }
+                        else
+                        {
+                            horizon.Add((face, edge));
+                        }
+                    }
+                }
+            }
+
+            /// <summary>Fans the horizon out to the new point and rehouses the orphans.</summary>
+            private void Replace(
+                int point, List<Face> visible, List<(Face Face, int Edge)> horizon)
+            {
+                var made = new List<Face>(horizon.Count);
+
+                foreach ((Face face, int edge) in horizon)
+                {
+                    // The horizon edge in the direction the dying face had it, so the
+                    // triangle taking its place is wound the same way round.
+                    Face fresh = Add(face.Vertex(edge), face.Vertex((edge + 1) % 3), point);
+                    Face keeping = _faces[face.Beyond[edge]];
+
+                    fresh.Beyond[0] = keeping.Id;
+
+                    for (int back = 0; back < 3; back++)
+                    {
+                        if (keeping.Beyond[back] == face.Id)
+                            keeping.Beyond[back] = fresh.Id;
+                    }
+
+                    made.Add(fresh);
+                }
+
+                // The two edges meeting at the new point are shared with the
+                // neighbouring new faces; the horizon edge is already joined.
+                Link(made);
+
+                // A point outside a face that has gone is outside one of the faces
+                // replacing it, or it is inside the hull now and stops being considered.
+                var orphans = new List<int>();
+
+                foreach (Face face in visible)
+                {
+                    foreach (int p in face.Outside)
+                    {
+                        if (p != point)
+                            orphans.Add(p);
+                    }
+                }
+
+                Assign(orphans, made);
+            }
+
+            /// <summary>Gives each point to a face it lies outside, if there is one.</summary>
+            /// <remarks>
+            /// One face is enough. A point is outside the hull if it is outside any
+            /// face, and recording it against every face it can see would only mean
+            /// finding it again later.
+            /// </remarks>
+            private void Assign(List<int> waiting, IReadOnlyList<Face> among)
+            {
+                foreach (int p in waiting)
+                {
+                    foreach (Face face in among)
+                    {
+                        if (face.Dead)
+                            continue;
+
+                        double height = Height(face, p);
+
+                        if (height <= _tolerance)
+                            continue;
+
+                        face.Outside.Add(p);
+
+                        if (height > face.Reach)
+                        {
+                            face.Reach = height;
+                            face.Furthest = p;
+                        }
+
+                        break;
+                    }
+                }
+            }
+
+            /// <summary>The point furthest outside the surface, and the face holding it.</summary>
+            private Face? Furthest()
+            {
+                Face? best = null;
+
+                foreach (Face face in _faces)
+                {
+                    if (!face.Dead && face.Furthest >= 0 && (best is null || face.Reach > best.Reach))
+                        best = face;
+                }
+
+                return best;
+            }
+
+            private Face Add(int a, int b, int c)
+            {
+                var face = new Face { Id = _faces.Count, A = a, B = b, C = c };
+
+                NifVector3 p = _points[a], q = _points[b], r = _points[c];
+
+                double ux = (double)q.X - p.X, uy = (double)q.Y - p.Y, uz = (double)q.Z - p.Z;
+                double vx = (double)r.X - p.X, vy = (double)r.Y - p.Y, vz = (double)r.Z - p.Z;
+
+                double nx = uy * vz - uz * vy;
+                double ny = uz * vx - ux * vz;
+                double nz = ux * vy - uy * vx;
+
+                double length = Math.Sqrt(nx * nx + ny * ny + nz * nz);
+
+                if (length > 0)
+                {
+                    nx /= length;
+                    ny /= length;
+                    nz /= length;
+                }
+
+                face.Nx = nx;
+                face.Ny = ny;
+                face.Nz = nz;
+                face.D = -(nx * p.X + ny * p.Y + nz * p.Z);
+
+                _faces.Add(face);
+
+                return face;
+            }
+
+            /// <summary>How far a point reaches past a face's plane.</summary>
+            private double Height(Face face, int point)
+            {
+                NifVector3 p = _points[point];
+
+                return face.Nx * p.X + face.Ny * p.Y + face.Nz * p.Z + face.D;
+            }
+
+            /// <summary>Six times the signed volume of the tetrahedron on four points.</summary>
+            private double Volume(int a, int b, int c, int d)
+            {
+                NifVector3 p = _points[a], q = _points[b], r = _points[c], s = _points[d];
+
+                double ux = (double)q.X - p.X, uy = (double)q.Y - p.Y, uz = (double)q.Z - p.Z;
+                double vx = (double)r.X - p.X, vy = (double)r.Y - p.Y, vz = (double)r.Z - p.Z;
+                double wx = (double)s.X - p.X, wy = (double)s.Y - p.Y, wz = (double)s.Z - p.Z;
+
+                return wx * (uy * vz - uz * vy)
+                     + wy * (uz * vx - ux * vz)
+                     + wz * (ux * vy - uy * vx);
+            }
+
+            /// <summary>
+            /// Joins faces along the edges they share.
+            /// </summary>
+            /// <remarks>
+            /// An edge belongs to exactly two triangles, and they traverse it in
+            /// opposite directions — so a directed edge names one of the pair and its
+            /// reverse names the other.
+            /// </remarks>
+            private void Link(IReadOnlyList<Face> among)
+            {
+                var seen = new Dictionary<(int, int), (Face Face, int Edge)>();
+
+                foreach (Face face in among)
+                {
+                    if (face.Dead)
+                        continue;
+
+                    for (int edge = 0; edge < 3; edge++)
+                    {
+                        int from = face.Vertex(edge);
+                        int to = face.Vertex((edge + 1) % 3);
+
+                        if (seen.Remove((to, from), out (Face Face, int Edge) other))
+                        {
+                            face.Beyond[edge] = other.Face.Id;
+                            other.Face.Beyond[other.Edge] = face.Id;
+                        }
+                        else
+                        {
+                            seen[(from, to)] = (face, edge);
+                        }
+                    }
+                }
             }
         }
 
@@ -685,7 +968,7 @@ namespace SECmd.Conversion
 
             float extent = MathF.Max(maxX - minX, MathF.Max(maxY - minY, maxZ - minZ));
 
-            return MathF.Max(extent * 1e-5f, 1e-9f);
+            return MathF.Max(extent * HullScale, 1e-9f);
         }
 
         /// <summary>
@@ -713,7 +996,7 @@ namespace SECmd.Conversion
             }
 
             float extent = MathF.Max(maxX - minX, MathF.Max(maxY - minY, maxZ - minZ));
-            float tolerance = MathF.Max(extent * 1e-5f, 1e-9f);
+            float tolerance = MathF.Max(extent * MergeScale, 1e-9f);
 
             var seen = new HashSet<(int, int, int)>();
             var kept = new List<NifVector3>(points.Count);
@@ -733,42 +1016,61 @@ namespace SECmd.Conversion
         }
 
         /// <summary>
-        /// Finds four points that are not coplanar, to seed the hull.
+        /// Four points spanning a volume, or none when the set is flat.
         /// </summary>
+        /// <remarks>
+        /// Taken as far apart as the set allows — the two furthest from each other,
+        /// then the one furthest off their line, then the one furthest off their
+        /// plane. The seed's shape is what every later comparison is measured against,
+        /// and a sliver makes every point look as though it is on the surface already.
+        ///
+        /// Every threshold here is relative to the shape, where they were absolute — a
+        /// point had to be 1e-9 off the plane of the other three to count. An absolute
+        /// figure means nothing against a shape whose size it does not know: it is
+        /// below the hull's own tolerance on anything large, which lets a tetrahedron
+        /// seed flatter than the surface it is seeding, and no point is ever outside
+        /// such a thing. `dwecog01`, a disc 0.6 across and 2.4e-7 thick, came back as 4
+        /// of its 48 corners that way.
+        ///
+        /// Most of that particular repair was the hull tolerance rather than this — see
+        /// <see cref="HullScale"/> — and measured against the corpus this is worth a
+        /// third of a percent of shapes on its own. It is here because a threshold that
+        /// cannot see the shape it is judging is wrong whether or not it is currently
+        /// costing anything.
+        /// </remarks>
         private static bool FindInitialTetrahedron(IReadOnlyList<NifVector3> points, out int[] seed)
         {
             seed = [];
 
-            // Two points that are actually distinct.
-            int a = 0;
-            int b = -1;
+            float tolerance = Tolerance(points);
 
-            for (int i = 1; i < points.Count; i++)
-            {
-                if (DistanceSquared(points[a], points[i]) > 1e-12f)
-                {
-                    b = i;
-                    break;
-                }
-            }
+            // The two furthest apart, near enough: whatever is furthest from an
+            // arbitrary point, then whatever is furthest from that.
+            int a = FurthestFrom(points, 0);
+            int b = FurthestFrom(points, a);
 
-            if (b < 0)
+            float span = DistanceSquared(points[a], points[b]);
+
+            if (span <= tolerance * tolerance)
                 return false;
 
-            // A third that is off that line.
+            span = MathF.Sqrt(span);
+
+            // The third, furthest off the line through the first two. The cross
+            // product's length over the base is that distance.
             int c = -1;
-            float best = 1e-12f;
+            float best = tolerance;
 
             for (int i = 0; i < points.Count; i++)
             {
                 if (i == a || i == b)
                     continue;
 
-                float area = TriangleAreaSquared(points[a], points[b], points[i]);
+                float height = MathF.Sqrt(TriangleAreaSquared(points[a], points[b], points[i])) / span;
 
-                if (area > best)
+                if (height > best)
                 {
-                    best = area;
+                    best = height;
                     c = i;
                 }
             }
@@ -776,20 +1078,20 @@ namespace SECmd.Conversion
             if (c < 0)
                 return false;
 
-            // A fourth off that plane.
+            // The fourth, furthest off the plane of the other three.
             int d = -1;
-            best = 1e-9f;
+            best = tolerance;
 
             for (int i = 0; i < points.Count; i++)
             {
                 if (i == a || i == b || i == c)
                     continue;
 
-                float volume = MathF.Abs(SignedDistance(points, (a, b, c), points[i]));
+                float height = MathF.Abs(SignedDistance(points, (a, b, c), points[i]));
 
-                if (volume > best)
+                if (height > best)
                 {
-                    best = volume;
+                    best = height;
                     d = i;
                 }
             }
@@ -799,6 +1101,26 @@ namespace SECmd.Conversion
 
             seed = [a, b, c, d];
             return true;
+        }
+
+        /// <summary>The index of the point furthest from the one given.</summary>
+        private static int FurthestFrom(IReadOnlyList<NifVector3> points, int from)
+        {
+            int best = from;
+            float far = -1f;
+
+            for (int i = 0; i < points.Count; i++)
+            {
+                float distance = DistanceSquared(points[from], points[i]);
+
+                if (distance > far)
+                {
+                    far = distance;
+                    best = i;
+                }
+            }
+
+            return best;
         }
 
         /// <summary>How far a point lies on the outward side of a face's plane.</summary>
