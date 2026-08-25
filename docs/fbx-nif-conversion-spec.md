@@ -58,8 +58,16 @@ Havok data is in metres, NIF in Skyrim units.
 - NIF → FBX: multiply by `bhkScaleFactor` (from the file, nominally `69.99125`).
 - FBX → NIF: multiply by `bhkScaleFactorInverse = 0.01428f` (L4894).
 
-These are not exact reciprocals in the original; the constants are reproduced as
-written.
+These are not exact reciprocals: the pair keeps 99.9475% of every coordinate.
+
+**This port divides by `bhkScaleFactor` instead — a deliberate departure.** The error is
+a fixed fraction, so it is invisible on a small shape and grows with a large one: it
+moved every corner of every convex shape in the game, by three hundredths of a unit on a
+mill pond fifty units across. Nothing that went out came back, however faithful the hull
+was, and no fixture could show it — the only convex hull among them is three hundredths
+of a unit across and moved by seven millionths. A shape authored in a DCC tool now lands
+0.05% from where ck-cmd would put it, well under the tolerance anything here is measured
+to; a shape that came out of a NIF lands back on itself.
 
 ---
 
@@ -1421,46 +1429,80 @@ collection would index its children by numbers that no longer mean what they did
 
 #### 5.7.0B The convex hull, and what quantised points do to it
 
-The hull is incremental: seed a tetrahedron, then for each further point remove the faces
-it can see and stitch the resulting boundary to it. That is correct for points in general
-position, and collision points are not in general position — the game stores them
-quantised, so corners that were distinct in the authoring tool arrive equal.
+**The corners of a `bhkConvexVerticesShape` are already a hull.** NifSkope authors them
+by calling Qhull (`qhull i Qt E<roundoff>`, `src/lib/qhull.cpp`) and the game ships what
+Qhull returned. So taking the hull of them again must return every one of them: the hull
+of a hull is that hull, and any corner that does not come back is a defect. That is the
+property this port is measured on, because it is the one the round trip depends on.
 
-`snowdriftm01int.nif` is eight blocks with one collision shape, a 222-point hull. It
-produced **309,394 faces**, where a hull of 222 points has at most 2n−4 = 440, and a
-sweep of the corpus spent three and a half hours on that one mesh. Three things came out
-of it.
+It was not holding. Across the game's 3,516 convex shapes, one in seven lost at least one
+corner and one in five produced an unclosed surface — which for a collision hull means it
+leaks. `snowdriftm01int.nif`, a 222-point hull, produced **309,394 faces** where 2n−4 =
+440, and a corpus sweep spent three and a half hours on that one mesh.
 
-**A face with no area has no distance, not a distance of zero.** `SignedDistance`
-returned zero for a degenerate face, and zero reads as "the point lies exactly on it" —
-so a sliver was visible from nowhere, nothing ever removed it, and every later point
-stitched its edges onto a hole that never closed. It returns `NaN` now, and a face
-nothing can judge is removed rather than kept.
+**The horizon must be walked, not deduced.** Visibility was decided for each face on its
+own and the boundary recovered by cancelling shared edges — which is the horizon only if
+the visible faces form one connected patch. Quantised input makes neighbouring faces
+disagree about a point lying almost exactly in their shared plane; the visible set comes
+apart into islands, the surviving edges are several loops rather than one, and fanning
+across all of them leaves holes. Faces therefore carry their neighbours, and the visible
+region is grown outward from a single face through adjacency: connected by construction,
+so its boundary is one loop whatever the arithmetic says.
 
-**Tolerances are relative to the shape.** A Havok shape may be a centimetre across or ten
-metres; an absolute `1e-6` is meaningless on one and ruinous on the other. Both the
-merging of near-duplicate points and the test for "is this point outside at all" scale
-with the extent.
+**The furthest point goes in first**, which keeps every sign away from the margin, and
+the determinants are evaluated in `double`, where the inputs being `float` makes the
+subtractions exact. Together these do the work that adaptive orientation predicates would
+otherwise be needed for; neither Qhull's merged-facet machinery nor exact arithmetic is
+required at this precision.
 
-**A hull with more than 2n faces has stopped being a hull**, so the construction stops
-rather than going on being wrong more expensively.
+**Tolerances are relative to the shape, and small.** A Havok shape may be a centimetre
+across or ten metres, so an absolute figure is meaningless on one and ruinous on the
+other. But the size matters as much as the scaling: a tolerance set for *reducing* a
+cloud to a hull shaves the shallowest corners off one that is already a hull. At a
+hundred-thousandth of the shape, one convex shape in seven lost a corner. It is now a
+thousand-millionth for "is this point outside at all", and a hundred-millionth for "are
+these two corners the same corner" — the latter cannot be exact-match only, because a
+pair a hair apart makes a face with no usable normal and an unclosed surface around it.
+
+NifSkope's own default is far coarser (a roundoff of 0.25 game units) because it is doing
+the opposite job: reducing a dense mesh to a hull an author wants small, shedding corners
+on purpose.
+
+**A wide, thin shape is flat, not a sliver.** The seed thresholds were absolute, so a
+point 2.4e-7 off the plane of three others counted as the fourth corner of a tetrahedron
+— flatter than the tolerance the hull then worked to, so nothing was ever outside it and
+the construction stopped at once. `dwecog01` is a disc 0.6 across and 2.4e-7 thick; its
+48 corners came back as the seed's 4. The thresholds are relative now, and a shape that
+thin goes to the flat case.
 
 Merging cuts both ways, and the other edge is a **sliver**. A daedric mace's haft
 collision is eight points describing something half a metre long and *two microns* thick;
 every one of them merges onto one of two ends, which is not enough for a surface. It is
 still the collision the game ships, so where merging leaves too few points the unmerged
-ones are what the flat case works from. Three vanilla weapons were losing a shape that
-way — and had been long before any of this, since the seed search needs a triangle of
-area² above 1e-12 and a sliver's is 6e-14.
+ones are what the flat case works from.
 
-That last one is a **backstop, not a cure**, and this mesh still trips it: what comes back
-is a hull of some of the points rather than all of them. The remaining defect is in the
-horizon extraction, which assumes the visible faces form one connected region — it cancels
-shared edges and treats the rest as a single loop. Where the tolerance makes visibility
-inconsistent between neighbouring faces, the visible set can be disconnected, the boundary
-is then several loops, and fanning across all of them leaves a surface that is not closed.
-Fixing it properly means per-face conflict lists and adaptive predicates, so neighbours
-decide visibility consistently rather than independently. Listed in §7.3.
+Measured over every convex shape in the game:
+
+| | Before | After |
+| --- | --- | --- |
+| Shapes keeping every corner | 85.7% | 99.0% |
+| Corners kept overall | 96.9% | 99.9% |
+| Closed surfaces | 79.1% | 99.7% |
+| Worst case | 309,394 faces, 3.5 hours | 648 faces, 24 ms |
+
+Every remaining unclosed result is a deliberate two-sided flat sheet. The residual
+corner losses are a few shapes losing one or two near-coplanar corners each — 78 corners
+in 94,219.
+
+**A `bhkConvexVerticesShape`'s stored planes are not a usable face decomposition.** It
+carries `Normals` as well as `Vertices`, and tessellating from them directly is exact
+where they are clean — `snowdriftm01int`'s 113 planes each support their corners to
+within float noise, one convex radius inside them. It does not generalise: only 1,695 of
+3,516 shapes offset every plane by the radius, a third carry at least one plane that
+supports fewer than three corners (`1stpersonnordicbattleaxe` has one three quarters of a
+metre clear of the shape, bounding it without being a face of it), and no tolerance
+brings plane-derived tessellation above 44% closed against the computed hull's 99.7%.
+Measured and rejected; do not try it again.
 
 #### 5.7.1 Convex hull plane equations
 
@@ -2319,7 +2361,7 @@ Real gaps, each with its reason recorded where it bites.
 | What | Consequence | Where |
 | --- | --- | --- |
 | A controller with no interpolator, outside a particle system | Not recognised as animation, and only particle systems carry these structurally so far | §5A.6, §4.9A |
-| Completeness of a convex hull over near-degenerate points | The incremental construction can leave the surface unclosed when quantised points make visibility inconsistent between neighbouring faces. It now stops instead of growing without bound, so the hull is of *some* of the points; one vanilla mesh is known to hit it | §5.7.0B |
+| Corners of a convex hull over near-degenerate points | The hull returns every corner for 99.0% of the game's convex shapes and 99.9% of all corners; the rest lose one or two near-coplanar corners each, 78 in 94,219. A corner within a thousand-millionth of the shape of a face it does not form is treated as lying on it | §5.7.0B |
 | Shared key data behind same-named controllers | Two interpolators sharing one data block stay shared only when the track's encoded name picks out one controller. Where a node carries several of one class with no ids, the name cannot say which is which, and each gets its own block — one vanilla sky gains two | §5A.6 |
 | Array order within a rebuilt convex hull | The vertices and planes agree, but arrive in the fit's order rather than Havok's, which nif.xml says is lexicographic | §5.7.1 |
 | The second and later materials of a multi-material render mesh | A NIF shape has one material, and the import keeps the first rather than splitting the mesh into one shape per material. Authoring means splitting it in the DCC tool | §5.3.4 |
