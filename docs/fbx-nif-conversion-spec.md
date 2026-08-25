@@ -572,7 +572,9 @@ adds a bone (skipped for nodes containing `_attach_`).
 
 - UVs: `InvertV` defaults **true**, `InvertU` false, applied to the whole direct array
   up front.
-- `GenerateTangentsDataForAllUVSets()` is called, then tangents/binormals are read.
+- `GenerateTangentsDataForAllUVSets()` is called, then tangents/binormals are read. The
+  call defaults to `pOverwrite = false`, so a tangent space already in the file is kept
+  and only a missing one is generated (§5.3.1).
 - Per polygon (skipping any with size ≠ 3) and per corner, attributes are fetched with
   `get_vertex_element`, which respects `eByControlPoint` / `eByPolygon` /
   `eByPolygonVertex` mapping and `eDirect` / index reference modes.
@@ -957,11 +959,40 @@ data->SetBsVectorFlags(... | BSVF_HAS_TANGENTS);
 The comment reads `//switched to uniform with nifskope`. FBX's binormal becomes the
 NIF's tangent and vice versa.
 
+**That call preserves what the file already has.** Its signature is
+`GenerateTangentsDataForAllUVSets(bool pOverwrite = false, ...)`, and the SDK header
+states the default outright: *"If true, re-generate tangents data regardless of
+availability, otherwise **left untouched if exist**."* ck-cmd passes no arguments, so an
+FBX that carries a tangent space keeps it and only one that does not has it generated.
+Tangents are then written only when vertices, triangles *and* UVs are all present —
+without UVs ck-cmd writes neither tangents nor normals.
+
 This port has no FBX SDK, and generates the frame directly from NifSkope's
 `spTangentSpace` (`src/spells/tangentspace.cpp`) instead. That is the better source:
 NifSkope both writes these and renders from them, so its pairing of the two vectors is
 self-consistent, and generating them its way makes ck-cmd's swap unnecessary rather than
-something to reproduce.
+something to reproduce — the swap exists because the SDK hands ck-cmd vectors in its own
+convention, and there is no SDK here to disagree with.
+
+**Where this port is *less* conservative than ck-cmd, and knowingly so.** Generation runs
+whenever the mesh has UVs (`FbxToNif.BuildShape`), and `TangentSpace.Generate` begins by
+clearing both arrays — so a tangent space the FBX carried is read by `FbxMeshReader`,
+kept through the vertex weld, and then discarded. ck-cmd would have kept it. The two also
+disagree the other way round in the rare case of a mesh with no UVs at all, where this
+port writes the tangents it read and ck-cmd writes none.
+
+The stated reason — that FBX tangents "were split for FBX's own vertex layout" — does not
+survive inspection. The weld key includes tangent and bitangent (§5.3), exactly as
+ck-cmd's does, so every vertex written to the NIF carries one consistent tangent and the
+mapping is well defined. Regeneration is a choice, not a necessity.
+
+It is the wrong choice for one real workflow. A normal map baked in Substance Painter or
+xNormal is baked against a **MikkTSpace** basis; NifSkope's algorithm is not MikkTSpace,
+so regenerating replaces the basis the map was authored against and the shading is wrong
+in a way that reads as a bad bake rather than as a converter fault. Nothing in the corpus
+sweep can see it: neither tool writes tangents *into* an FBX, so a NIF → FBX → NIF trip
+regenerates at both ends regardless, and no fixture FBX carries a tangent layer element.
+Listed in §7.3.
 
 Two departures from the textbook algorithm are deliberate in the original and are kept:
 
@@ -2013,6 +2044,11 @@ never when the thing can be derived from what is already there. So the mesh carr
 copy of its own vertices, the tangent space is regenerated rather than carried (§5.3.1),
 and `BSXFlags` is recalculated rather than carried (`bsxflags-spec.md`).
 
+The tangent space is the one place this rule is applied too widely. It is derivable, so
+nothing needs to *carry* it — but an FBX that arrives with one is stating something the
+geometry does not imply, namely the basis its normal maps were baked against, and that is
+not ours to recompute. See §5.3.1 and §7.3.
+
 Where a value is both meaningful to an artist *and* needed exactly, it is written twice:
 once in FBX's own vocabulary so the scene looks right, and once as a property so the
 rebuild is exact. The collision material (§4.8), the effect shader (§5.3.2) and the
@@ -2361,7 +2397,7 @@ the thing most likely to be stale.
 | What | Where |
 | --- | --- |
 | `BSXFlags` | `bsxflags-spec.md`; every bit is a fact about the block graph |
-| Tangent space | §5.3.1, from NifSkope's algorithm |
+| Tangent space | §5.3.1, from NifSkope's algorithm — including when the FBX supplied one, which ck-cmd would have kept |
 | Inertia tensors | §5.7.2, from the mass and the shape |
 | Convex hull planes | §5.7.1, from the hull |
 | Collision shape size | §4.8; refitted from the tessellated geometry, so a DCC edit wins |
@@ -2384,6 +2420,7 @@ Real gaps, each with its reason recorded where it bites.
 
 | What | Consequence | Where |
 | --- | --- | --- |
+| A tangent space the FBX arrived with | Overwritten with NifSkope's, where ck-cmd's SDK call would have kept it (`pOverwrite = false`). Harmless for anything that came from a NIF — neither tool writes tangents into an FBX, so a round trip regenerates at both ends — and wrong for a mesh authored in a DCC: a normal map baked against MikkTSpace is re-based against a different algorithm, and reads as a bad bake rather than a converter fault. The fix is to make generation the fallback (`mesh.HasUvs && !mesh.HasTangents`) rather than the default; what is unresolved is which handedness a preserved FBX tangent should be written with, since ck-cmd's swap exists to reorient SDK-convention vectors and no fixture carries an authored tangent to check against | §5.3.1 |
 | A controller with no interpolator, outside a particle system | Not recognised as animation, and only particle systems carry these structurally so far | §5A.6, §4.9A |
 | Corners of a convex hull over near-degenerate points | The hull returns every corner for 99.0% of the game's convex shapes and 99.9% of all corners; the rest lose one or two near-coplanar corners each, 78 in 94,219. A corner within a thousand-millionth of the shape of a face it does not form is treated as lying on it | §5.7.0B |
 | Shared key data behind same-named controllers | *Closed.* Two interpolators sharing one data block stay shared when the track's encoded name picks out one controller, which it now does for shader controllers: they carry the variable they drive, so a node's several controllers of one class are no longer all called the same thing. Only 3 of the game's 22,047 meshes share a `NiFloatData` at all | §5A.6 |
@@ -2520,7 +2557,7 @@ Reproduced only where behaviour depends on them; otherwise fixed and noted.
 
 | Area | Decision |
 | --- | --- |
-| FBX library | MeshIO's raw node layer, with scene semantics written here. No FBX SDK, so `EvaluateGlobalTransform`, `GenerateTangentsDataForAllUVSets`, `SplitMeshesPerMaterial`, `Triangulate` and `CreateMissingBindPoses` must be implemented directly. |
+| FBX library | MeshIO's raw node layer, with scene semantics written here. No FBX SDK, so `EvaluateGlobalTransform`, `GenerateTangentsDataForAllUVSets`, `SplitMeshesPerMaterial`, `Triangulate` and `CreateMissingBindPoses` must be implemented directly. Only the *generating* half of the tangent call was reimplemented; its "leave what is already there" half was not, which is §7.3's entry. |
 | ASCII FBX output | Not supported; MeshIO's ASCII writer emits invalid escapes. Binary only, which is what the reference emits anyway. |
 | Miniball | Replaced with an equivalent bounding-sphere routine. |
 | Havok | No SDK link. MOPP generation goes through `NifMopp.dll` as NifSkope does; shape tessellation and convex hulls are implemented directly. See §8. |
@@ -2529,7 +2566,7 @@ Reproduced only where behaviour depends on them; otherwise fixed and noted.
 | `bhkNiTriStripsShape` | Converted (§4.8, §5.7.3). ck-cmd has no case for it, so the LE-era mesh collision left with no geometry and the body was lost with it. The seams between its several `NiTriStripsData` blocks travel as properties, since FBX has one mesh per node. |
 | Cylinders and flat hulls | Converted (§5.7.0A). ck-cmd has no `bhkCylinderShape` case, and a hull with no volume has no tetrahedron to seed from, so in both cases the shape tessellated to nothing and the body and collision object above it were lost with it. |
 | Effect shaders | Carried in both directions (§4.3.1, §5.3.2). The reference drops them: its export casts to `BSLightingShaderProperty` and takes the null, its import only builds lighting shaders. |
-| Tangent space | Generated from NifSkope's `spTangentSpace` (§5.3.1) rather than obtained from the FBX SDK, which also removes the need for ck-cmd's tangent/binormal swap. |
+| Tangent space | Generated from NifSkope's `spTangentSpace` (§5.3.1) rather than obtained from the FBX SDK, which also removes the need for ck-cmd's tangent/binormal swap. **Not a departure to be proud of in one respect**: ck-cmd's SDK call keeps a tangent space the FBX already had and this port regenerates over it. See §7.3. |
 | Inertia tensors | Computed directly (§5.7.2) rather than obtained from Havok, and held to the numbers ck-cmd's generated files carry. |
 | Node kinds | The NIF block type of every node, and of the root, travels in a `nif_block_type` property. FBX has one kind of node; NIF has a dozen that differ in what the engine does with them. The root matters most: `BSXFlags` asks twice whether it is exactly `NiNode` (see `bsxflags-spec.md` §3.2, §3.4), so flattening it changes what the file claims about itself. |
 | `bhkCOFlags` | Carried in a `nif_collision_flags` property rather than derived from the layer. ck-cmd derives them because an FBX authored in a DCC tool has none to carry; carrying wins where the data exists, and the derivation remains the fallback. |
