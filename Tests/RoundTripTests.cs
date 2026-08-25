@@ -547,6 +547,58 @@ namespace SECmd.Tests
                     : [];
         }
 
+        /// <summary>
+        /// Fixtures whose shader controllers are all reachable from the root.
+        /// </summary>
+        /// <remarks>
+        /// `TestNifFile_LooseBlocks_SE` is deliberately not here. Two of its three
+        /// shader properties are owned by nothing at all — that is what the fixture is
+        /// for — and a controller on a property no geometry references does not survive
+        /// a scene it was never in. That drop predates this and is unchanged by it:
+        /// three become one either way. It is a question about loose blocks, not about
+        /// what a controller drives.
+        /// </remarks>
+        public static TheoryData<string> ShaderControllerFiles() => new(
+            "nifly/TestNifFile_OrderedNode_SE.nif",
+            "nifly/TestNifFile_Animated_LE.nif");
+
+        [Theory]
+        [MemberData(nameof(ShaderControllerFiles))]
+        public void AShaderControllerKeepsTheVariableItDrives(string name)
+        {
+            // A `BSEffectShaderPropertyFloatController` says which of its shader
+            // property's floats it animates -- emissive multiple, alpha, a UV offset --
+            // and that number is the whole of what the controller is for. Nothing
+            // carried it, so every one of them came back driving variable 0: a fade
+            // curve rebuilt as an emissive curve, on 11,140 of the game's 13,244 shader
+            // controllers.
+            //
+            // No count of blocks can see this. The rebuilt file has exactly the
+            // controllers the original had, pointed at exactly the right interpolators,
+            // and every one of them aimed at the wrong thing -- which is why it sat
+            // undisturbed under a divergence that *was* visible, dlceclipsesky's
+            // twenty-five NiFloatData coming back as twenty-seven. Both are the same
+            // missing id: with nothing to tell two controllers on a node apart, neither
+            // the variable nor the data they share can be keyed to one of them.
+            NifModel source = Load(name);
+
+            static List<uint> Variables(NifModel m) => m.Blocks
+                .Select(b => NifAnimAccess.ControlledVariable(m, b))
+                .Where(f => f is not null)
+                .Select(f => f!.Value.ToUInt())
+                .OrderBy(v => v)
+                .ToList();
+
+            List<uint> before = Variables(source);
+
+            Assert.NotEmpty(before);
+
+            // A fixture where every one is zero would pass whatever the code did.
+            Assert.Contains(before, v => v != 0);
+
+            Assert.Equal(before, Variables(RoundTrip(source)));
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

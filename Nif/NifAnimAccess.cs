@@ -350,16 +350,52 @@ namespace SECmd.Nif
         /// keys them all to one slot and rebuilds one controller where there were
         /// four — which is what halved the bool interpolators of every effect mesh
         /// that has more than one emitter.
+        ///
+        /// A shader property controller's id is **which of its host's variables it
+        /// drives**. nif.xml does not say so — it declares no `ctlrid` for these
+        /// classes — but the game does: a `NiControllerSequence` writes the number the
+        /// `Controlled Variable` field holds as the block's `Controller ID`, the same
+        /// way round in all 23,615 sequenced shader blocks the game ships. So this is
+        /// the format's own convention rather than one invented here, and reading it
+        /// makes the standalone controllers agree with the sequenced ones instead of
+        /// carrying nothing.
+        ///
+        /// Without it every such controller is called the same thing. A node with four
+        /// of them offers four properties named `BSEffectShaderPropertyFloatController`
+        /// and nothing can tell which is which: the interpolator data they share cannot
+        /// be keyed, and — much worse — the variable each one drives is not carried at
+        /// all, so 11,140 of the game's 13,244 shader controllers came back driving
+        /// variable 0. A fade curve became an emissive curve, and no count of blocks
+        /// could see it.
         /// </remarks>
         private static string ControllerIdOf(NifModel model, NifItem controller)
         {
             if (model.BlockInherits(controller, "NiFloatExtraDataController"))
                 return model.GetString(controller, "Extra Data Name");
 
+            if (ControlledVariable(model, controller) is { } controlled)
+            {
+                return controlled.Value.ToUInt()
+                    .ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+
             return model.BlockInherits(controller, "NiPSysModifierCtlr")
                 ? model.GetString(controller, "Modifier Name")
                 : string.Empty;
         }
+
+        /// <summary>
+        /// The field naming which of a shader property's variables a controller drives.
+        /// </summary>
+        /// <remarks>
+        /// Five classes have one — the float, colour and ushort controllers over the
+        /// effect and lighting shader properties — and they spell it two ways. Found by
+        /// the field rather than by a list of class names, so a class this port has not
+        /// met is covered as long as nif.xml gives it the same field.
+        /// </remarks>
+        internal static NifItem? ControlledVariable(NifModel model, NifItem controller) =>
+            model.FindItem(controller, "Controlled Variable")
+            ?? model.FindItem(controller, "Controlled Color");
 
         /// <summary>The interpolator fields a controller holds, and what each drives.</summary>
         /// <remarks>

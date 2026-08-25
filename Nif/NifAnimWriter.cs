@@ -541,12 +541,35 @@ namespace SECmd.Nif
         /// <remarks>
         /// nif.xml states the field per class, as what
         /// <c>NiInterpController::GetCtlrID()</c> returns: a particle modifier
-        /// controller finds its modifier by name, an extra-data controller its data.
+        /// controller finds its modifier by name, an extra-data controller its data,
+        /// and a shader property controller names the variable it drives — a number
+        /// rather than a name, which is how the game writes it into a sequence.
+        ///
+        /// The mirror of <see cref="NifAnimAccess.ControllerIdOf"/>. Nothing wrote the
+        /// controlled variable before this, so every shader controller was rebuilt
+        /// driving variable 0 whatever it had driven.
         /// </remarks>
         private static void WriteControllerId(NifModel model, NifItem controller, string id)
         {
             if (id.Length == 0)
                 return;
+
+            if (NifAnimAccess.ControlledVariable(model, controller) is { } controlled)
+            {
+                // A sequence that named this controller some other way is left alone
+                // rather than having a number invented for it: the field has a meaning
+                // and a wrong one aims the animation at the wrong variable.
+                if (uint.TryParse(
+                        id,
+                        System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out uint variable))
+                {
+                    controlled.Value.SetCount(variable);
+                }
+
+                return;
+            }
 
             string field = model.FindItem(controller, "Modifier Name") is not null
                 ? "Modifier Name"
