@@ -139,6 +139,25 @@ namespace SECmd.Tests
         // --- convex hull ------------------------------------------------------
 
         [Fact]
+        public void TheHavokScaleFactorsAreReciprocals()
+        {
+            // Havok works in metres and the rest of a NIF in Skyrim units, so collision
+            // geometry is scaled on the way out and back. ck-cmd writes the return trip
+            // as a literal 0.01428, which is not the reciprocal of the 69.99125 it
+            // multiplied by: the pair keeps only 99.9475% of every coordinate.
+            //
+            // That is invisible in any one shape and fatal across the corpus -- it
+            // moved every corner of every convex shape in the game, by three hundredths
+            // of a unit on the largest, so nothing round-tripped unchanged however
+            // faithful the hull was. It is the one number here that scales with the
+            // shape, which is why no fixture caught it.
+            float there = ShapeTessellator.BhkScaleFactor;
+            float back = ShapeTessellator.BhkScaleFactorInverse;
+
+            Assert.Equal(1.0, there * (double)back, 6);
+        }
+
+        [Fact]
         public void HullOfACubesCornersIsThatCube()
         {
             NifVector3[] corners =

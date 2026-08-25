@@ -87,9 +87,10 @@ namespace SECmd.Tests
             ["Bounding Sphere"] = "recomputed rather than carried",
             ["Center"] = "recomputed rather than carried",
             // The hull is refitted, so its vertices and planes come back in the order
-            // the fit produced rather than the order Havok emitted. The values agree:
-            // the plane convention is checked directly, against a shipped hull, in
-            // ConvexHullPlaneTests.
+            // the fit produced rather than the order Havok emitted. Only the *order*
+            // is excused: that the corners themselves all come back is asserted by
+            // AConvexHullKeepsEveryCorner below, and the plane convention is checked
+            // against a shipped hull in ConvexHullPlaneTests.
             ["Vertices"] = "convex hull refitted from the tessellation, so the order differs",
             ["Normals"] = "convex hull refitted from the tessellation, so the order differs",
         };
@@ -476,6 +477,74 @@ namespace SECmd.Tests
             }
 
             return placements;
+        }
+
+        [Theory]
+        [MemberData(nameof(CkCmdExamples))]
+        public void AConvexHullKeepsEveryCorner(string name)
+        {
+            // The corners of a `bhkConvexVerticesShape` are not a point cloud to be
+            // reduced: they are already a hull, the one Qhull gave NifSkope when the
+            // shape was authored. So taking the hull of them again has to give every
+            // one of them back, and a round trip has to return the shape it was handed.
+            //
+            // Nothing checked this. `Vertices` sits in KnownGaps because the *order*
+            // changes, and that excused the values along with it -- a hull that
+            // silently dropped corners passed. It was dropping them: `dwecog01` is a
+            // disc a fifth of a millimetre thick, which seeded a tetrahedron flatter
+            // than the hull's own tolerance and came back as 4 of its 48 corners, and
+            // a mill pond's corners each moved three hundredths of a unit because the
+            // two Havok scale factors are not reciprocals.
+            NifModel source = Load(name);
+
+            var hulls = source.Blocks.Where(b => b.Name == "bhkConvexVerticesShape").ToList();
+
+            if (hulls.Count == 0)
+                return;
+
+            NifModel rebuilt = RoundTrip(source);
+
+            var after = rebuilt.Blocks.Where(b => b.Name == "bhkConvexVerticesShape").ToList();
+
+            Assert.Equal(hulls.Count, after.Count);
+
+            for (int i = 0; i < hulls.Count; i++)
+            {
+                List<NifVector4> before = Corners(source, hulls[i]);
+                List<NifVector4> now = Corners(rebuilt, after[i]);
+
+                // Relative to the shape, not absolute. The only fixture with a hull is
+                // three hundredths of a unit across, and the scale bug moved its
+                // corners by seven millionths -- under any fixed tolerance worth
+                // writing, and a fifth of a percent of the shape.
+                float extent = MathF.Max(
+                    before.Max(v => v.X) - before.Min(v => v.X),
+                    MathF.Max(
+                        before.Max(v => v.Y) - before.Min(v => v.Y),
+                        before.Max(v => v.Z) - before.Min(v => v.Z)));
+
+                float slack = MathF.Max(extent * 1e-5f, 1e-9f);
+
+                var lost = before
+                    .Where(v => !now.Any(u =>
+                        MathF.Abs(u.X - v.X) < slack
+                        && MathF.Abs(u.Y - v.Y) < slack
+                        && MathF.Abs(u.Z - v.Z) < slack))
+                    .ToList();
+
+                Assert.True(lost.Count == 0,
+                    $"{name}: {lost.Count} of {before.Count} corners did not come back, "
+                    + $"first ({lost.FirstOrDefault().X}, {lost.FirstOrDefault().Y}, {lost.FirstOrDefault().Z})");
+
+                // And nothing invented: a hull that gained corners is refitting from a
+                // tessellation that is not the shape.
+                Assert.Equal(before.Count, now.Count);
+            }
+
+            static List<NifVector4> Corners(NifModel model, NifItem shape) =>
+                model.FindItem(shape, "Vertices") is { } array
+                    ? array.Children.Select(v => v.Value.Get<NifVector4>()).ToList()
+                    : [];
         }
 
         [Fact]

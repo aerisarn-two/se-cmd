@@ -23,8 +23,23 @@ namespace SECmd.Conversion
         /// </summary>
         public const float BhkScaleFactor = 69.99125f;
 
-        /// <summary>Its inverse as FBXWrangler spells it, which is not exact.</summary>
-        public const float BhkScaleFactorInverse = 0.01428f;
+        /// <summary>Its reciprocal, for the journey back.</summary>
+        /// <remarks>
+        /// FBXWrangler spells this as a literal `0.01428f`, which is *not* the
+        /// reciprocal of the factor it multiplied by. The pair keeps 99.9475% of every
+        /// collision coordinate per round trip — on a mill pond fifty units across,
+        /// nearly three hundredths of a unit — so no convex shape in the game came back
+        /// where it started. It is the one error here that scales with the shape, which
+        /// is why no fixture ever caught it: the only hull among them is three
+        /// hundredths of a unit across, and moved by seven millionths.
+        ///
+        /// **A deliberate departure from ck-cmd**, and one the knowledge base's §4.1
+        /// already asks for: multiply going out, divide coming back. A shape authored
+        /// in a DCC tool now lands 0.05% from where ck-cmd would put it, well under the
+        /// tolerance anything here is measured to; a shape that came out of a NIF lands
+        /// back on itself.
+        /// </remarks>
+        public const float BhkScaleFactorInverse = 1f / BhkScaleFactor;
 
         /// <summary>A box centred on the origin, given its half extents.</summary>
         public static MeshGeometry Box(NifVector3 halfExtents)
