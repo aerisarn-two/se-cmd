@@ -1845,16 +1845,23 @@ Two interpolators can point at one data block, and the game's files do it —
 one's keys separately turns one block into two, so which block a track's keys came from
 travels as `datid_…`, keyed on identity as everything else of this kind is (§5.2.1).
 
-It is written **only when the name picks out one track**, and this is the interesting
-part. A node can carry several controllers whose encoded names are identical — a shader
-with four float controllers of the same class and no ids to separate them (§5A.6) — and
-there is nothing in the name to say which is which. Recorded anyway, one id is read back
-onto all of them and they collapse onto a single data block: `dlceclipsesky` went from
-twenty-five blocks to eleven in exactly that way, which is a far worse answer than the
-twenty-seven it had before.
+It is written **only when the name picks out one track**. Recorded against an ambiguous
+name, one id is read back onto every property sharing that name and they collapse onto a
+single data block: `dlceclipsesky` went from twenty-five blocks to eleven that way, which
+is a far worse answer than the twenty-seven it had before. The guard is right and stays.
 
-So the rule is to share only where the file can be asked unambiguously. `dlceclipsesky`
-keeps its two extra blocks, and §7.3 records why.
+What was wrong was the ambiguity, not the guard. A node carrying four shader float
+controllers of one class offered four properties with the same encoded name because
+`ControllerIdOf` had nothing to say about that class — so the name could not pick out a
+track, the ids were never written, and `dlceclipsesky`'s two shared blocks became four.
+Once a shader controller carries the variable it drives (§5A.6), the names are distinct,
+the guard passes, and the file round-trips as the twenty-five it is.
+
+The lesson is worth keeping even though the case is closed: the guard made the symptom
+*smaller* and hid its cause for a long time. Twenty-five coming back as twenty-seven is a
+mild-looking divergence, and it was standing in front of every shader controller in the
+game being rebuilt driving the wrong variable — which no count of blocks could see at
+all.
 
 #### Which controller is which
 
@@ -1865,6 +1872,23 @@ decoration:
 | --- | --- |
 | `NiPSysModifierCtlr` and below | `Modifier Name` |
 | `NiFloatExtraDataController` | `Extra Data Name` |
+| `BSEffectShaderProperty` Float / Color controllers | `Controlled Variable` / `Controlled Color` |
+| `BSLightingShaderProperty` Float / UShort / Color controllers | `Controlled Variable` / `Controlled Color` |
+
+The last two rows are **not in nif.xml** — it declares no `ctlrid` for those five classes
+— but the game states the rule itself. A `NiControllerSequence` writes the number the
+`Controlled Variable` field holds as the controlled block's `Controller ID`: `ctlrID='5'`,
+`'8'`, `'12'`, `'22'`, in all 23,615 sequenced shader blocks Skyrim ships, matching the
+distribution of the field exactly. So the sequenced path always carried it and the
+standalone path carried nothing, and the two now agree.
+
+It matters twice over. A node's several shader controllers were all encoded as the bare
+class name, so nothing could tell them apart — which is what lost the shared key data
+above. And with no id to write back, **the variable each controller drives was not
+carried at all**: 11,140 of the game's 13,244 shader controllers were rebuilt driving
+variable 0, a fade curve returning as an emissive curve, in 1,648 meshes. A census of
+blocks cannot see it — the controllers are all there, on the right properties, reading
+the right interpolators, every one aimed at the wrong float.
 
 A particle system carries several modifier controllers of the same class, one per
 modifier. With no id to tell them apart the import keys them all to one slot and rebuilds
@@ -2362,7 +2386,7 @@ Real gaps, each with its reason recorded where it bites.
 | --- | --- | --- |
 | A controller with no interpolator, outside a particle system | Not recognised as animation, and only particle systems carry these structurally so far | §5A.6, §4.9A |
 | Corners of a convex hull over near-degenerate points | The hull returns every corner for 99.0% of the game's convex shapes and 99.9% of all corners; the rest lose one or two near-coplanar corners each, 78 in 94,219. A corner within a thousand-millionth of the shape of a face it does not form is treated as lying on it | §5.7.0B |
-| Shared key data behind same-named controllers | Two interpolators sharing one data block stay shared only when the track's encoded name picks out one controller. Where a node carries several of one class with no ids, the name cannot say which is which, and each gets its own block — one vanilla sky gains two | §5A.6 |
+| Shared key data behind same-named controllers | *Closed.* Two interpolators sharing one data block stay shared when the track's encoded name picks out one controller, which it now does for shader controllers: they carry the variable they drive, so a node's several controllers of one class are no longer all called the same thing. Only 3 of the game's 22,047 meshes share a `NiFloatData` at all | §5A.6 |
 | Array order within a rebuilt convex hull | The vertices and planes agree, but arrive in the fit's order rather than Havok's, which nif.xml says is lexicographic | §5.7.1 |
 | The second and later materials of a multi-material render mesh | A NIF shape has one material, and the import keeps the first rather than splitting the mesh into one shape per material. Authoring means splitting it in the DCC tool | §5.3.4 |
 
