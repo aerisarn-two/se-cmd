@@ -368,7 +368,7 @@ namespace SECmd.Nif
         /// variable 0. A fade curve became an emissive curve, and no count of blocks
         /// could see it.
         /// </remarks>
-        private static string ControllerIdOf(NifModel model, NifItem controller)
+        internal static string ControllerIdOf(NifModel model, NifItem controller)
         {
             if (model.BlockInherits(controller, "NiFloatExtraDataController"))
                 return model.GetString(controller, "Extra Data Name");

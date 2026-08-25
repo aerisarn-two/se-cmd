@@ -640,12 +640,16 @@ namespace SECmd.Nif
         }
 
         /// <summary>The id a controller records, in whichever field its class uses.</summary>
+        /// <remarks>
+        /// The reader's own answer, not a second implementation of it. This was a
+        /// separate copy that knew about `Modifier Name` and `Extra Data Name` only,
+        /// and when the reader learned that a shader controller is identified by the
+        /// variable it drives, this did not: the ids stopped matching, every candidate
+        /// was skipped, and a controller already on the node was rebuilt beside itself.
+        /// Two functions that have to agree about the same question should be one.
+        /// </remarks>
         private static string IdOf(NifModel model, NifItem controller) =>
-            model.FindItem(controller, "Modifier Name") is not null
-                ? model.GetString(controller, "Modifier Name")
-                : model.FindItem(controller, "Extra Data Name") is not null
-                    ? model.GetString(controller, "Extra Data Name")
-                    : string.Empty;
+            NifAnimAccess.ControllerIdOf(model, controller);
 
         /// <summary>Adds a controller to the end of a host's chain.</summary>
         /// <remarks>
