@@ -57,14 +57,23 @@ namespace SECmd.Fbx
                 string nodeName = rest[..bar];
                 string propertyName = rest[(bar + 1)..];
 
-                if (!float.TryParse(
-                        property.Values.FirstOrDefault()?.ToString(),
-                        System.Globalization.NumberStyles.Float,
-                        System.Globalization.CultureInfo.InvariantCulture,
-                        out float value))
-                {
+                // Read as the number it is, not as text. `AddConstant` writes a real
+                // double, and taking `.ToString()` of it formats in the *current*
+                // culture while the parse below expected an invariant one: on any
+                // comma-decimal machine a stored 0.5 came back as "0,5", failed to
+                // parse, and the track was dropped without a word. If it was the
+                // sequence's only content the whole sequence went with it -- which for
+                // these is a loop that hides a mesh outright.
+                //
+                // Only non-integral constants were affected, because "1" formats the
+                // same everywhere. That is why every fixture passed.
+                if (property.Values.Count == 0)
                     continue;
-                }
+
+                var value = (float)FbxProperties.ToDouble(property.Values[0], double.NaN);
+
+                if (float.IsNaN(value))
+                    continue;
 
                 if (!tracks.TryGetValue(nodeName, out AnimTrack? track))
                     tracks[nodeName] = track = new AnimTrack { NodeName = nodeName };

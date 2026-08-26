@@ -38,6 +38,78 @@ namespace SECmd.Tests
             return (converter.Convert(Db), converter.Warnings);
         }
 
+        [Theory]
+        [InlineData("en-US")]
+        [InlineData("de-DE")]
+        [InlineData("fr-FR")]
+        public void AConstantTrackSurvivesACommaDecimalMachine(string culture)
+        {
+            // An interpolator with a value and no data holds that value for the whole
+            // sequence. It crosses as an FBX property holding a real double, and was
+            // read back through `object.ToString()` — which formats in the *current*
+            // culture — and then parsed as invariant. On any machine whose decimal
+            // separator is a comma, a stored 0.5 became "0,5", the parse failed, and the
+            // track was dropped without a word.
+            //
+            // Only non-integral values were affected, since "1" formats the same
+            // everywhere. That is exactly why every fixture passed on an English machine.
+            var previous = System.Globalization.CultureInfo.CurrentCulture;
+
+            try
+            {
+                System.Globalization.CultureInfo.CurrentCulture =
+                    System.Globalization.CultureInfo.GetCultureInfo(culture);
+
+                NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+                NifItem root = model.InsertBlock("NiNode");
+                model.SetString(root, "Name", "Bone");
+                model.SetRoots([root]);
+
+                NifItem sequence = model.InsertBlock("NiControllerSequence");
+                model.SetString(sequence, "Name", "constant");
+
+                NifItem entry = model
+                    .SetArraySize(sequence, "Num Controlled Blocks", "Controlled Blocks", 1)!
+                    .Children[0];
+
+                NifItem interpolator = model.InsertBlock("NiFloatInterpolator");
+
+                // A value and no data, which is what "constant for the whole sequence"
+                // is. Deliberately not a whole number.
+                model.FindItem(interpolator, "Value")!.Value.SetFloat(0.5f);
+
+                model.SetRef(entry, "Interpolator", interpolator);
+                model.SetString(entry, "Node Name", "Bone");
+                model.SetString(entry, "Controller Type", "BSEffectShaderPropertyFloatController");
+
+                float? Constant(NifModel m) => m.ReadAnimations()
+                    .SelectMany(s => s.Tracks)
+                    .SelectMany(t => t.Properties)
+                    .Select(p => p.Constant)
+                    .FirstOrDefault(c => c is not null);
+
+                Assert.Equal(0.5f, Constant(model)!.Value, 4);
+
+                var scene = new FbxScene(new NifToFbx(model).Convert());
+
+                List<AnimSequence> back = scene.ReadAnimations();
+
+                float? after = back
+                    .SelectMany(s => s.Tracks)
+                    .SelectMany(t => t.Properties)
+                    .Select(p => p.Constant)
+                    .FirstOrDefault(c => c is not null);
+
+                Assert.NotNull(after);
+                Assert.Equal(0.5f, after!.Value, 4);
+            }
+            finally
+            {
+                System.Globalization.CultureInfo.CurrentCulture = previous;
+            }
+        }
+
         [Fact]
         public void EverySequenceComesBack()
         {
