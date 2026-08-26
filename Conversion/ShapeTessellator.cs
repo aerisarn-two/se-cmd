@@ -933,6 +933,18 @@ namespace SECmd.Conversion
         {
             var mesh = new MeshGeometry();
 
+            // A NIF triangle indexes its corners with a `ushort`, and the fan below
+            // casts to one. The volume case checks this before it renumbers; the flat
+            // case returns before that check is ever reached, so it wrapped in silence
+            // and every corner past the 65,535th was named by the wrong index. A flat
+            // shape is the *easier* one to reach it with: every point is a corner of
+            // the polygon, where a solid hull keeps only its surface.
+            //
+            // `MeshGeometry.IsWellFormed` cannot see this — a wrapped index is still in
+            // range — so nothing downstream would have said a word.
+            if (points.Count > ushort.MaxValue)
+                return mesh;
+
             NifVector3 centre = Average(points);
 
             // Two axes spanning the points' plane, from the longest spread and

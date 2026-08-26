@@ -376,6 +376,59 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void AFlatHullTooBigToIndexIsRefusedRatherThanWrapped()
+        {
+            // A NIF triangle names its corners with a ushort, and the fan casts to one.
+            // The volume case checks this before renumbering; the flat case returns
+            // before that check is reached, so it wrapped in silence and every corner
+            // past the 65,535th was named by the wrong index.
+            //
+            // Flat is the easier case to reach it with, not the harder one: every point
+            // of a polygon is a corner of it, where a solid hull keeps only its surface.
+            // And nothing downstream could see the result — a wrapped index is still in
+            // range, so `IsWellFormed` reports a healthy mesh.
+            var points = new List<NifVector3>(70000);
+
+            for (int i = 0; i < 70000; i++)
+            {
+                double angle = i / 70000.0 * Math.Tau;
+
+                // All at z = 0, so there is no tetrahedron and this takes the flat path.
+                points.Add(new NifVector3((float)Math.Cos(angle), (float)Math.Sin(angle), 0f));
+            }
+
+            MeshGeometry hull = ShapeTessellator.ConvexHull(points);
+
+            // Nothing, rather than a mesh whose triangles name the wrong corners.
+            Assert.Empty(hull.Triangles);
+
+            foreach (NifTriangle t in hull.Triangles)
+            {
+                Assert.True(t.V1 < hull.Vertices.Count);
+                Assert.True(t.V2 < hull.Vertices.Count);
+                Assert.True(t.V3 < hull.Vertices.Count);
+            }
+        }
+
+        [Fact]
+        public void AFlatHullJustInsideTheLimitIsStillTessellated()
+        {
+            // And the guard does not swallow anything it should keep: the largest flat
+            // hull a NIF can actually index still comes back.
+            var points = new List<NifVector3>(1000);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                double angle = i / 1000.0 * Math.Tau;
+                points.Add(new NifVector3((float)Math.Cos(angle), (float)Math.Sin(angle), 0f));
+            }
+
+            MeshGeometry hull = ShapeTessellator.ConvexHull(points);
+
+            Assert.NotEmpty(hull.Triangles);
+        }
+
+        [Fact]
         public void AFlatHullIsTessellatedAsThePolygonItIs()
         {
             // The game ships these: byohwrdoorload01 draws its load door as four
