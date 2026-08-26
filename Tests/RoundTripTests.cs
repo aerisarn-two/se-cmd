@@ -600,6 +600,42 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void AStringFieldNobodySetsNamesNoString()
+        {
+            // A string field holds an index into the header's string table, and "no
+            // string" is -1. A freshly inserted field sat at 0 instead, which names the
+            // *first* string in the table -- and the root's name is usually the first
+            // thing written, so the field silently took it.
+            //
+            // `NiTextKeyExtraData` is where it showed. `WriteTextKeys` never sets the
+            // block's own `Name`, so every animated file this tool wrote carried an
+            // extra-data block claiming to be called after the root. All 22 such blocks
+            // in the fixtures carry -1; anything looking extra data up by name would
+            // find the wrong block.
+            //
+            // Neither corpus sweep can see this. They rebuild from a file whose string
+            // fields already hold the source's own indices, so the authoring default is
+            // never reached.
+            NifModel model = NifModel.CreateNew(Db);
+            NifItem block = model.InsertBlock("NiTextKeyExtraData");
+
+            NifItem name = model.FindItem(block, "Name")!;
+
+            Assert.Equal(uint.MaxValue, name.Value.ToUInt());
+
+            // And as a StringIndex, which is written out as a plain uint. Left as the
+            // String type it would go through the writer's string-table branch, where
+            // anything above a plausible index is clamped to 0 -- so the -1 would have
+            // become the very 0 this is avoiding.
+            Assert.Equal(NifValueType.StringIndex, name.Value.Type);
+
+            // A name that *is* set still resolves, so this has not simply broken them.
+            model.SetString(block, "Name", "keys");
+
+            Assert.Equal("keys", model.ResolveString(model.FindItem(block, "Name")!));
+        }
+
+        [Fact]
         public void EveryCollisionShapeSurvives()
         {
             // A container held a tree and the import returned the first leaf it found,

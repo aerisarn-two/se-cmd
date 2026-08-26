@@ -152,6 +152,25 @@ namespace SECmd.Nif
             if (leaf.Value.IsLink)
                 leaf.Value.SetLink(-1);
 
+            // And a string field nobody sets names no string, which is also -1. Left at
+            // zero it names the *first* string in the table, and since the root's name
+            // is usually the first thing written, that is the name it takes.
+            //
+            // `NiTextKeyExtraData` is where this showed: `WriteTextKeys` never sets its
+            // `Name`, so every animated file this wrote had an extra-data block claiming
+            // to be called "Scene Root". All 22 in the fixtures carry -1. Nothing could
+            // see it -- the corpus sweeps rebuild from a file whose string fields are
+            // already indices, so the authoring default is never exercised by them.
+            //
+            // Only where the version puts strings in a table; before that they are
+            // written inline and an empty one is already right. Same rule as SetString.
+            if (leaf.Value.Type is NifValueType.String or NifValueType.FilePath
+                && Version >= 0x14010003)
+            {
+                leaf.Value.ChangeType(NifValueType.StringIndex);
+                leaf.Value.SetCount(uint.MaxValue);
+            }
+
             ApplyDefault(leaf);
             parent.AddChild(leaf);
         }
