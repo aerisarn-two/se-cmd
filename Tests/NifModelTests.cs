@@ -72,6 +72,44 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void AnEmptyBinaryArrayIsEmptyRatherThanAFailure()
+        {
+            // A binary array is read as one opaque blob, and its size comes from a
+            // count field. Sizing one rejected a size of zero as though it were a size
+            // that could not be worked out — and every caller reads that as a hard
+            // error, so writing threw before a byte was emitted and reading turned into
+            // a NifFormatException that rejected the entire file.
+            //
+            // A `bhkMoppBvTreeShape` fresh from the authoring API is exactly this case:
+            // its `MOPP Code\Data Size` sits at zero until a backend fills it in. So a
+            // whole file could not be written over a field with nothing in it, and a
+            // file carrying a legitimately empty blob could not be read back.
+            //
+            // The ordinary array path has always treated zero as zero. This is only
+            // that rule reaching the binary case.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("NiNode");
+            model.SetString(root, "Name", "root");
+            model.SetRoots([root]);
+
+            NifItem mopp = model.InsertBlock("bhkMoppBvTreeShape");
+
+            // Left exactly as inserted: the size is zero and the blob is empty.
+            Assert.Equal(0u, model.FindItem(mopp, "MOPP Code\\Data Size")!.Value.ToUInt());
+
+            model.UpdateHeader();
+
+            using var stream = new MemoryStream();
+            model.Save(stream);
+            stream.Position = 0;
+
+            NifModel reloaded = NifModel.Load(stream, Db);
+
+            Assert.Contains(reloaded.Blocks, b => b.Name == "bhkMoppBvTreeShape");
+        }
+
+        [Fact]
         public void BlockCountMatchesTheHeader()
         {
             NifModel model = LoadFixture("multi_material_cube.nif");

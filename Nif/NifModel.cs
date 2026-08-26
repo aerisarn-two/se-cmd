@@ -695,7 +695,18 @@ namespace SECmd.Nif
         {
             int newSize = EvalArraySize(array);
 
-            if (newSize <= 0)
+            // A size of zero is an empty array, not a failure. Only a *negative* one is
+            // a size that could not be worked out.
+            //
+            // This said `<= 0`, and every caller reads false as a hard error: reading
+            // one turns into a NifFormatException that rejects the whole file, and
+            // writing one throws before a byte is emitted. So a `bhkMoppBvTreeShape`
+            // whose `MOPP Code\Data Size` is still at its default of zero could not be
+            // written at all, and a file carrying a legitimately empty blob could not
+            // be read — the whole file lost, over a field with nothing in it. The
+            // ordinary array path two hundred lines up has always treated zero as
+            // zero; this is the same rule, applied to the binary case as well.
+            if (newSize < 0)
                 return false;
 
             if (array.Children.Count == 0)
