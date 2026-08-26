@@ -40,6 +40,89 @@ namespace SECmd.Tests
             return (source, reloaded);
         }
 
+        /// <summary>Writes a mesh to a scene and reads it straight back.</summary>
+        private static MeshGeometry Bounce(MeshGeometry mesh)
+        {
+            var scene = new FbxScene(new FbxDocument());
+            FbxObject geometry = FbxMeshWriter.AddGeometry(scene, "probe", mesh);
+
+            // Written in FBX convention and read back in the same one, so neither
+            // flip is applied and the numbers are comparable.
+            return FbxMeshReader.Read(
+                geometry, new FbxMeshReader.Options { InvertU = false, InvertV = false })!;
+        }
+
+        [Fact]
+        public void TwoVerticesThatDifferOnlyInTangentStayTwo()
+        {
+            // A vertex is told from another by comparing all eighteen numbers it
+            // carries, and six of those are the tangent frame. Nothing wrote them, so
+            // the comparison was really on fourteen and vertices the file said were
+            // different looked identical and merged: `norpullchainanim01`'s gear catch
+            // has 78 vertices of which only 46 differ in position, normal and texture
+            // coordinate, and it came back as 46.
+            var mesh = new MeshGeometry();
+
+            for (int i = 0; i < 3; i++)
+            {
+                mesh.Vertices.Add(new NifVector3(i, 0f, 0f));
+                mesh.Normals.Add(new NifVector3(0f, 0f, 1f));
+                mesh.Uvs.Add(new NifVector2(0f, 0f));
+                mesh.Tangents.Add(new NifVector3(1f, 0f, 0f));
+                mesh.Bitangents.Add(new NifVector3(0f, 1f, 0f));
+            }
+
+            // A fourth in the same place as the first, facing the same way, with the
+            // same texture coordinate, and a different tangent. Only the tangent
+            // separates them.
+            mesh.Vertices.Add(new NifVector3(0f, 0f, 0f));
+            mesh.Normals.Add(new NifVector3(0f, 0f, 1f));
+            mesh.Uvs.Add(new NifVector2(0f, 0f));
+            mesh.Tangents.Add(new NifVector3(0f, 1f, 0f));
+            mesh.Bitangents.Add(new NifVector3(-1f, 0f, 0f));
+
+            mesh.Triangles.Add(new NifTriangle(0, 1, 2));
+            mesh.Triangles.Add(new NifTriangle(3, 1, 2));
+
+            MeshGeometry back = Bounce(mesh);
+
+            Assert.Equal(4, back.Vertices.Count);
+            Assert.Equal(4, back.Tangents.Count);
+        }
+
+        [Fact]
+        public void AVertexNoTriangleUsesIsStillAVertex()
+        {
+            // The reader only ever reaches a control point through a polygon corner,
+            // so a vertex nothing indexes was dropped without a word. The game's files
+            // carry them: a prisoner's rags hold 1,303 vertices of which the triangles
+            // name 1,084, and it came back as 1,084. They carry a position, a normal, a
+            // texture coordinate and their own bone weights, and a file that had them
+            // is not the file that comes back without them.
+            var mesh = new MeshGeometry();
+
+            for (int i = 0; i < 5; i++)
+            {
+                mesh.Vertices.Add(new NifVector3(i, 0f, 0f));
+                mesh.Normals.Add(new NifVector3(0f, 0f, 1f));
+                mesh.Uvs.Add(new NifVector2(i * 0.1f, 0f));
+            }
+
+            // Only three of the five are used.
+            mesh.Triangles.Add(new NifTriangle(0, 1, 2));
+
+            MeshGeometry back = Bounce(mesh);
+
+            Assert.Equal(5, back.Vertices.Count);
+            Assert.Single(back.Triangles);
+
+            // And the ones the triangles use keep the numbering they had, so nothing
+            // had to be renumbered to make room for the strays.
+            Assert.Equal(0, back.Triangles[0].V1);
+            Assert.Equal(1, back.Triangles[0].V2);
+            Assert.Equal(2, back.Triangles[0].V3);
+        }
+
         [Fact]
         public void ReadsBlenderExportedGeometry()
         {
