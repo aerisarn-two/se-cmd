@@ -94,11 +94,14 @@ namespace SECmd.Tests
         public void AVertexNoTriangleUsesIsStillAVertex()
         {
             // The reader only ever reaches a control point through a polygon corner,
-            // so a vertex nothing indexes was dropped without a word. The game's files
-            // carry them: a prisoner's rags hold 1,303 vertices of which the triangles
-            // name 1,084, and it came back as 1,084. They carry a position, a normal, a
-            // texture coordinate and their own bone weights, and a file that had them
-            // is not the file that comes back without them.
+            // so a vertex nothing indexes is dropped without a word. Vertices are the
+            // mesh's own data — a position, a normal, a texture coordinate, its own
+            // bone weights — and whether some triangle happens to name one does not
+            // make it ours to discard.
+            //
+            // The shape that led here turned out not to be an example: its vertices
+            // looked unused because the export was dropping the triangles that named
+            // them. This is the guard, not that fix.
             var mesh = new MeshGeometry();
 
             for (int i = 0; i < 5; i++)

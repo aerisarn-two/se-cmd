@@ -178,11 +178,17 @@ namespace SECmd.Fbx
             // Control points no triangle reaches are still vertices of the mesh.
             //
             // The loop above only ever arrives at a control point through a polygon
-            // corner, so a vertex that nothing indexes was silently dropped: a
-            // prisoner's rags carry 1,303 vertices of which the triangles name 1,084,
-            // and it came back as 1,084. They are not spare capacity — they carry a
-            // position, a normal, a texture coordinate and their own bone weights, and
-            // a file that had them is not the file that comes back without them.
+            // corner, so a vertex that nothing indexes would be dropped in silence.
+            // Vertices are the mesh's own data — a position, a normal, a texture
+            // coordinate, its own bone weights — and whether some triangle happens to
+            // name one does not make it ours to discard.
+            //
+            // This was found while chasing a shape that appeared to have 219 such
+            // vertices, and that turned out to be a different bug entirely: the export
+            // was throwing away the triangles that named them (see
+            // `NifToFbx.ReadTriShape`). So this is a guard rather than a fix for that,
+            // and on the game's meshes it now finds nothing to do. It stays because
+            // the alternative is losing data silently the day something does.
             //
             // Emitted after the triangles rather than in place, because the ones the
             // triangles use have already fixed the numbering and moving them would
