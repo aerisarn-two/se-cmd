@@ -358,7 +358,16 @@ namespace SECmd.Conversion
             if (containerSuffix is not null)
             {
                 string name = parentName + containerSuffix;
-                FbxObject node = FbxMeshWriter.AddModel(scene, name, "Null", NifTransform.Identity);
+
+                // A transform shape's whole purpose is the transform it carries, and it
+                // was being emitted as an identity node. A `bhkBoxShape` and a
+                // `bhkSphereShape` have no centre of their own -- BuildBox and
+                // BuildSphere discard the one they fit -- so wrapping one in a transform
+                // shape is the only way the game can put a box anywhere but the body's
+                // origin. Dropped, every off-centre primitive collapsed onto it.
+                FbxObject node = FbxMeshWriter.AddModel(
+                    scene, name, "Null", HavokTransformOf(shape));
+
                 scene.Connect(node, parent);
 
                 // The suffix says what kind of container this is, but not exactly
@@ -1532,6 +1541,35 @@ namespace SECmd.Conversion
             }
 
             return mesh;
+        }
+
+        /// <summary>
+        /// The transform a <c>bhkTransformShape</c> carries, in FBX units.
+        /// </summary>
+        /// <remarks>
+        /// The matrix is stored row by row with the translation in the **fourth row**
+        /// and the fourth column left at zero, which is the same row-vector convention
+        /// <see cref="NifTransform.ToMatrix"/> uses. Only the translation is scaled:
+        /// Havok works in metres and the rest of the scene in Skyrim units, and a
+        /// rotation has no units.
+        /// </remarks>
+        private NifTransform HavokTransformOf(NifItem shape)
+        {
+            if (_model.FindItem(shape, "Transform")?.Value.Get<NifMatrix44>() is not { } m)
+                return NifTransform.Identity;
+
+            return new NifTransform(
+                new NifVector3(
+                    m.M41 * ShapeTessellator.BhkScaleFactor,
+                    m.M42 * ShapeTessellator.BhkScaleFactor,
+                    m.M43 * ShapeTessellator.BhkScaleFactor),
+                new NifMatrix33
+                {
+                    M11 = m.M11, M12 = m.M12, M13 = m.M13,
+                    M21 = m.M21, M22 = m.M22, M23 = m.M23,
+                    M31 = m.M31, M32 = m.M32, M33 = m.M33
+                },
+                1f);
         }
 
         /// <summary>The skin partition a shape's geometry lives in, if it is skinned.</summary>

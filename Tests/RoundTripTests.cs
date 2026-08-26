@@ -1399,6 +1399,65 @@ namespace SECmd.Tests
             Assert.Single(rebuilt.Blocks, x => x.Name == "bhkCollisionObject");
         }
 
+        [Theory]
+        [InlineData("bhkTransformShape")]
+        [InlineData("bhkConvexTransformShape")]
+        public void ATransformShapeKeepsThePlacementItIsFor(string type)
+        {
+            // A transform shape is the transform. `bhkBoxShape` and `bhkSphereShape`
+            // have no centre of their own — the import fits one and throws it away,
+            // because the block cannot hold it — so wrapping a box in a transform shape
+            // is the only way the game puts collision anywhere but the body's origin.
+            //
+            // Nothing read or wrote that matrix in either direction: the export emitted
+            // an identity node and the import never set the field. Every off-centre box
+            // in the game came back at the origin, so its collision stood where the
+            // object was not, and no count of blocks could see it — the shape is there,
+            // the class is right, only the placement is gone.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("BSFadeNode");
+            model.SetString(root, "Name", "root");
+            model.SetRoots([root]);
+
+            NifItem body = model.InsertBlock("bhkRigidBody");
+            NifItem collision = model.InsertBlock("bhkCollisionObject");
+
+            model.SetRef(collision, "Body", body);
+            model.SetRef(collision, "Target", root);
+            model.SetRef(root, "Collision Object", collision);
+
+            NifItem box = model.InsertBlock("bhkBoxShape");
+            model.FindItem(box, "Dimensions")!.Value.Set(new NifVector3(0.5f, 0.25f, 0.125f));
+
+            NifItem transform = model.InsertBlock(type);
+            model.SetRef(transform, "Shape", box);
+            model.SetRef(body, "Shape", transform);
+
+            // A metre and a half along x, which is about 105 Skyrim units — far enough
+            // that a shape which lost it is unmistakably in the wrong place.
+            model.FindItem(transform, "Transform")!.Value.Set(new NifMatrix44
+            {
+                M11 = 1f, M22 = 1f, M33 = 1f,
+                M41 = 1.5f, M42 = 0f, M43 = 0f
+            });
+
+            NifModel rebuilt = RoundTrip(model);
+
+            NifItem after = Assert.Single(rebuilt.Blocks, b => b.Name == type);
+            NifMatrix44 m = rebuilt.FindItem(after, "Transform")!.Value.Get<NifMatrix44>();
+
+            Assert.Equal(1.5f, m.M41, 3);
+            Assert.Equal(0f, m.M42, 3);
+            Assert.Equal(0f, m.M43, 3);
+
+            // And the rotation is still the identity it was, rather than whatever a
+            // dropped matrix decays to.
+            Assert.Equal(1f, m.M11, 3);
+            Assert.Equal(1f, m.M22, 3);
+            Assert.Equal(1f, m.M33, 3);
+        }
+
         [Fact]
         public void TwoNodesWithOneNameAreStillTwoNodes()
         {

@@ -922,6 +922,13 @@ namespace SECmd.Conversion
             {
                 _model.SetRef(container, "Shape", children[0]);
 
+                // A transform shape is the transform: it is how the game puts a box or
+                // a sphere anywhere but the body's origin, since neither block has a
+                // centre of its own. Nothing wrote it, so every such shape came back at
+                // the origin and the collision sat where the object was not.
+                if (type is "bhkTransformShape" or "bhkConvexTransformShape")
+                    WriteHavokTransform(container, ReadTransform(node));
+
                 if (children.Count > 1)
                 {
                     Warnings.Add(
@@ -931,6 +938,33 @@ namespace SECmd.Conversion
             }
 
             return container;
+        }
+
+        /// <summary>
+        /// Writes a node's placement into the matrix a transform shape carries.
+        /// </summary>
+        /// <remarks>
+        /// The mirror of <c>NifToFbx.HavokTransformOf</c>. Stored row by row with the
+        /// translation in the fourth row, and the fourth column left at zero — which is
+        /// what the game writes, including the zero in the corner where a homogeneous
+        /// matrix would have a one. Only the translation carries units.
+        /// </remarks>
+        private void WriteHavokTransform(NifItem shape, NifTransform transform)
+        {
+            if (_model.FindItem(shape, "Transform") is not { } item)
+                return;
+
+            NifMatrix33 r = transform.Rotation;
+
+            item.Value.Set(new NifMatrix44
+            {
+                M11 = r.M11, M12 = r.M12, M13 = r.M13,
+                M21 = r.M21, M22 = r.M22, M23 = r.M23,
+                M31 = r.M31, M32 = r.M32, M33 = r.M33,
+                M41 = transform.Translation.X / ShapeTessellator.BhkScaleFactor,
+                M42 = transform.Translation.Y / ShapeTessellator.BhkScaleFactor,
+                M43 = transform.Translation.Z / ShapeTessellator.BhkScaleFactor
+            });
         }
 
         /// <summary>
