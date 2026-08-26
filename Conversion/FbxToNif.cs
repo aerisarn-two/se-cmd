@@ -1452,6 +1452,92 @@ namespace SECmd.Conversion
             return shape;
         }
 
+        /// <summary>
+        /// What each control point's skinning looks like, for telling vertices apart.
+        /// </summary>
+        /// <remarks>
+        /// Only identity matters, not the format: two control points moved by the same
+        /// bones with the same weights must come out equal, and any difference must
+        /// come out different. Sorted so the order the clusters happened to be read in
+        /// cannot make two identical vertices look different.
+        /// </remarks>
+        private static Dictionary<int, string>? InfluenceSignatures(SkinData? skin)
+        {
+            if (skin is null || skin.Bones.Count == 0)
+                return null;
+
+            var byPoint = new Dictionary<int, List<string>>();
+
+            for (int b = 0; b < skin.Bones.Count; b++)
+            {
+                foreach ((ushort point, float weight) in skin.Bones[b].Weights)
+                {
+                    if (!byPoint.TryGetValue(point, out List<string>? list))
+                        byPoint[point] = list = [];
+
+                    list.Add($"{b}:{weight:R}");
+                }
+            }
+
+            var signatures = new Dictionary<int, string>(byPoint.Count);
+
+            foreach ((int point, List<string> list) in byPoint)
+            {
+                list.Sort(StringComparer.Ordinal);
+                signatures[point] = string.Join(",", list);
+            }
+
+            return signatures;
+        }
+
+        /// <summary>
+        /// Moves a skin's weights from control points onto the vertices they became.
+        /// </summary>
+        /// <remarks>
+        /// A cluster addresses control points; the mesh reader decides what the
+        /// vertices are, in its own order and with identical ones merged. Applying a
+        /// cluster's indices to the vertex list without this puts every weight on
+        /// whichever vertex happens to hold that number — the mesh still loads, still
+        /// has the right bones, and deforms wrongly, which nothing downstream can see.
+        ///
+        /// Two control points only merge when their influences are identical, so a
+        /// weight that lands on a vertex already carrying one from its twin is the same
+        /// weight and is dropped rather than added twice.
+        /// </remarks>
+        private void RemapSkinToVertices(SkinData? skin, MeshGeometry mesh, string name)
+        {
+            if (skin is null || mesh.VertexOfControlPoint.Count == 0)
+                return;
+
+            int lost = 0;
+
+            foreach (SkinBone bone in skin.Bones)
+            {
+                var moved = new List<(ushort Vertex, float Weight)>(bone.Weights.Count);
+                var already = new HashSet<ushort>();
+
+                foreach ((ushort point, float weight) in bone.Weights)
+                {
+                    if (!mesh.VertexOfControlPoint.TryGetValue(point, out ushort vertex))
+                    {
+                        // A control point no triangle reaches is not a vertex, so there
+                        // is nothing for its weight to hold on to.
+                        lost++;
+                        continue;
+                    }
+
+                    if (already.Add(vertex))
+                        moved.Add((vertex, weight));
+                }
+
+                bone.Weights.Clear();
+                bone.Weights.AddRange(moved);
+            }
+
+            if (lost > 0)
+                Warnings.Add($"{name}: {lost} bone weights sat on control points no triangle uses");
+        }
+
         /// <summary>Builds a <c>NiTriShape</c> and its data from an FBX geometry.</summary>
         private NifItem? BuildShape(FbxObject geometry, FbxObject holder, NifTransform transform)
         {
@@ -1461,6 +1547,15 @@ namespace SECmd.Conversion
                 InvertV = _options.InvertV
             };
 
+            // The skin is read before the mesh, not after. Two things need it that
+            // early: a vertex is not fully described without the bones that move it,
+            // so the reader cannot tell two apart without this; and the weights come
+            // back indexed by control point and have to be brought over to vertices
+            // once the reader has decided what the vertices are.
+            SkinData? skin = FbxSkinIO.ReadSkin(_scene, geometry);
+
+            readerOptions.Influences = InfluenceSignatures(skin);
+
             MeshGeometry? mesh = FbxMeshReader.Read(geometry, readerOptions);
 
             if (mesh is null || mesh.IsEmpty)
@@ -1468,6 +1563,8 @@ namespace SECmd.Conversion
                 Warnings.Add($"{geometry.Name}: no usable geometry, skipping");
                 return null;
             }
+
+            RemapSkinToVertices(skin, mesh, geometry.Name);
 
             if (mesh.Triangles.Count == 0)
             {
@@ -1486,11 +1583,6 @@ namespace SECmd.Conversion
             // regenerated here from the geometry that will actually be written.
             if (mesh.HasUvs)
                 TangentSpace.Generate(mesh);
-
-            // Read before the shape is built rather than after. SE packs the bone
-            // weights into the vertex, so the descriptor has to know whether the shape
-            // is skinned before a single vertex is sized.
-            SkinData? skin = FbxSkinIO.ReadSkin(_scene, geometry);
 
             // Which geometry class this was, when the scene says. The edition only
             // decides when it does not: SE files hold NiTriShape as freely as

@@ -46,6 +46,21 @@ namespace SECmd.Conversion
         /// </remarks>
         public List<int> TrianglePolygons { get; } = [];
 
+        /// <summary>
+        /// Which vertex each FBX control point became, when the mesh was read from FBX.
+        /// </summary>
+        /// <remarks>
+        /// A skin cluster addresses **control points**, not vertices, and the two are
+        /// not the same numbering: the reader emits vertices in the order the triangles
+        /// first reach them, and merges any that are identical in every attribute. So a
+        /// weight read straight off a cluster lands on whichever vertex happens to hold
+        /// that index, which is very rarely the one the weight belongs to.
+        ///
+        /// Empty on a mesh built from a NIF, where there are no control points to come
+        /// back from.
+        /// </remarks>
+        public Dictionary<int, ushort> VertexOfControlPoint { get; } = [];
+
         public bool HasNormals => Normals.Count > 0;
 
         public bool HasUvs => Uvs.Count > 0;

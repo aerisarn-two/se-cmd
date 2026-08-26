@@ -50,6 +50,17 @@ namespace SECmd.Fbx
 
             /// <summary>Mirror V. On by default: NIF's V axis points the other way.</summary>
             public bool InvertV { get; set; } = true;
+
+            /// <summary>
+            /// What each control point's skinning looks like, when the mesh has any.
+            /// </summary>
+            /// <remarks>
+            /// Keyed by control point, since that is how FBX indexes a skin cluster.
+            /// Only the identity of the string matters: two control points weighted the
+            /// same way must produce the same text, and two weighted differently must
+            /// not. Null for an unskinned mesh, where there is nothing to tell apart.
+            /// </remarks>
+            public IReadOnlyDictionary<int, string>? Influences { get; set; }
         }
 
         /// <summary>
@@ -67,7 +78,8 @@ namespace SECmd.Fbx
             double TX, double TY, double TZ,
             double BX, double BY, double BZ,
             double U, double V,
-            double R, double G, double B, double A);
+            double R, double G, double B, double A,
+            string Skin);
 
         /// <summary>Reads a geometry object, or null when it holds no mesh.</summary>
         /// <summary>
@@ -163,6 +175,24 @@ namespace SECmd.Fbx
                 polygon++;
             }
 
+            // Control points no triangle reaches are still vertices of the mesh.
+            //
+            // The loop above only ever arrives at a control point through a polygon
+            // corner, so a vertex that nothing indexes was silently dropped: a
+            // prisoner's rags carry 1,303 vertices of which the triangles name 1,084,
+            // and it came back as 1,084. They are not spare capacity — they carry a
+            // position, a normal, a texture coordinate and their own bone weights, and
+            // a file that had them is not the file that comes back without them.
+            //
+            // Emitted after the triangles rather than in place, because the ones the
+            // triangles use have already fixed the numbering and moving them would
+            // renumber every triangle for nothing.
+            for (int point = 0; point < controlPoints.Length; point++)
+            {
+                if (!mesh.VertexOfControlPoint.ContainsKey(point))
+                    Emit((-1, point));
+            }
+
             return mesh;
 
             ushort Emit((int Corner, int ControlPoint) at)
@@ -177,19 +207,36 @@ namespace SECmd.Fbx
                 NifVector2 uv = uvs.ReadVector2(at.ControlPoint, polygon, at.Corner);
                 NifColor4 color = colors.ReadColor4(at.ControlPoint, polygon, at.Corner);
 
+                // What a vertex *is* includes which bones move it. That is not in any
+                // layer element — FBX keeps it on the skin deformer, indexed by control
+                // point — so without it two vertices in the same place, facing the same
+                // way, weighted to different bones are indistinguishable here and merge.
+                // A prisoner's rags lost 219 of 1,303 vertices that way.
+                string skin = options.Influences is not null
+                              && options.Influences.TryGetValue(at.ControlPoint, out string? s)
+                    ? s
+                    : string.Empty;
+
                 var key = new VertexKey(
                     position.X, position.Y, position.Z,
                     normal.X, normal.Y, normal.Z,
                     tangent.X, tangent.Y, tangent.Z,
                     bitangent.X, bitangent.Y, bitangent.Z,
                     uv.X, uv.Y,
-                    color.R, color.G, color.B, color.A);
+                    color.R, color.G, color.B, color.A,
+                    skin);
 
                 if (seen.TryGetValue(key, out ushort existing))
+                {
+                    // Two control points that merged both answer to the vertex they
+                    // became, so a cluster weighting either one still lands right.
+                    mesh.VertexOfControlPoint[at.ControlPoint] = existing;
                     return existing;
+                }
 
                 var index = (ushort)mesh.Vertices.Count;
                 seen[key] = index;
+                mesh.VertexOfControlPoint[at.ControlPoint] = index;
 
                 mesh.Vertices.Add(position);
 
