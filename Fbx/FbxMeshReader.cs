@@ -137,6 +137,7 @@ namespace SECmd.Fbx
 
             var mesh = new MeshGeometry();
             var seen = new Dictionary<VertexKey, ushort>();
+            bool overflowed = false;
 
             int corner = 0;
             int polygon = 0;
@@ -199,7 +200,9 @@ namespace SECmd.Fbx
                     Emit((-1, point));
             }
 
-            return mesh;
+            // More corners than a NIF triangle can name. Everything built above indexes
+            // the wrong vertices from the wrap onward, so none of it is worth keeping.
+            return overflowed ? null : mesh;
 
             ushort Emit((int Corner, int ControlPoint) at)
             {
@@ -238,6 +241,18 @@ namespace SECmd.Fbx
                     // became, so a cluster weighting either one still lands right.
                     mesh.VertexOfControlPoint[at.ControlPoint] = existing;
                     return existing;
+                }
+
+                // A NIF triangle indexes its corners with a `ushort`. Past 65,535 this
+                // cast wraps, `seen` starts handing out indices that already belong to
+                // other vertices, and every later triangle silently names the wrong
+                // corner — geometry that imports cleanly and is wrong. A mesh that
+                // large cannot be one NIF shape at all, so the honest answer is to stop
+                // rather than to produce a scrambled one.
+                if (mesh.Vertices.Count > ushort.MaxValue)
+                {
+                    overflowed = true;
+                    return 0;
                 }
 
                 var index = (ushort)mesh.Vertices.Count;

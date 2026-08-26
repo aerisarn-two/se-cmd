@@ -53,6 +53,37 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void AMeshTooBigToIndexIsRefusedRatherThanWrapped()
+        {
+            // The reader hands out vertex indices as `(ushort)mesh.Vertices.Count`. Past
+            // 65,535 that cast wraps, the de-duplication table starts handing back
+            // indices that already belong to other vertices, and every later triangle
+            // names the wrong corner. Every index is still in range afterwards, so
+            // `IsWellFormed` reports a healthy mesh and the geometry imports cleanly
+            // and is wrong.
+            //
+            // A mesh that large cannot be one NIF shape at all, so the honest answer is
+            // to refuse it rather than return a scrambled one.
+            var mesh = new MeshGeometry();
+
+            for (int i = 0; i < 70000; i++)
+            {
+                mesh.Vertices.Add(new NifVector3(i, 0f, 0f));
+                mesh.Normals.Add(new NifVector3(0f, 0f, 1f));
+            }
+
+            // Enough triangles to reach past the wrap.
+            for (int i = 0; i + 2 < 70000; i += 3)
+                mesh.Triangles.Add(new NifTriangle((ushort)i, (ushort)(i + 1), (ushort)(i + 2)));
+
+            var scene = new FbxScene(new FbxDocument());
+            FbxObject geometry = FbxMeshWriter.AddGeometry(scene, "huge", mesh);
+
+            Assert.Null(FbxMeshReader.Read(
+                geometry, new FbxMeshReader.Options { InvertU = false, InvertV = false }));
+        }
+
+        [Fact]
         public void TwoVerticesThatDifferOnlyInTangentStayTwo()
         {
             // A vertex is told from another by comparing all eighteen numbers it
