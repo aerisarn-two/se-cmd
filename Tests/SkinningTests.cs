@@ -69,6 +69,93 @@ namespace SECmd.Tests
             }
         }
 
+        [Theory]
+        [InlineData("TestNifFile_Skinned_SE.nif")]
+        [InlineData("TestNifFile_LooseBlocks_SE.nif")]
+        public void ASkinPartitionKeepsEveryTriangle(string name)
+        {
+            // A skinned Skyrim SE shape keeps nothing in itself: both the vertices and
+            // the triangles live in the skin partition, split into slices. Those
+            // triangles index the shape's whole vertex array, and they were being put
+            // through the partition's `Vertex Map` first, on the reading that a
+            // partition's triangles are local to it.
+            //
+            // nif.xml says what the map is for in as many words — it maps "the
+            // weight/influence lists in this submesh to the vertices in the shape being
+            // skinned", the weights and not the faces. Mapping the triangles dropped
+            // every index past the end of that partition's map (401 of a prisoner rags'
+            // 2,132) and rewrote the rest to point at whichever vertex the map held, so
+            // the surviving geometry was joined up wrongly.
+            //
+            // It read from outside as a mesh with vertices no triangle used, which is
+            // the wrong end of it entirely: the vertices were fine, the triangles that
+            // named them had been thrown away.
+            //
+            // **This does not reproduce that.** Both fixtures are single-partition with
+            // an identity map, so the mapping was a no-op on them and this passes with
+            // the fault reinstated. What caught it, and what measures it, is the corpus:
+            // over 250 vanilla meshes the triangle count went from lossy to 556,162 of
+            // 556,162. This guards the invariant so the next change to that loop has
+            // something to fail against; a fixture with two partitions and a real map
+            // would be worth adding.
+            NifModel source = Load(name);
+
+            // What the mesh describes, counted once. A skinned SE shape may keep its
+            // triangles on the shape, in the partition, or in both; which of those the
+            // rebuilt file chooses is a separate question from whether any went
+            // missing, so the partition is only counted when the shape itself is empty.
+            static int Triangles(NifModel m)
+            {
+                int total = 0;
+
+                foreach (NifItem shape in m.Blocks)
+                {
+                    if (!m.BlockInherits(shape, "NiAVObject"))
+                        continue;
+
+                    int own = m.FindItem(shape, "Triangles")?.Children.Count ?? 0;
+
+                    if (own > 0)
+                    {
+                        total += own;
+                        continue;
+                    }
+
+                    NifItem? skin = m.GetRef(shape, "Skin") ?? m.GetRef(shape, "Skin Instance");
+                    NifItem? part = skin is null
+                        ? null
+                        : m.GetRef(skin, "Skin Partition")
+                          ?? (m.GetRef(skin, "Data") is { } d ? m.GetRef(d, "Skin Partition") : null);
+
+                    if (part is null || m.FindItem(part, "Partitions") is not { } ps)
+                        continue;
+
+                    foreach (NifItem p in ps.Children)
+                        total += m.FindItem(p, "Triangles")?.Children.Count ?? 0;
+                }
+
+                return total;
+            }
+
+            int before = Triangles(source);
+
+            Assert.True(before > 0, $"{name} has no triangles to check");
+
+            NifItem root = source.GetBlock(source.FindItem(source.Footer, "Roots")!.Children[0])!;
+
+            NifModel rebuilt = new FbxToNif(
+                new FbxScene(new NifToFbx(source).Convert()),
+                new FbxToNifOptions
+                {
+                    RootName = source.GetName(root),
+                    Version = source.Version,
+                    UserVersion = source.UserVersion,
+                    LegendaryEdition = source.BSVersion < 100
+                }).Convert(Db);
+
+            Assert.Equal(before, Triangles(rebuilt));
+        }
+
         [Fact]
         public void BothEditionsDescribeTheSameSkin()
         {

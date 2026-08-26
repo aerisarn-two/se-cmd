@@ -1506,15 +1506,26 @@ namespace SECmd.Conversion
                 {
                     NifTriangle t = item.Value.Get<NifTriangle>();
 
-                    // Partition triangles index the partition's own vertex list.
-                    if (vertexMap is not null)
-                    {
-                        if (t.V1 >= vertexMap.Count || t.V2 >= vertexMap.Count || t.V3 >= vertexMap.Count)
-                            continue;
-
-                        t = new NifTriangle(vertexMap[t.V1], vertexMap[t.V2], vertexMap[t.V3]);
-                    }
-
+                    // A partition's `Triangles` already index the shape's whole vertex
+                    // array, so they are taken as they are.
+                    //
+                    // They were being put through the partition's `Vertex Map` first,
+                    // on the reading that a partition's triangles are local to it. That
+                    // is the older form's rule, and nif.xml says what the map is for
+                    // here in as many words: it "maps the weight/influence lists in
+                    // this submesh to the vertices in the shape being skinned" — the
+                    // weights, not the faces. The partitions divide the vertices for
+                    // *bone influence*, and divide the triangle list into slices, but
+                    // both halves keep talking about the shape's own numbering.
+                    //
+                    // Mapping them did two things and neither was visible. Indices past
+                    // the end of that partition's map were dropped — 401 of a prisoner
+                    // rags' 2,132 triangles — and the rest were rewritten to point at
+                    // whichever vertex the map happened to hold, so the surviving
+                    // geometry was joined up wrongly. What it looked like from outside
+                    // was a mesh with 219 vertices no triangle used, which is what sent
+                    // this the wrong way for a while: the vertices were never the
+                    // problem, the triangles that named them had been thrown away.
                     if (t.V1 < mesh.Vertices.Count && t.V2 < mesh.Vertices.Count && t.V3 < mesh.Vertices.Count)
                         mesh.Triangles.Add(t);
                 }
