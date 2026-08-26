@@ -19,6 +19,12 @@ namespace SECmd.Fbx
         /// <summary>The UV element name that lets Blender merge UV maps across meshes.</summary>
         public const string UvElementName = "UV Map";
 
+        /// <summary>
+        /// The name on the tangent and binormal elements, which names the UV set they
+        /// were derived from — a tangent frame only means anything with respect to one.
+        /// </summary>
+        public const string TangentElementName = UvElementName;
+
         private const int GeometryVersion = 124;
         private const int LayerElementVersion = 101;
         private const int LayerVersion = 100;
@@ -69,6 +75,33 @@ namespace SECmd.Fbx
             {
                 node.Nodes.Add(BuildVector3Element("LayerElementNormal", "Normals", string.Empty, mesh.Normals));
                 layerElements.Add("LayerElementNormal");
+            }
+
+            // The tangent frame, which is a property of the vertex and not of the
+            // surface: two vertices in the same place, facing the same way, with the
+            // same texture coordinate can still have different tangents, and in the
+            // game's meshes they routinely do.
+            //
+            // Leaving these out did not merely lose the frame — the reader tells two
+            // vertices apart by comparing all eighteen numbers a vertex holds, and six
+            // of them were always zero because nothing had written them. So vertices
+            // the file said were different looked identical and were merged:
+            // `norpullchainanim01`'s gear catch has 78 vertices, of which 46 are
+            // distinct in position, normal and texture coordinate and all 78 are
+            // distinct once the tangents are counted. It came back as 46.
+            //
+            // FBX was never the constraint. Every element here is ByControlPoint, one
+            // value per vertex, so the file can hold exactly what the NIF holds.
+            if (mesh.HasTangents)
+            {
+                node.Nodes.Add(BuildVector3Element(
+                    "LayerElementTangent", "Tangents", TangentElementName, mesh.Tangents));
+
+                node.Nodes.Add(BuildVector3Element(
+                    "LayerElementBinormal", "Binormals", TangentElementName, mesh.Bitangents));
+
+                layerElements.Add("LayerElementTangent");
+                layerElements.Add("LayerElementBinormal");
             }
 
             if (mesh.HasUvs)
