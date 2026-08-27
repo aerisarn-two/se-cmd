@@ -1848,10 +1848,10 @@ namespace SECmd.Conversion
                     // neighbouring half, and the game stores these as halves. Every
                     // weight on every fully-weighted vertex came back a few parts in ten
                     // thousand adrift, for arithmetic with nothing to correct.
-                    bool normalised = MathF.Abs(total - 1f) < 1e-4f;
-
-                    weights.Children[j].Value.SetFloat(
-                        normalised ? weight : total > 0f ? weight / total : 0f);
+                    //
+                    // The scale is SkinData's, so this copy and the partition's agree
+                    // on when to rescale and by how much.
+                    weights.Children[j].Value.SetFloat(weight * SkinData.VertexScale(total));
 
                     if (j < indices.Children.Count)
                         indices.Children[j].Value.SetCount(index);

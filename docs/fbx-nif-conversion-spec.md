@@ -987,9 +987,40 @@ Two ordering constraints fall out of this:
   after it moves. So the list is read back and matched by name rather than assumed to be
   the order the skin arrived in.
 
+##### Renormalising, and the two copies that disagree
+
 Weights are renormalised over the four that are kept, since a vertex may arrive with
 more influences than the format holds and one summing to less than 1 is dragged towards
-the origin.
+the origin. **When** and **where** both matter, and se-cmd had them wrong.
+
+*When.* Renormalising a vertex that lost nothing is arithmetic with nothing to correct,
+and it is not a no-op: a total of 0.99999994 is enough to move a weight into the
+neighbouring half, and both renderer copies store halves. Vanilla weights are already
+normalised — over the **4,201,422** skinned vertices in a third of Skyrim's meshes, the
+worst `|sum - 1|` with four influences or fewer is **1.6e-7**, and not one vertex is
+further out than 1e-4 (only 8,792, 0.2%, carry more than four influences at all). So the
+rescale now happens only when an influence was actually dropped, or when the weights were
+never normalised to begin with.
+
+*Where.* A skinned shape stores its weights **twice**, and the two copies are not
+required to agree:
+
+| Copy | Holds | Normalised |
+| --- | --- | --- |
+| `NiSkinData\Bone List\Vertex Weights` | the authored weights | no |
+| `NiSkinPartition` and the vertex buffer | what the renderer reads | yes |
+
+`TestNifFile_LooseBlocks_SE` is the file that shows it: vertices whose authored weights
+sum to 0.999924 in `NiSkinData` and to exactly one in the partition. Normalising in
+`SkinData.LimitInfluences`, which feeds both, made the two copies agree with each other
+and neither agree with the file. The partition normalises unconditionally (it holds full
+floats, so there is no neighbouring half to round into); the vertex buffer keeps a 1e-4
+guard, because it does.
+
+*Order.* `LimitInfluences` rebuilt each bone's weight list by walking a dictionary, so a
+rebuilt `NiSkinData` came back holding the right weights on the right vertices in an
+order that is nobody's. The surviving influences and the scale are now worked out first
+and applied to each bone's existing list in place, which keeps the order the file had.
 
 #### 5.3.2 Effect shaders
 

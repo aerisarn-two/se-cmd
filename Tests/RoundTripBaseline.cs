@@ -290,14 +290,6 @@ namespace SECmd.Tests
             // is not reproduced.
             ["Entity B"] = "a constraint that named only one body comes back naming two",
 
-            // NiSkinData's own copy of the weights, which SE does not read -- it takes
-            // them from the vertex -- and which is rebuilt from the four influences that
-            // survived rather than from the source's list. The values differ by much more
-            // than rounding, so this is the influence limit showing through into the
-            // legacy copy rather than arithmetic drift.
-            ["Weight"] = "NiSkinData's legacy weights are rebuilt from the four kept influences",
-            ["Index"] = "NiSkinData's legacy weight list is rebuilt, so its order differs",
-
             // Which four influences survive the cut are not always the four the source
             // kept, and the slots a vertex does not use hold a stale bone id in the
             // source where this writes zero. Measured on the one body mesh among the

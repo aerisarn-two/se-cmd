@@ -430,11 +430,27 @@ namespace SECmd.Nif
             {
                 byVertex.TryGetValue(group.Vertices[v], out List<(int Bone, float Weight)>? influences);
 
+                // The partition is what the renderer reads, and it holds the weights
+                // normalised. NiSkinData beside it holds them as authored, which is not
+                // the same thing: a file can carry a vertex summing to 0.99986 there and
+                // to exactly one here, and TestNifFile_LooseBlocks_SE does. Normalising
+                // in SkinData.LimitInfluences, which feeds both, made the two copies
+                // agree with each other and neither agree with the file.
+                float total = 0f;
+
+                if (influences is not null)
+                {
+                    for (int i = 0; i < influences.Count && i < MaxInfluences; i++)
+                        total += influences[i].Weight;
+                }
+
+                float scale = SkinData.PartitionScale(total);
+
                 for (int slot = 0; slot < MaxInfluences; slot++)
                 {
                     bool present = influences is not null && slot < influences.Count;
 
-                    float weight = present ? influences![slot].Weight : 0f;
+                    float weight = present ? influences![slot].Weight * scale : 0f;
 
                     // Bone indices are local to the partition, not to the skin.
                     uint bone = present ? (uint)localBone.GetValueOrDefault(influences![slot].Bone) : 0u;

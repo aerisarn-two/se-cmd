@@ -1181,6 +1181,56 @@ namespace SECmd.Tests
             }
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void NiSkinDataKeepsTheWeightsItWasAuthoredWith(string name)
+        {
+            // Two faults, one on top of the other, and the baseline blamed a third
+            // thing that was not happening.
+            //
+            // LimitInfluences divided every weight by its vertex total whether or not
+            // anything had been dropped. Vanilla weights are already normalised -- over
+            // 4,201,422 skinned vertices the worst |sum - 1| with four influences or
+            // fewer is 1.6e-7 -- so that was arithmetic with nothing to correct, and it
+            // moved every weight in the file. It also fed both copies, which do not
+            // agree: NiSkinData keeps what was authored and the partition holds it
+            // normalised, and TestNifFile_LooseBlocks_SE has vertices summing to
+            // 0.999924 in one and to exactly one in the other.
+            //
+            // And it rebuilt each bone's list by walking a dictionary, so the weights
+            // came back on the right vertices in nobody's order.
+            NifModel source = Load(name);
+
+            static List<(string Bone, List<(uint, float)> Weights)> Lists(NifModel m) =>
+                [.. m.Blocks
+                    .Where(b => b.Name == "NiSkinData")
+                    .SelectMany(d => m.FindItem(d, "Bone List") is { } l ? l.Children : [])
+                    .Select(entry => (
+                        string.Empty,
+                        (List<(uint, float)>)
+                        [
+                            .. (m.FindItem(entry, "Vertex Weights")?.Children ?? [])
+                                .Select(w => (
+                                    m.FindItem(w, "Index")!.Value.ToUInt(),
+                                    m.FindItem(w, "Weight")!.Value.ToFloat()))
+                        ]))];
+
+            List<(string, List<(uint, float)>)> before = Lists(source);
+
+            if (before.Count == 0 || before.All(b => b.Item2.Count == 0))
+                return;
+
+            List<(string, List<(uint, float)>)> after = Lists(RoundTrip(source));
+
+            Assert.Equal(before.Count, after.Count);
+
+            for (int i = 0; i < before.Count; i++)
+            {
+                // Order included: these are lists in the file, not sets.
+                Assert.Equal(before[i].Item2, after[i].Item2);
+            }
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {
