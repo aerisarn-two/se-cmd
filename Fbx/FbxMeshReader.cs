@@ -139,8 +139,31 @@ namespace SECmd.Fbx
             var seen = new Dictionary<VertexKey, ushort>();
             bool overflowed = false;
 
+            // Vertices in control-point order, before any triangle is looked at.
+            //
+            // The reader used to number them in the order the triangles first reached
+            // them, so a mesh came back with the same vertices in a different order --
+            // and every per-vertex field with it, shifted along by a place or two. A NIF
+            // written by this port therefore never matched the one it came from, however
+            // faithful each individual value was.
+            //
+            // Only when every attribute depends on the control point alone, which is
+            // what this port writes and what the check below asks. A DCC mesh can give
+            // one control point several normals or texture coordinates, and there the
+            // splitting has to happen while the corners are walked -- there is no single
+            // vertex to emit up front.
             int corner = 0;
             int polygon = 0;
+
+            bool perControlPoint = normals.PerControlPoint && tangents.PerControlPoint
+                && bitangents.PerControlPoint && uvs.PerControlPoint && colors.PerControlPoint;
+
+            if (perControlPoint)
+            {
+                for (int point = 0; point < controlPoints.Length; point++)
+                    Emit((-1, point));
+            }
+
             var polygonCorners = new List<(int Corner, int ControlPoint)>();
 
             foreach (int raw in rawIndices)
@@ -176,7 +199,9 @@ namespace SECmd.Fbx
                 polygon++;
             }
 
-            // Control points no triangle reaches are still vertices of the mesh.
+            // Control points no triangle reaches are still vertices of the mesh. Already
+            // done above when the attributes allowed it; this is the case where they did
+            // not, and the corners had to be walked first.
             //
             // The loop above only ever arrives at a control point through a polygon
             // corner, so a vertex that nothing indexes would be dropped in silence.
@@ -303,6 +328,18 @@ namespace SECmd.Fbx
             }
 
             public bool Exists => _values is { Length: > 0 } && _mapping != FbxMappingMode.None;
+
+            /// <summary>
+            /// Whether this element's value depends only on which control point it is.
+            /// </summary>
+            /// <remarks>
+            /// True for an element that is absent, one value for the whole mesh, or one
+            /// value per control point. False when a corner can differ from its
+            /// neighbour at the same control point, which is when a control point has to
+            /// become more than one vertex.
+            /// </remarks>
+            public bool PerControlPoint =>
+                _mapping is FbxMappingMode.None or FbxMappingMode.AllSame or FbxMappingMode.ByControlPoint;
 
             public static LayerElement Find(FbxObject geometry, string elementName, string arrayName)
             {
