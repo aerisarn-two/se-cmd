@@ -179,7 +179,7 @@ namespace SECmd.Nif
                 controller = model.InsertBlock(property.ControllerType);
 
                 model.SetRef(controller, "Target", host);
-                model.FindItem(controller, "Flags")?.Value.SetCount(StandaloneControllerFlags);
+                model.FindItem(controller, "Flags")?.Value.SetCount(property.ControllerFlags ?? StandaloneControllerFlags);
                 model.FindItem(controller, "Frequency")?.Value.SetFloat(1f);
                 model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
 
@@ -389,7 +389,7 @@ namespace SECmd.Nif
 
                     if (!existing)
                     {
-                        model.FindItem(controller, "Flags")?.Value.SetCount(StandaloneControllerFlags);
+                        model.FindItem(controller, "Flags")?.Value.SetCount(FlagsFor(group, StandaloneControllerFlags));
                         model.FindItem(controller, "Frequency")?.Value.SetFloat(1f);
                         model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
                     }
@@ -479,7 +479,7 @@ namespace SECmd.Nif
 
             controller = model.InsertBlock(property.ControllerType);
 
-            model.FindItem(controller, "Flags")?.Value.SetCount(StandaloneControllerFlags);
+            model.FindItem(controller, "Flags")?.Value.SetCount(property.ControllerFlags ?? StandaloneControllerFlags);
             model.FindItem(controller, "Frequency")?.Value.SetFloat(1f);
             model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
 
@@ -578,7 +578,24 @@ namespace SECmd.Nif
         }
 
         /// <summary>Active, and playing forwards on a loop, which is what a bare controller does.</summary>
+        /// <remarks>
+        /// The fallback only. A controller that came from a file brings its own flags,
+        /// and the game's are as often 72 or 108 -- writing this constant over them left
+        /// every shader controller active and looping whatever it had been.
+        /// </remarks>
         private const uint StandaloneControllerFlags = 0x000C;
+
+        /// <summary>A group's carried controller flags, or the constant for one with none.</summary>
+        private static uint FlagsFor(IEnumerable<AnimProperty> group, uint fallback)
+        {
+            foreach (AnimProperty property in group)
+            {
+                if (property.ControllerFlags is { } flags)
+                    return flags;
+            }
+
+            return fallback;
+        }
 
         /// <summary>
         /// The block a controller of this class hangs from.

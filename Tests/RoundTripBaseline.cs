@@ -315,7 +315,14 @@ namespace SECmd.Tests
             ["Linear Damping"] = "5 occurrences",
             ["Unused 01"] = "4 occurrences",
             ["Penetration Depth"] = "2 occurrences",
-            ["Flags"] = "14 occurrences",
+
+            // What is left of the controller flags, and it is not one thing. The
+            // controllers a *file* carried now bring their own; these are the ones this
+            // port synthesises -- the controller manager, the multi-target transform
+            // controller, the blend interpolators it makes to hold a sequence's output --
+            // which have no source to read from and are written from constants. The AV
+            // object flags differ separately, by a single bit in each case.
+            ["Flags"] = "synthesised controllers and one AV object bit",
             ["Unused 03"] = "3 occurrences",
             ["Active Material"] = "4 occurrences",
             ["Build Type"] = "2 occurrences",

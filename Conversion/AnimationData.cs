@@ -61,6 +61,21 @@ namespace SECmd.Conversion
         public required string Name { get; init; }
 
         /// <summary>
+        /// The flags of the controller this property belongs to, when it had one.
+        /// </summary>
+        /// <remarks>
+        /// Null for a property that did not come from a file, where the writer's own
+        /// constant is the only answer available.
+        ///
+        /// A controller's flags say whether it is active and which way it plays, and
+        /// they were written from a constant -- 12 for a property controller, 44 for a
+        /// transform one -- whatever the source held. The game's files hold 72 and 108
+        /// as readily, so a shader controller came back active-and-looping when it was
+        /// neither.
+        /// </remarks>
+        public uint? ControllerFlags { get; set; }
+
+        /// <summary>
         /// One curve per component: one for a scalar, three for a colour.
         /// </summary>
         /// <remarks>

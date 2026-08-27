@@ -131,6 +131,13 @@ namespace SECmd.Fbx
 
                     AddInterpolatorType(stack, track.NodeName, property);
                     AddDataId(stack, track, property);
+
+                    if (property.ControllerFlags is { } flags)
+                    {
+                        stack.Properties.SetUserString(
+                            ControllerFlagsKey(track.NodeName, property),
+                            flags.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    }
                 }
             }
 
@@ -143,6 +150,19 @@ namespace SECmd.Fbx
 
         /// <summary>Where the node a sequence accumulates against rides.</summary>
         public const string AccumRootPropertyName = "nif_accum_root";
+
+        /// <summary>Prefix on a stack property carrying a controller's flags.</summary>
+        /// <remarks>
+        /// Keyed by node, controller class and controller id, which is what identifies a
+        /// controller — not by the property's encoded name, which several properties of
+        /// one controller share and which is not always unique within a track.
+        /// </remarks>
+        public const string ControllerFlagsPrefix = "ctlrflags_";
+
+        /// <summary>The key a controller's flags ride under.</summary>
+        public static string ControllerFlagsKey(string nodeName, AnimProperty property) =>
+            $"{ControllerFlagsPrefix}{nodeName}{AnimProperty.Separator}"
+            + $"{property.ControllerType}{AnimProperty.Separator}{property.ControllerId}";
 
         public const string ConstantPrefix = "const_";
 

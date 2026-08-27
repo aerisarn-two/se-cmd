@@ -328,7 +328,8 @@ namespace SECmd.Nif
                     InterpolatorType = interpolator.Name,
                     DataId = DataIdOf(model, interpolator),
                     ControllerId = id,
-                    InterpolatorId = interpolatorId
+                    InterpolatorId = interpolatorId,
+                    ControllerFlags = FlagsOf(model, controller)
                 };
 
                 if (ReadValueKeys(model, interpolator, property))
@@ -512,6 +513,7 @@ namespace SECmd.Nif
                     ControllerId = model.GetString(controlled, "Controller ID"),
                     InterpolatorId = model.GetString(controlled, "Interpolator ID"),
                     PropertyType = model.GetString(controlled, "Property Type"),
+                    ControllerFlags = FlagsOf(model, model.GetRef(controlled, "Controller")),
                     CarriedInterpolator = FbxInterpolatorCodec.Capture(model, interpolator)
                 });
 
@@ -531,7 +533,8 @@ namespace SECmd.Nif
                 ControllerType = model.GetString(controlled, "Controller Type"),
                 ControllerId = model.GetString(controlled, "Controller ID"),
                 InterpolatorId = model.GetString(controlled, "Interpolator ID"),
-                PropertyType = model.GetString(controlled, "Property Type")
+                PropertyType = model.GetString(controlled, "Property Type"),
+                ControllerFlags = FlagsOf(model, model.GetRef(controlled, "Controller"))
             };
 
             if (ReadValueKeys(model, interpolator, property))
@@ -610,6 +613,10 @@ namespace SECmd.Nif
         /// can carry anyway; a point's three components become three curves, since
         /// FBX keys each one separately.
         /// </remarks>
+        /// <summary>A controller's flags, or null when there is no controller to ask.</summary>
+        private static uint? FlagsOf(NifModel model, NifItem? controller) =>
+            controller is null ? null : model.FindItem(controller, "Flags")?.Value.ToUInt();
+
         /// <summary>The data block an interpolator reads its keys from, if any.</summary>
         public static int DataIdOf(NifModel model, NifItem interpolator) =>
             model.GetRef(interpolator, "Data") is { } data ? model.IndexOf(data) : -1;

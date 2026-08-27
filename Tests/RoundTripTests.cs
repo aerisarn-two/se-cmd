@@ -903,6 +903,45 @@ namespace SECmd.Tests
             Assert.Equal(before, Dynamic(RoundTrip(source)));
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void AControllerKeepsTheFlagsItCameWith(string name)
+        {
+            // A controller's flags say whether it is active and which way it plays, and
+            // they were written from a constant -- 12 for a property controller -- over
+            // whatever the file held. The game's are as readily 72 or 108, so a shader
+            // controller came back active and looping when it was neither.
+            //
+            // Only controllers that came from a file. The manager, the multi-target
+            // transform controller and the blend interpolators are made by this port and
+            // have no source to read from; they still take the constant, and `Flags` is
+            // on the open list for them.
+            //
+            // Needs its own test for that reason: the general comparison excuses `Flags`
+            // everywhere while those remain.
+            //
+            // Compared as distinct class-and-value pairs rather than one per block. A
+            // controller hanging off a shader property that nothing owns does not survive
+            // a scene it was never in, which is a separate matter from what its flags say.
+            NifModel source = Load(name);
+
+            static List<string> Flags(NifModel m) =>
+                [.. m.Blocks
+                    .Where(b => m.BlockInherits(b, "NiTimeController")
+                                && !m.BlockInherits(b, "NiControllerManager")
+                                && !m.BlockInherits(b, "NiMultiTargetTransformController"))
+                    .Select(b => $"{b.Name}={m.FindItem(b, "Flags")?.Value.ToUInt()}")
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(x => x, StringComparer.Ordinal)];
+
+            List<string> before = Flags(source);
+
+            if (before.Count == 0)
+                return;
+
+            Assert.Equal(before, Flags(RoundTrip(source)));
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

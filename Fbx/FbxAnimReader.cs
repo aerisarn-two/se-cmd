@@ -299,6 +299,29 @@ namespace SECmd.Fbx
             }
         }
 
+        /// <summary>Puts back the flags of the controller each property belongs to.</summary>
+        /// <remarks>See <see cref="FbxAnimWriter.ControllerFlagsKey"/>.</remarks>
+        private static void ReadControllerFlags(FbxObject stack, Dictionary<string, AnimTrack> tracks)
+        {
+            foreach ((string nodeName, AnimTrack track) in tracks)
+            {
+                foreach (AnimProperty property in track.Properties)
+                {
+                    string text = stack.Properties.GetString(
+                        FbxAnimWriter.ControllerFlagsKey(nodeName, property));
+
+                    if (uint.TryParse(
+                            text,
+                            System.Globalization.NumberStyles.Integer,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out uint flags))
+                    {
+                        property.ControllerFlags = flags;
+                    }
+                }
+            }
+        }
+
         private static AnimSequence? ReadStack(FbxScene scene, FbxObject stack)
         {
             var sequence = new AnimSequence
@@ -331,6 +354,7 @@ namespace SECmd.Fbx
             ReadPoses(stack, tracks);
             ReadInterpolatorTypes(stack, tracks);
             ReadDataIds(stack, tracks);
+            ReadControllerFlags(stack, tracks);
 
             // A track with no keys is kept only when it holds a constant, which is an
             // animation with nothing to draw rather than an empty one.
