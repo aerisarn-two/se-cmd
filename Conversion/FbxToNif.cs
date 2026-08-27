@@ -513,6 +513,18 @@ namespace SECmd.Conversion
 
 
             _model.SetRef(body, "Shape", shape);
+
+            // The layer the body was on. It travelled out of the file, across the scene
+            // and back in, and was then used only to decide whether this is a static --
+            // never written to the body it came from. So every rebuilt body kept the
+            // field's default, and one that had been on a named layer came back on
+            // whatever that default is.
+            //
+            // It is the input to the motion profile as well, so losing it takes the
+            // motion system, the deactivation and the quality with it. Applied before
+            // WriteStaticMotion, which reads the layer to decide the profile.
+            FbxCollisionMaterial.ApplyLayer(_model, body, FbxRigidBodyInfo.LayerOf(bodyNode));
+
             WriteBodyTransform(body, bodyNode);
             WriteStaticMotion(body);
             WriteMassProperties(body, shape, bodyNode);

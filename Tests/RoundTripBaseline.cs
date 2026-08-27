@@ -84,6 +84,19 @@ namespace SECmd.Tests
             ["Bitangent Y"] = "tangent space regenerated (§5.3.1)",
             ["Bitangent Z"] = "tangent space regenerated (§5.3.1)",
 
+            // The motion profile is applied from the resulting collision layer rather
+            // than carried: the spec's table at §5.7 gives the motion system,
+            // deactivation and quality for each layer, and ck-cmd sets them the same
+            // way. A body that arrives on a given layer gets that layer's settings,
+            // which is the point of having a profile at all.
+            //
+            // `Layer` itself is deliberately *not* here. It is the input to the profile,
+            // and a body landing on the wrong layer is a real fault — it decides what
+            // the thing collides with.
+            ["Motion System"] = "set from the collision layer by the motion profile (§5.7)",
+            ["Solver Deactivation"] = "set from the collision layer by the motion profile (§5.7)",
+            ["Quality Type"] = "set from the collision layer by the motion profile (§5.7)",
+
             // Calculated from the block graph rather than carried (bsxflags-spec.md),
             // and *added* to a file that had none -- which lengthens the root's extra
             // data list by one. The corpus sweep has always excluded that; it was sitting
@@ -177,6 +190,13 @@ namespace SECmd.Tests
         public static readonly Dictionary<string, string> Open = new(StringComparer.Ordinal)
         {
 
+            // A body carries a collision layer in more than one filter -- its own, and
+            // one or more inside `Rigid Body Info` -- and they do not always agree in the
+            // source. The body's own is now carried (see ABodyKeepsTheLayerItWasOn); the
+            // ones under `Rigid Body Info` are not, and what they mean has not been
+            // established.
+            ["Layer"] = "the filters under Rigid Body Info are not carried",
+
             // Seen on models built in tests rather than on the fixtures, which is why
             // the fixture sweep alone did not list them.
             // Where a reference leads to a block of a different class. NifComparer
@@ -251,10 +271,6 @@ namespace SECmd.Tests
             ["Num Triangles"] = "8 occurrences",
             ["Flags"] = "14 occurrences",
             ["Num Vertices"] = "6 occurrences",
-            ["Layer"] = "8 occurrences",
-            ["Motion System"] = "1 occurrence",
-            ["Quality Type"] = "1 occurrence",
-            ["Solver Deactivation"] = "1 occurrence",
             ["Unused 03"] = "3 occurrences",
             ["Active Material"] = "4 occurrences",
             ["Build Type"] = "2 occurrences",

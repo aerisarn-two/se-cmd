@@ -725,6 +725,34 @@ namespace SECmd.Tests
             Assert.Equal(before, Uvs(rebuilt));
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void ABodyKeepsTheLayerItWasOn(string name)
+        {
+            // A rigid body's collision layer decides what it collides with, and it is
+            // also the input to the motion profile -- the layer chooses the motion
+            // system, the deactivation and the quality (spec §5.7). So losing it loses
+            // those with it.
+            //
+            // It was being read off the body, written into the scene twice, read back on
+            // the way in, and then used only to answer "is this a static". Nothing ever
+            // wrote it to the body it came from, so every rebuilt body kept the field's
+            // default and anything not already static came back as though it were.
+            NifModel source = Load(name);
+
+            static List<string> Layers(NifModel m) =>
+                [.. m.Blocks
+                    .Where(b => m.BlockInherits(b, "bhkRigidBody"))
+                    .Select(b => FbxCollisionMaterial.LayerOf(m, b))];
+
+            List<string> before = Layers(source);
+
+            if (before.Count == 0)
+                return;
+
+            Assert.Equal(before, Layers(RoundTrip(source)));
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

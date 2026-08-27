@@ -99,5 +99,34 @@ namespace SECmd.Fbx
             field.Value.SetCount(value);
             return true;
         }
+
+        /// <summary>
+        /// Puts a collision layer back onto a rebuilt body's filter.
+        /// </summary>
+        /// <remarks>
+        /// The counterpart of <see cref="LayerOf"/>, which had none. The layer was read
+        /// from the body, written into the scene twice — once on the collision material
+        /// and once on the body node — read back on the way in, and then used only to
+        /// decide whether the body was a static. It was never written to the body it
+        /// came from, so every rebuilt body kept the field's default and a body that
+        /// had been on, say, layer 10 came back on layer 1.
+        ///
+        /// That is not cosmetic: the layer decides what a thing collides with, and it
+        /// is also the input to the motion profile, so getting it wrong changes the
+        /// motion system, the deactivation and the quality along with it.
+        /// </remarks>
+        /// <returns>Whether the name was recognised and applied.</returns>
+        public static bool ApplyLayer(NifModel model, NifItem body, string name)
+        {
+            if (name.Length == 0
+                || FieldOfType(body, LayerEnum) is not { } field
+                || !model.Database.TryGetEnumOptionValue(LayerEnum, name, out uint value))
+            {
+                return false;
+            }
+
+            field.Value.SetCount(value);
+            return true;
+        }
     }
 }
