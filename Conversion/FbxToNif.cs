@@ -536,6 +536,7 @@ namespace SECmd.Conversion
             WriteBodyTransform(body, bodyNode);
             WriteStaticMotion(body);
             WriteMassProperties(body, shape, bodyNode);
+            WriteSimulationScalars(body, bodyNode);
 
             _model.SetRef(collision, "Body", body);
 
@@ -596,6 +597,28 @@ namespace SECmd.Conversion
             SetFloat(body, @"Rigid Body Info\Inertia Tensor\m31", tensor.M31);
             SetFloat(body, @"Rigid Body Info\Inertia Tensor\m32", tensor.M32);
             SetFloat(body, @"Rigid Body Info\Inertia Tensor\m33", tensor.M33);
+        }
+
+        /// <summary>
+        /// Restores the simulation scalars the body was authored with.
+        /// </summary>
+        /// <remarks>
+        /// Friction, restitution, damping, penetration depth and the velocity ceilings
+        /// are settings, not consequences of the geometry: nothing about a rebuilt hull
+        /// says how slippery it is. They are carried across the scene verbatim and put
+        /// back, which is the same treatment the mass gets and for the same reason.
+        ///
+        /// A body that arrives without them -- one authored in a DCC tool rather than
+        /// converted from a NIF -- keeps nif.xml's defaults, which are Bethesda's own
+        /// commonest values.
+        /// </remarks>
+        private void WriteSimulationScalars(NifItem body, FbxObject bodyNode)
+        {
+            foreach (string field in FbxRigidBodyInfo.Scalars)
+            {
+                if (FbxRigidBodyInfo.ScalarOf(bodyNode, field) is { } value)
+                    SetFloat(body, $@"Rigid Body Info\{field}", value);
+            }
         }
 
         /// <summary>The tensor for a rebuilt shape, or null for one with no formula.</summary>

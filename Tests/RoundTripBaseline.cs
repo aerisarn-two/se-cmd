@@ -169,6 +169,12 @@ namespace SECmd.Tests
             // Bethesda exported on, written out with the rest of the struct. There is
             // nothing in it to reconstruct; ck-cmd does not write it either.
             ["User Data"] = "an exporter's leftover heap address, not data about the shape",
+
+            // nif.xml calls these padding and they are padding: `Unused 01` is a binary
+            // byte[4] on the rigid body info and a byte[8] on a constraint's, `Unused 03`
+            // a lone byte. Nothing reads them, and a rebuilt block zeroes them.
+            ["Unused 01"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
+            ["Unused 03"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
         };
 
         /// <summary>
@@ -353,10 +359,6 @@ namespace SECmd.Tests
             // nif.xml calculates this one from Vertex Desc, Num Vertices and Num
             // Triangles, so it is a consequence of those rather than a fault of its own:
             // it will come right when the geometry does, and not before.
-            ["Angular Damping"] = "5 occurrences",
-            ["Linear Damping"] = "5 occurrences",
-            ["Unused 01"] = "4 occurrences",
-            ["Penetration Depth"] = "2 occurrences",
 
             // What is left of the controller flags, and it is not one thing. The
             // controllers a *file* carried now bring their own; these are the ones this
@@ -365,7 +367,6 @@ namespace SECmd.Tests
             // which have no source to read from and are written from constants. The AV
             // object flags differ separately, by a single bit in each case.
             ["Flags"] = "synthesised controllers and one AV object bit",
-            ["Unused 03"] = "3 occurrences",
             ["Build Type"] = "2 occurrences",
             ["Chunk Materials"] = "3 occurrences",
             ["Chunk Transforms"] = "3 occurrences",
@@ -376,8 +377,6 @@ namespace SECmd.Tests
             ["Offset"] = "2 occurrences",
             ["First Point"] = "3 occurrences",
             ["Second Point"] = "3 occurrences",
-            ["Friction"] = "1 occurrence",
-            ["Restitution"] = "1 occurrence",
             ["Chunks"] = "2 occurrences",
             ["Num Chunks"] = "2 occurrences",
             ["Num Normals"] = "1 occurrence",

@@ -1048,6 +1048,34 @@ namespace SECmd.Tests
             Assert.All(shapes, shape => Assert.Same(root, rebuilt.GetRef(shape, "Target")));
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void ABodyKeepsHowItSimulates(string name)
+        {
+            // Friction, restitution, damping, penetration depth and the velocity
+            // ceilings are authored settings, not consequences of the geometry --
+            // nothing about a rebuilt hull says how slippery it is. Across the 14,408
+            // bodies Skyrim ships, friction takes 16 distinct values and penetration
+            // depth 2,185, and ck-cmd reads every one of them back off the body when
+            // it builds a ragdoll (Skeleton.cpp:1003-1028).
+            NifModel source = Load(name);
+
+            static List<(string, float)> Scalars(NifModel m) =>
+                [.. m.Blocks
+                    .Where(b => m.BlockInherits(b, "bhkRigidBody"))
+                    .SelectMany(b => Fbx.FbxRigidBodyInfo.Scalars
+                        .Select(f => (f, m.FindItem(b, $@"Rigid Body Info\{f}")))
+                        .Where(pair => pair.Item2 is not null)
+                        .Select(pair => (pair.f, pair.Item2!.Value.ToFloat())))];
+
+            List<(string, float)> before = Scalars(source);
+
+            if (before.Count == 0)
+                return;
+
+            Assert.Equal(before, Scalars(RoundTrip(source)));
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

@@ -470,6 +470,41 @@ When exporting a rig, `body_part` (from the Havok filter) is stored as a propert
 
 `bhkSPCollisionObject` produces `<name>_sp` with wireframe shading and no transform.
 
+#### 4.9.1 The simulation scalars
+
+`convert_from_hk` (L4903–4948) sets shape, centre, inertia tensor, mass, motion system,
+solver deactivation, quality type and the Havok filter, and leaves friction, restitution,
+damping, penetration depth and the velocity ceilings at niflib's defaults — because on
+that path they came from a freshly built `hkpRigidBodyCinfo` that never had the
+original's values in it.
+
+They are nonetheless authored. Across the **14,408** rigid bodies Skyrim ships:
+
+| Field | Distinct values | Commonest |
+| --- | --- | --- |
+| `Penetration Depth` | 2,185 | 0.1 (6,699) |
+| `Friction` | 16 | 0.5 (12,589) |
+| `Angular Damping` | 9 | 0.049805 (14,250) |
+| `Restitution` | 8 | 0.4 (12,542) |
+| `Linear Damping` | 5 | 0.099609 (14,158) |
+| `Max Angular Velocity` | 4 | 31.57 (13,159) |
+| `Max Linear Velocity` | 3 | 104.4 (13,336) |
+
+ck-cmd reads every one of them straight back off the body when it builds a ragdoll
+(`Skeleton.cpp:1003–1028`), which is what they are for. se-cmd therefore **carries all
+seven through FBX verbatim**, as `nif_rb_<field>` properties on the body node, the same
+treatment the mass already had and for the same reason: nothing about a rebuilt hull
+says how slippery it is.
+
+Damping is carried even though that ragdoll path overrides it — angular to 0.049805,
+linear to 0, with `GetAngularDamping()` commented out beside it. That is a decision
+about ragdolls, not a claim that the field is dead; the 51 bodies shipping a zero
+linear damping against 14,158 shipping 0.0996 say it is read.
+
+Three siblings are deliberately **not** carried: `Time Factor`, `Gravity Factor` and
+`Rolling Friction Multiplier` hold a single value each across all 14,408 bodies (1, 1
+and 0), so nif.xml's default already *is* the authored value.
+
 ### 4.9A Structural controllers on a particle system
 
 ck-cmd carries none of this: `FBXWrangler.cpp` has no occurrence of `NiParticleSystem`,
