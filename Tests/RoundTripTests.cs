@@ -687,6 +687,44 @@ namespace SECmd.Tests
             Assert.Equal("keys", model.ResolveString(model.FindItem(block, "Name")!));
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void AUvSurvivesTheRoundTrip(string name)
+        {
+            // NIF's V axis points the other way from FBX's, so the export flips it and
+            // the reader flips it back -- that is what `FbxMeshReader.Options.InvertV`
+            // is for, and it is on by default. Packing an SE vertex then flipped a third
+            // time, so every texture coordinate came back as `1 - v` and the mesh was
+            // textured upside down. The `NiTriShapeData` path beside it has always
+            // written the value straight through; two places, one convention, one of
+            // them wrong.
+            //
+            // Compared as a set of distinct values. Vertex *order* is a separate defect
+            // (see RoundTripBaseline.Open) and vertices identical in every attribute are
+            // allowed to merge, so neither position nor count is the thing being
+            // asserted here -- only that a coordinate comes back as the coordinate it
+            // was, rather than as one minus it.
+            NifModel source = Load(name);
+            NifModel rebuilt = RoundTrip(source);
+
+            static List<string> Uvs(NifModel m) =>
+                [.. m.Blocks
+                    .Where(b => m.FindItem(b, "Vertex Data") is { Children.Count: > 0 })
+                    .SelectMany(b => m.FindItem(b, "Vertex Data")!.Children)
+                    .Select(v => m.FindItem(v, "UV")?.Value.Get<NifVector2>())
+                    .Where(uv => uv is not null)
+                    .Select(uv => $"{uv!.Value.X:F4},{uv.Value.Y:F4}")
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(x => x, StringComparer.Ordinal)];
+
+            List<string> before = Uvs(source);
+
+            if (before.Count == 0)
+                return;
+
+            Assert.Equal(before, Uvs(rebuilt));
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

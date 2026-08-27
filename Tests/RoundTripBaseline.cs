@@ -113,8 +113,6 @@ namespace SECmd.Tests
         /// (-2.1, 2.5, 0.15) comes back as (-197, 222, 334) — so a transform is applied
         /// twice somewhere down a 25-deep chain. That accounts for `Vertex`, `Normal`
         /// and a good deal of `UV`.</item>
-        /// <item>The `UV` difference is exactly `1 - v`: one V flip too many or too few
-        /// on some path, since the writer flips and the reader flips back.</item>
         /// <item>A skinned SE shape keeps its geometry in the skin partition and the
         /// rebuilt file puts it on the shape, which is what `Vertex Desc`, `Vertex Size`,
         /// `Vertex Data`, `Num Vertices` and `Num Triangles` are saying.</item>
@@ -141,7 +139,12 @@ namespace SECmd.Tests
             ["Strip Lengths"] = "a strips shape's strips are restructured, 1 group becoming 2",
             ["Points"] = "a strips shape's strips are restructured, 1 group becoming 2",
 
-            ["UV"] = "10 fixtures, 7610 fields",
+            // Not the V flip -- that is fixed and asserted by AUvSurvivesTheRoundTrip.
+            // What is left is vertex *order*: the reader numbers vertices in the order
+            // the triangles first reach them, so a rebuilt shape holds the same UVs
+            // shifted along by a place or two. Every per-vertex field says so at once.
+            ["UV"] = "vertex order is not preserved, so per-vertex fields are shifted",
+
             ["Data Size"] = "9 fixtures, 27 fields",
             ["Num Extra Data List"] = "9 fixtures, 9 fields",
             ["Vertex Desc"] = "6 fixtures, 30 fields",

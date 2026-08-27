@@ -2046,10 +2046,17 @@ namespace SECmd.Conversion
 
             if (mesh.HasUvs && index < mesh.Uvs.Count)
             {
-                NifVector2 uv = mesh.Uvs[index];
-
-                // Back to NIF's V direction.
-                _model.FindItem(vertex, "UV")?.Value.Set(new NifVector2(uv.X, 1f - uv.Y));
+                // Already in NIF's V direction. `FbxMeshReader` turns it back on the way
+                // in — that is what its `InvertV` option is for, and it defaults to on —
+                // so flipping here as well put V through an odd number of flips and every
+                // texture coordinate came back as `1 - v`.
+                //
+                // The `NiTriShapeData` path a hundred lines down has always written
+                // `mesh.Uvs[i]` straight through. Two places writing one convention, and
+                // only one of them right: nothing compared a UV until the round trip
+                // started comparing whole graphs, and then ten of twenty-four fixtures
+                // said so at once.
+                _model.FindItem(vertex, "UV")?.Value.Set(mesh.Uvs[index]);
             }
 
             if (mesh.HasNormals && index < mesh.Normals.Count)
