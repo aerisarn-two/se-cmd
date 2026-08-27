@@ -162,6 +162,13 @@ namespace SECmd.Tests
             // is a field nothing ever set — which is what a model built in a test looks
             // like. Writing LINEAR_KEY for it is normalisation, not loss.
             ["Interpolation"] = "0 is not a KeyType; an unset one becomes LINEAR_KEY",
+
+            // Not a number about the mesh. Every vanilla value is 16-byte aligned and
+            // they cluster in tight runs -- 0x1078Axxx and neighbours, spread across
+            // 0x4DA140 to 0x171ECE60 -- which is a heap address from whatever machine
+            // Bethesda exported on, written out with the rest of the struct. There is
+            // nothing in it to reconstruct; ck-cmd does not write it either.
+            ["User Data"] = "an exporter's leftover heap address, not data about the shape",
         };
 
         /// <summary>
@@ -266,11 +273,6 @@ namespace SECmd.Tests
             // would be neither.
             ["Num Objs"] = "built as ck-cmd builds it; Bethesda's own palettes hold more",
             ["Objs"] = "built as ck-cmd builds it; Bethesda's own palettes hold more",
-
-            // A compressed mesh shape's back-reference to what it belongs to, and the
-            // user data beside it. Neither is read or written.
-            ["Target"] = "a compressed mesh shape's target is not carried",
-            ["User Data"] = "a compressed mesh shape's user data is not carried",
 
             // What is left of the controller references. A controlled block's own is now
             // set -- a transform entry points at the multi-target controller, as the file

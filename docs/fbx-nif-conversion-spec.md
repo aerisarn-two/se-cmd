@@ -426,6 +426,32 @@ references its material.
 - Remaining indices after the strips are plain triangles.
 - All triangles of a chunk take `chunk.materialIndex`.
 
+##### `Target` and `User Data`, on the way back
+
+Two scalars beside the data, both of which se-cmd left unwritten until they were
+measured.
+
+`Target` is a `Ptr` that nif.xml annotates, with a question mark, as "Points to root
+node?". The corpus removes the doubt: of the **8,188** compressed mesh shapes Skyrim
+ships, all 8,188 point at the root block.
+
+ck-cmd points it instead at the node the collision hangs off — the rigid body's parent
+(`FBXWrangler.cpp:4977`, and the same in `ConvertNif.cpp:1044`). That is the same block
+whenever collision sits on the root, which is the common case, and a *different* block
+whenever it does not: of se-cmd's own fixtures, `TestNifFile_Furniture_Col_SE` has the
+shape pointing at the root `FurnitureMarker` while the collision object targets
+`Furniture`, and `TestNifFile_MultiBound_SE` likewise.
+
+**se-cmd departs from ck-cmd here and writes the root**, because 8,188 vanilla files
+agree on it and the reference agrees with them only by coincidence.
+
+`User Data` is deliberately *not* written, by se-cmd or by ck-cmd. Every vanilla value
+is 16-byte aligned, none is zero, and they cluster in tight runs — 0x1078Axxx and
+neighbours, spread across 0x4DA140 to 0x171ECE60. Those are heap addresses from
+whichever machine Bethesda exported on, flushed out with the rest of the struct. There
+is nothing in them to reconstruct, so the round trip leaves the field at zero and says
+so on the baseline rather than pretending the gap is unfinished work.
+
 ### 4.9 Rigid bodies
 
 `visit_rigid_body` (L2318–2400). Creates a node named `<targetName>_rb`.

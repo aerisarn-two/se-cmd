@@ -1027,6 +1027,27 @@ namespace SECmd.Tests
             Assert.Equal(before, Active(RoundTrip(source)));
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void ACompressedMeshShapePointsBackAtTheRoot(string name)
+        {
+            // nif.xml hedges -- "Points to root node?" -- and the corpus does not: all
+            // 8,188 compressed mesh shapes Skyrim ships point at the root block. Nothing
+            // wrote it, so every rebuilt shape came back with a null pointer.
+            NifModel source = Load(name);
+
+            if (!source.Blocks.Any(b => b.Name == "bhkCompressedMeshShape"))
+                return;
+
+            NifModel rebuilt = RoundTrip(source);
+            NifItem root = rebuilt.Blocks[0];
+
+            List<NifItem> shapes = [.. rebuilt.Blocks.Where(b => b.Name == "bhkCompressedMeshShape")];
+
+            Assert.NotEmpty(shapes);
+            Assert.All(shapes, shape => Assert.Same(root, rebuilt.GetRef(shape, "Target")));
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

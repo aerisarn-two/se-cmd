@@ -140,6 +140,7 @@ namespace SECmd.Conversion
                 FbxNodeControllers.Read(sceneRoots[0], _model, root, Warnings);
             }
             _nodesByName[_options.RootName] = root;
+            _sceneRoot = root;
 
             var rootModels = sceneRoots;
             var children = new List<NifItem>();
@@ -393,6 +394,13 @@ namespace SECmd.Conversion
 
         /// <summary>Collision bodies seen since <paramref name="mark"/>, awaiting a node to attach to.</summary>
         private readonly List<FbxObject> _pendingCollision = [];
+
+        /// <summary>The block every compressed mesh shape points back at.</summary>
+        /// <remarks>
+        /// Set as soon as the root exists, since the walk that builds the shapes runs
+        /// well before the roots are recorded in the footer.
+        /// </remarks>
+        private NifItem? _sceneRoot;
 
         /// <summary>The rigid bodies built so far, by the node name they came from.</summary>
         private readonly Dictionary<string, NifItem> _bodiesByName = new(StringComparer.Ordinal);
@@ -1356,6 +1364,21 @@ namespace SECmd.Conversion
 
             NifItem shape = _model.InsertBlock("bhkCompressedMeshShape");
             NifItem data = _model.InsertBlock("bhkCompressedMeshShapeData");
+
+            // "Points to root node?", says nif.xml, hedging. It is not a hedge: of the
+            // 8,188 compressed mesh shapes Skyrim ships, all 8,188 point at the root
+            // block. ck-cmd instead points it at the node the collision hangs off
+            // (FBXWrangler.cpp:4977), which is the same block whenever collision sits
+            // on the root and a different one whenever it does not -- so the vanilla
+            // files are followed here rather than the reference (spec §4.8.1).
+            //
+            // `User Data` beside it is left alone. Every vanilla value is 16-byte
+            // aligned and they cluster in tight runs (0x1078Axxx and friends, across
+            // 0x4DA140 to 0x171ECE60): heap addresses from whatever machine Bethesda
+            // exported on. There is nothing there to reconstruct, and ck-cmd never
+            // writes it either.
+            if (_sceneRoot is not null)
+                _model.SetRef(shape, "Target", _sceneRoot);
 
             SetFloat(shape, "Radius", 0.005f);
             SetFloat(shape, "Radius Copy", 0.005f);
