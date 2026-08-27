@@ -305,7 +305,15 @@ namespace SECmd.Fbx
             {
                 Name = stack.Name,
                 Start = TimeProperty(stack, "LocalStart"),
-                Stop = TimeProperty(stack, "LocalStop")
+                Stop = TimeProperty(stack, "LocalStop"),
+                CycleType = uint.TryParse(
+                    stack.Properties.GetString(FbxAnimWriter.CyclePropertyName),
+                    System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out uint cycle)
+                    ? cycle
+                    : 0,
+                AccumRootName = stack.Properties.GetString(FbxAnimWriter.AccumRootPropertyName)
             };
 
             // One track per model, however many channels turn out to drive it.

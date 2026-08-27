@@ -26,8 +26,6 @@ namespace SECmd.Nif
         private const uint TransformControllerFlags = 44;
 
         /// <summary>Play once and hold, which is what an exported take means.</summary>
-        private const uint CycleClamp = 0;
-
         /// <summary>Rotation stored as three separate axis groups.</summary>
         private const uint XyzRotationKey = 4;
 
@@ -732,7 +730,13 @@ namespace SECmd.Nif
 
             model.SetString(block, "Name", sequence.Name);
             model.SetRef(block, "Manager", manager);
-            model.SetString(block, "Accum Root Name", model.GetName(model.Blocks[0]));
+            // The node the sequence accumulates against. Synthesised from whichever
+            // block happened to be first when the sequence did not carry one, which is
+            // still the fallback -- but a sequence that named one keeps it.
+            model.SetString(
+                block,
+                "Accum Root Name",
+                sequence.AccumRootName.Length > 0 ? sequence.AccumRootName : model.GetName(model.Blocks[0]));
 
             // Sequences play from zero; where they sat on the source timeline is not
             // something the engine has any use for.
@@ -742,7 +746,11 @@ namespace SECmd.Nif
             model.FindItem(block, "Stop Time")?.Value.SetFloat(length);
             model.FindItem(block, "Frequency")?.Value.SetFloat(1f);
             model.FindItem(block, "Weight")?.Value.SetFloat(1f);
-            model.FindItem(block, "Cycle Type")?.Value.SetCount(CycleClamp);
+            // What the sequence does at its end, as the source said. This was a constant
+            // named CycleClamp holding zero -- and nif.xml's zero is CYCLE_LOOP, clamp
+            // being 2 -- so every sequence in every file this wrote looped, including
+            // the ones meant to play once and stop.
+            model.FindItem(block, "Cycle Type")?.Value.SetCount(sequence.CycleType);
 
             model.SetRef(block, "Text Keys", WriteTextKeys(model, length));
 

@@ -76,6 +76,16 @@ namespace SECmd.Fbx
             stack.Properties.Set("ReferenceStart", "KTime", "Time", string.Empty, ToFbxTime(sequence.Start));
             stack.Properties.Set("ReferenceStop", "KTime", "Time", string.Empty, ToFbxTime(sequence.Stop));
 
+            // What the sequence does at its end, and what its root motion is measured
+            // against. FBX has a place for neither, so they ride as properties like
+            // everything else a take cannot say for itself.
+            stack.Properties.SetUserString(
+                CyclePropertyName,
+                sequence.CycleType.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+            if (sequence.AccumRootName.Length > 0)
+                stack.Properties.SetUserString(AccumRootPropertyName, sequence.AccumRootName);
+
             FbxObject layer = scene.AddObject("AnimationLayer", LayerName, string.Empty);
             scene.Connect(layer, stack);
 
@@ -128,6 +138,12 @@ namespace SECmd.Fbx
         }
 
         /// <summary>Prefix on a stack property holding a track's constant value.</summary>
+        /// <summary>Where a sequence's cycle type rides.</summary>
+        public const string CyclePropertyName = "nif_cycle_type";
+
+        /// <summary>Where the node a sequence accumulates against rides.</summary>
+        public const string AccumRootPropertyName = "nif_accum_root";
+
         public const string ConstantPrefix = "const_";
 
         /// <summary>Prefix on a stack property holding a track's fixed transform.</summary>

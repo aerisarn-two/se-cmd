@@ -197,6 +197,14 @@ namespace SECmd.Tests
             // established.
             ["Layer"] = "the filters under Rigid Body Info are not carried",
 
+            // A sequence is deliberately rebased to play from zero, and the source often
+            // carries the float sentinels here rather than real numbers. But the same two
+            // field names also appear on *controllers*, where the values are real and the
+            // rebasing has nothing to do with it, so this is not simply by design. Which
+            // of the two each occurrence is has not been separated.
+            ["Start Time"] = "sequence rebasing and controller spans, not yet told apart",
+            ["Stop Time"] = "sequence rebasing and controller spans, not yet told apart",
+
             // Seen on models built in tests rather than on the fixtures, which is why
             // the fixture sweep alone did not list them.
             // Where a reference leads to a block of a different class. NifComparer
@@ -206,8 +214,6 @@ namespace SECmd.Tests
             ["NiIntegerExtraData"] = "the extra data list comes back in a different order",
             ["BSTriShape"] = "a shape with no vertices comes back as NiTriShape",
 
-            ["Accum Root Name"] = "27 occurrences",
-            ["Cycle Type"] = "27 occurrences",
             ["Radius 1"] = "20 occurrences",
             ["Radius 2"] = "20 occurrences",
             ["Refraction Strength"] = "18 occurrences",
@@ -299,8 +305,6 @@ namespace SECmd.Tests
             ["Weight"] = "9 occurrences",
             ["Chained Entities"] = "11 occurrences",
             ["Array Size"] = "2 occurrences",
-            ["Start Time"] = "4 occurrences",
-            ["Stop Time"] = "3 occurrences",
             ["Indices"] = "1 occurrence",
             ["Material Index"] = "2 occurrences",
             ["Num Indices"] = "1 occurrence",

@@ -425,7 +425,9 @@ namespace SECmd.Nif
             {
                 Name = model.GetString(block, "Name"),
                 Start = FloatOf(model, block, "Start Time"),
-                Stop = FloatOf(model, block, "Stop Time")
+                Stop = FloatOf(model, block, "Stop Time"),
+                CycleType = model.FindItem(block, "Cycle Type")?.Value.ToUInt() ?? 0,
+                AccumRootName = model.GetString(block, "Accum Root Name")
             };
 
             // One track per node, however many controlled blocks turn out to name it:

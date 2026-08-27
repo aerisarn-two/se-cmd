@@ -315,6 +315,28 @@ namespace SECmd.Conversion
         /// <summary>When it ends, in seconds.</summary>
         public float Stop { get; set; }
 
+        /// <summary>
+        /// What the sequence does when it reaches its end.
+        /// </summary>
+        /// <remarks>
+        /// nif.xml's `CycleType`: 0 loops, 1 reverses, 2 clamps. It was not carried and
+        /// not read — every rebuilt sequence was written with a constant, and the
+        /// constant said `CycleClamp` while holding 0, which is *loop*. So an animation
+        /// meant to play once and stop played for ever instead.
+        /// </remarks>
+        public uint CycleType { get; set; }
+
+        /// <summary>
+        /// The node accumulated root motion is measured against.
+        /// </summary>
+        /// <remarks>
+        /// Empty when the sequence did not name one, in which case the import falls back
+        /// to the root as it always did. It was being synthesised from whichever block
+        /// happened to be first, so a sequence naming `Mesh01` came back naming
+        /// `Scene Root`.
+        /// </remarks>
+        public string AccumRootName { get; set; } = string.Empty;
+
         public List<AnimTrack> Tracks { get; } = [];
 
         /// <summary>

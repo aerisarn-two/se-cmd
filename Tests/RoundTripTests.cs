@@ -753,6 +753,39 @@ namespace SECmd.Tests
             Assert.Equal(before, Layers(RoundTrip(source)));
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void ASequenceKeepsHowItEndsAndWhatItAccumulatesAgainst(string name)
+        {
+            // Two fields of a NiControllerSequence that were not modelled, not read and
+            // not carried, so both were invented on the way out.
+            //
+            // `Cycle Type` was written as a constant named CycleClamp holding zero --
+            // and nif.xml's zero is CYCLE_LOOP, clamp being 2. So every sequence in
+            // every file this tool wrote came back looping, including the ones meant to
+            // play once and stop. A door that opens and stays open instead opens for
+            // ever.
+            //
+            // `Accum Root Name` was synthesised from whichever block happened to be
+            // first, so a sequence accumulating against `Mesh01` came back naming
+            // `Scene Root`.
+            NifModel source = Load(name);
+
+            static List<string> Sequences(NifModel m) =>
+                [.. m.Blocks
+                    .Where(b => b.Name == "NiControllerSequence")
+                    .Select(b => $"{m.GetString(b, "Name")}|"
+                        + $"{m.FindItem(b, "Cycle Type")?.Value.ToUInt()}|"
+                        + $"{m.GetString(b, "Accum Root Name")}")];
+
+            List<string> before = Sequences(source);
+
+            if (before.Count == 0)
+                return;
+
+            Assert.Equal(before, Sequences(RoundTrip(source)));
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {
