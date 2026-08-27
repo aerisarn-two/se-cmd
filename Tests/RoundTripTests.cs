@@ -40,7 +40,22 @@ namespace SECmd.Tests
                     LegendaryEdition = source.BSVersion < 100
                 });
 
-            return converter.Convert(Db);
+            NifModel rebuilt = converter.Convert(Db);
+
+            // Every round trip through this helper is compared in full, not only the
+            // one field the calling test came to look at. A test that builds a shape to
+            // check its radius should not be silent about the placement going missing
+            // beside it -- and that is not hypothetical, it is how several of the
+            // defects in RoundTripBaseline.Open survived.
+            var unexplained = RoundTripBaseline.Unexplained(source, rebuilt);
+
+            Assert.True(
+                unexplained.Count == 0,
+                $"the round trip differs in {unexplained.Count} field(s) that are neither "
+                + $"derived nor a recorded defect:\n  "
+                + string.Join("\n  ", unexplained.Take(20)));
+
+            return rebuilt;
         }
 
         private static NifModel Load(string name) =>
@@ -112,21 +127,58 @@ namespace SECmd.Tests
                 rebuilt.Blocks.Select(b => b.Name).OrderBy(x => x, StringComparer.Ordinal));
         }
 
+        /// <summary>Every fixture NIF, whatever it was put there to exercise.</summary>
+        /// <remarks>
+        /// Found rather than listed, so a fixture added for one reason is compared for
+        /// every reason — which is the point: the four this used to check were the four
+        /// someone thought to name.
+        ///
+        /// <see cref="FixtureFiles.IsFixture"/> decides what counts, so the meshes
+        /// extracted from the game under `vanilla` stay out (they are Bethesda's, and
+        /// they would make the run depend on local state) and so does the corrupted
+        /// fixture, which exists to fail loading.
+        /// </remarks>
+        public static TheoryData<string> EveryFixture()
+        {
+            var data = new TheoryData<string>();
+            string root = Path.Combine(AppContext.BaseDirectory, "Resources");
+
+            foreach (string path in Directory.GetFiles(root, "*.nif", SearchOption.AllDirectories)
+                         .Select(p => Path.GetRelativePath(root, p).Replace('\\', '/'))
+                         .Where(FixtureFiles.IsFixture)
+                         .OrderBy(p => p, StringComparer.Ordinal))
+            {
+                data.Add(path);
+            }
+
+            return data;
+        }
+
         [Theory]
-        [MemberData(nameof(CkCmdExamples))]
+        [MemberData(nameof(EveryFixture))]
         public void OnlyTheKnownGapsDiffer(string name)
         {
+            // The whole graph, field by field, for every NIF in the fixtures -- not the
+            // four this used to check, and not a census of block types.
+            //
+            // A census is what the corpus sweep does, and it cannot see anything wrong
+            // *inside* a block. That is how a shader controller came back driving the
+            // wrong variable in 1,648 meshes, how every off-centre collision box
+            // collapsed to the body origin, and how a skin partition's triangles were
+            // remapped into nonsense -- each of them with a green suite.
+            //
+            // Differences already known do not fail: see RoundTripBaseline, which keeps
+            // the derived ones and the outstanding defects in separate lists on purpose.
+            // A field in neither is new, and new is what this is for.
             NifModel source = Load(name);
             NifModel rebuilt = RoundTrip(source);
 
-            var unexplained = NifComparer.Compare(source, rebuilt)
-                .Where(d => !KnownGaps.ContainsKey(d.Field))
-                .ToList();
+            var unexplained = RoundTripBaseline.Unexplained(source, rebuilt);
 
             Assert.True(
                 unexplained.Count == 0,
-                $"{name} differs in {unexplained.Count} fields that are not known gaps:\n  "
-                + string.Join("\n  ", unexplained.Take(20)));
+                $"{name} differs in {unexplained.Count} field(s) that are neither derived "
+                + $"nor a recorded defect:\n  " + string.Join("\n  ", unexplained.Take(20)));
         }
 
         [Fact]
