@@ -214,6 +214,25 @@ namespace SECmd.Conversion
 
         public float EnvironmentMapScale { get; set; }
 
+        /// <summary>
+        /// The rim and soft-lighting strengths, and how strongly refraction bends.
+        /// </summary>
+        /// <remarks>
+        /// `BSLightingShaderProperty` only, and the defaults are nif.xml's rather than
+        /// zero — a shader that never carried them should not be given a zero, which for
+        /// `Lighting Effect 2` in particular is a visible change.
+        ///
+        /// These were not modelled at all, so every lighting shader came back with the
+        /// defaults whatever the file said: a rim power of 10 became 0.3.
+        /// </remarks>
+        public float LightingEffect1 { get; set; } = 0.3f;
+
+        /// <inheritdoc cref="LightingEffect1"/>
+        public float LightingEffect2 { get; set; } = 2f;
+
+        /// <inheritdoc cref="LightingEffect1"/>
+        public float RefractionStrength { get; set; }
+
         public NifVector2 UvOffset { get; set; } = new(0f, 0f);
 
         public NifVector2 UvScale { get; set; } = new(1f, 1f);

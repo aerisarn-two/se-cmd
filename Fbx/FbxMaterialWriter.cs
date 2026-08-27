@@ -87,6 +87,15 @@ namespace SECmd.Fbx
             properties.Set("environment_map_scale", "Number", "", FbxProperties.UserFlags,
                 (double)material.EnvironmentMapScale);
 
+            properties.Set("lighting_effect_1", "Number", "", FbxProperties.UserFlags,
+                (double)material.LightingEffect1);
+
+            properties.Set("lighting_effect_2", "Number", "", FbxProperties.UserFlags,
+                (double)material.LightingEffect2);
+
+            properties.Set("refraction_strength", "Number", "", FbxProperties.UserFlags,
+                (double)material.RefractionStrength);
+
             if (material.AlphaProperty is { } alpha)
                 WriteAlphaSettings(properties, alpha);
 

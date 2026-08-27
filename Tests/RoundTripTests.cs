@@ -786,6 +786,37 @@ namespace SECmd.Tests
             Assert.Equal(before, Sequences(RoundTrip(source)));
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void ALightingShaderKeepsWhatItLooksLike(string name)
+        {
+            // Four values of a BSLightingShaderProperty that were being replaced with
+            // defaults. Three -- the two lighting effects and the refraction strength --
+            // were not modelled at all, so a rim power of 10 came back as 0.3.
+            //
+            // The fourth is the shader *type*, which the exporter wrote by name and the
+            // importer never read. That is not only a label: nif.xml makes `Environment
+            // Map Scale` conditional on the type being 1, so an environment-mapped shader
+            // lost its scale as well and the two reported as separate faults.
+            NifModel source = Load(name);
+
+            static List<string> Shaders(NifModel m) =>
+                [.. m.Blocks
+                    .Where(b => m.BlockInherits(b, "BSLightingShaderProperty"))
+                    .Select(b => string.Join("|", new[]
+                    {
+                        "Shader Type", "Environment Map Scale",
+                        "Lighting Effect 1", "Lighting Effect 2", "Refraction Strength"
+                    }.Select(f => $"{f}={m.FindItem(b, f)?.Value.ToString() ?? "-"}")))];
+
+            List<string> before = Shaders(source);
+
+            if (before.Count == 0)
+                return;
+
+            Assert.Equal(before, Shaders(RoundTrip(source)));
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

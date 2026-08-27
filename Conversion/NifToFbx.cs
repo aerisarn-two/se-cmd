@@ -1277,6 +1277,9 @@ namespace SECmd.Conversion
                 Glossiness = FloatOf(shader, "Glossiness"),
                 Alpha = FloatOf(shader, "Alpha", 1f),
                 EnvironmentMapScale = FloatOf(shader, "Environment Map Scale"),
+                LightingEffect1 = FloatOf(shader, "Lighting Effect 1", 0.3f),
+                LightingEffect2 = FloatOf(shader, "Lighting Effect 2", 2f),
+                RefractionStrength = FloatOf(shader, "Refraction Strength"),
                 UvOffset = Vector2Of(shader, "UV Offset", new NifVector2(0f, 0f)),
                 UvScale = Vector2Of(shader, "UV Scale", new NifVector2(1f, 1f)),
                 TextureClampMode = _model.GetUInt(shader, "Texture Clamp Mode")

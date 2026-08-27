@@ -2283,7 +2283,29 @@ namespace SECmd.Conversion
 
             SetFloat(shader, "Emissive Multiple", (float)properties.GetDouble("EmissiveFactor", 1.0));
             SetFloat(shader, "Alpha", (float)(1.0 - properties.GetDouble("TransparencyFactor")));
+            // Which shading path this is, by name. Written out by the exporter and never
+            // read back, so every rebuilt lighting shader stayed on type 0 whatever the
+            // file said -- and the type is not only a label: nif.xml makes
+            // `Environment Map Scale` conditional on it being 1, so an environment-mapped
+            // shader lost its scale as well and reported two differences for one cause.
+            //
+            // Set before the fields whose existence depends on it, and the conditions
+            // re-evaluated, or the field is still absent when it is written.
+            if (properties.GetString("shader_type") is { Length: > 0 } typeName
+                && _model.FindItem(shader, "Shader Type") is { } shaderType
+                && _model.Database.TryGetEnumOptionValue(shaderType.Type, typeName, out uint typeValue))
+            {
+                shaderType.Value.SetCount(typeValue);
+                shader.InvalidateConditionsRecursive();
+            }
+
             SetFloat(shader, "Environment Map Scale", (float)properties.GetDouble("environment_map_scale"));
+
+            // Lighting-shader only. SetFloat finds nothing on an effect shader and does
+            // nothing, so these are safe to write for either.
+            SetFloat(shader, "Lighting Effect 1", (float)properties.GetDouble("lighting_effect_1", 0.3));
+            SetFloat(shader, "Lighting Effect 2", (float)properties.GetDouble("lighting_effect_2", 2.0));
+            SetFloat(shader, "Refraction Strength", (float)properties.GetDouble("refraction_strength"));
 
             ReadUvTransform(shader, material);
 
