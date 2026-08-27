@@ -236,8 +236,6 @@ namespace SECmd.Tests
             // one or more inside `Rigid Body Info` -- and they do not always agree in the
             // source. The body's own is now carried (see ABodyKeepsTheLayerItWasOn); the
             // ones under `Rigid Body Info` are not, and what they mean has not been
-            // established.
-            ["Layer"] = "the filters under Rigid Body Info are not carried",
 
             // A sequence is deliberately rebased to play from zero, and the source often
             // carries the float sentinels here rather than real numbers. But the same two

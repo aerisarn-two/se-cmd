@@ -92,6 +92,69 @@ namespace SECmd.Fbx
         /// <summary>The layer assumed for a body that arrives without one.</summary>
         public const string DefaultLayer = "SKYL_STATIC";
 
+        /// <summary>How Havok simulates a body: the three enums that travel together.</summary>
+        public readonly record struct MotionProfile(
+            string MotionSystem, string QualityType, string SolverDeactivation);
+
+        /// <summary>The properties the motion profile travels in, in profile order.</summary>
+        public static readonly (string Field, string Property)[] MotionFields =
+        [
+            ("Motion System", "nif_rb_motion_system"),
+            ("Quality Type", "nif_rb_quality_type"),
+            ("Solver Deactivation", "nif_rb_solver_deactivation")
+        ];
+
+        /// <summary>
+        /// The profile a body of this layer gets when it carries none of its own.
+        /// </summary>
+        /// <remarks>
+        /// ck-cmd's three-way split by layer (`FBXWrangler.cpp:4912-4943`), with one
+        /// value corrected against the corpus. Across the 14,408 bodies Skyrim ships,
+        /// each kind has a clear mode:
+        ///
+        /// - static: `BOX_STABILIZED` / `INVALID` / `OFF`, 87.8% of 10,508 — ck-cmd's
+        ///   answer exactly.
+        /// - animstatic and biped: `BOX_INERTIA` / `FIXED` / `LOW`, 97.0% of 2,158 —
+        ///   ck-cmd's answer exactly.
+        /// - clutter: `SPHERE_STABILIZED` / `MOVING` / `LOW`, 85.8% of 1,742. ck-cmd
+        ///   writes `MO_SYS_DYNAMIC` for the motion system here and no vanilla clutter
+        ///   body holds it. The two are not really in conflict: nif.xml describes
+        ///   `DYNAMIC` as a request Havok resolves at construction into a sphere or box
+        ///   inertia, so ck-cmd writes the request and Bethesda writes the answer. A
+        ///   file records what a thing *is*, so this follows the corpus.
+        ///
+        /// None of these is better than 88% within its kind, which is why the profile
+        /// is carried rather than derived whenever there is one to carry.
+        /// </remarks>
+        public static MotionProfile DefaultProfile(string layer) => layer switch
+        {
+            "SKYL_ANIMSTATIC" or "SKYL_BIPED" =>
+                new("MO_SYS_BOX_INERTIA", "MO_QUAL_FIXED", "SOLVER_DEACTIVATION_LOW"),
+
+            "SKYL_CLUTTER" =>
+                new("MO_SYS_SPHERE_STABILIZED", "MO_QUAL_MOVING", "SOLVER_DEACTIVATION_LOW"),
+
+            _ => new("MO_SYS_BOX_STABILIZED", "MO_QUAL_INVALID", "SOLVER_DEACTIVATION_OFF")
+        };
+
+        /// <summary>The profile carried on a node, falling back per layer.</summary>
+        public static MotionProfile ProfileOf(FbxObject bodyNode, string layer)
+        {
+            MotionProfile fallback = DefaultProfile(layer);
+
+            string Carried(int index, string otherwise)
+            {
+                string name = bodyNode.Properties.GetString(MotionFields[index].Property);
+
+                return name.Length > 0 ? name : otherwise;
+            }
+
+            return new MotionProfile(
+                Carried(0, fallback.MotionSystem),
+                Carried(1, fallback.QualityType),
+                Carried(2, fallback.SolverDeactivation));
+        }
+
         /// <summary>Records a body's mass and layer on the node standing for it.</summary>
         public static void Write(FbxObject bodyNode, NifModel model, NifItem body)
         {
@@ -110,6 +173,17 @@ namespace SECmd.Fbx
 
                 bodyNode.Properties.SetUserString(
                     scalar.Property, item.Value.ToFloat().ToString("R", CultureInfo.InvariantCulture));
+            }
+
+            // How Havok simulates it. Carried by enum name, since the numbers mean
+            // different things in the three enums involved.
+            foreach ((string field, string property) in MotionFields)
+            {
+                if (model.FindItem(body, $@"Rigid Body Info\{field}") is not { } item)
+                    continue;
+
+                if (model.Database.TryGetEnumOptionName(item.Type, item.Value.ToUInt(), out string option))
+                    bodyNode.Properties.SetUserString(property, option);
             }
         }
 

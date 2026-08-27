@@ -118,15 +118,44 @@ namespace SECmd.Fbx
         /// <returns>Whether the name was recognised and applied.</returns>
         public static bool ApplyLayer(NifModel model, NifItem body, string name)
         {
-            if (name.Length == 0
-                || FieldOfType(body, LayerEnum) is not { } field
-                || !model.Database.TryGetEnumOptionValue(LayerEnum, name, out uint value))
-            {
+            if (name.Length == 0 || !model.Database.TryGetEnumOptionValue(LayerEnum, name, out uint value))
                 return false;
+
+            // Every layer field on the body, not the first one found. A rigid body
+            // carries two HavokFilters -- bhkWorldObject's own, and the copy inside
+            // Rigid Body Info -- and writing only the first left the copy on the
+            // default. They agree in all 14,408 bodies Skyrim ships, so one value
+            // rightly fills both; it is having only one of them filled that is wrong.
+            var fields = new List<NifItem>();
+            CollectFieldsOfType(body, LayerEnum, fields);
+
+            int written = 0;
+
+            foreach (NifItem field in fields)
+            {
+                // Only the fields this file's version actually has. nif.xml spells the
+                // rigid body info three times over for three Havok generations, and the
+                // two it is not using are present in the tree and absent from the file.
+                if (!model.EvalCondition(field))
+                    continue;
+
+                field.Value.SetCount(value);
+                written++;
             }
 
-            field.Value.SetCount(value);
-            return true;
+            return written > 0;
+        }
+
+        /// <summary>Every field of the given type on a block, depth first.</summary>
+        private static void CollectFieldsOfType(NifItem item, string type, List<NifItem> into)
+        {
+            foreach (NifItem child in item.Children)
+            {
+                if (child.Type == type)
+                    into.Add(child);
+                else if (child.Children.Count > 0 && !child.Value.IsLink)
+                    CollectFieldsOfType(child, type, into);
+            }
         }
     }
 }

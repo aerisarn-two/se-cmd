@@ -1128,6 +1128,59 @@ namespace SECmd.Tests
             return MathF.Sqrt(dx * dx + dy * dy + dz * dz);
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void ABodyKeepsHowHavokSimulatesIt(string name)
+        {
+            // WriteStaticMotion wrote the static profile onto every body it was handed,
+            // though the call site's comment claimed it read the layer to decide. So
+            // ck-cmd's three-way split collapsed to its third arm and a biped's bodies
+            // came back BOX_STABILIZED/INVALID/OFF where the file had
+            // BOX_INERTIA/FIXED/LOW -- taking bit 6 of BSXFlags with them, which asks
+            // whether any body is dynamic.
+            NifModel source = Load(name);
+
+            static List<uint> Profiles(NifModel m) =>
+                [.. m.Blocks
+                    .Where(b => m.BlockInherits(b, "bhkRigidBody"))
+                    .SelectMany(b => Fbx.FbxRigidBodyInfo.MotionFields
+                        .Select(f => m.GetUInt(b, $@"Rigid Body Info\{f.Field}")))];
+
+            List<uint> before = Profiles(source);
+
+            if (before.Count == 0)
+                return;
+
+            Assert.Equal(before, Profiles(RoundTrip(source)));
+        }
+
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void EveryLayerFieldOnABodyAgrees(string name)
+        {
+            // A rigid body carries two Havok filters: bhkWorldObject's own, and the copy
+            // inside Rigid Body Info. They agree in all 14,408 bodies Skyrim ships. The
+            // import wrote whichever it found first, so the other kept the default and a
+            // biped's body came back half on layer 8 and half on layer 1.
+            NifModel rebuilt = RoundTrip(Load(name));
+
+            foreach (NifItem body in rebuilt.Blocks.Where(b => rebuilt.BlockInherits(b, "bhkRigidBody")))
+            {
+                List<uint> layers =
+                [
+                    .. new[] { @"Havok Filter\Layer", @"Rigid Body Info\Havok Filter\Layer", @"Rigid Body Info\Layer" }
+                        .Select(p => rebuilt.FindItem(body, p))
+                        .Where(i => i is not null && rebuilt.EvalCondition(i))
+                        .Select(i => i!.Value.ToUInt())
+                ];
+
+                Assert.True(
+                    layers.Distinct().Count() <= 1,
+                    $"{name}: a body came back with its layer fields disagreeing: "
+                    + string.Join(", ", layers));
+            }
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

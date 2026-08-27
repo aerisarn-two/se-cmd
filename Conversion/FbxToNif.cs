@@ -535,7 +535,7 @@ namespace SECmd.Conversion
             FbxCollisionMaterial.ApplyLayer(_model, body, FbxRigidBodyInfo.LayerOf(bodyNode));
 
             WriteBodyTransform(body, bodyNode);
-            WriteStaticMotion(body);
+            WriteMotionProfile(body, bodyNode);
             WriteMassProperties(body, shape, bodyNode);
             WriteSimulationScalars(body, bodyNode);
 
@@ -666,18 +666,39 @@ namespace SECmd.Conversion
         }
 
         /// <summary>
-        /// Applies the motion settings a static body needs (spec §5.7).
+        /// Applies how Havok is to simulate the body (spec §5.7).
         /// </summary>
         /// <remarks>
-        /// Statics also get zero mass and a zero inertia tensor. Leaving a mass on a
-        /// static body makes Havok treat it as movable, which is how a piece of
-        /// scenery ends up falling through the world.
+        /// This was `WriteStaticMotion`, and it wrote the static profile onto every
+        /// body it was handed -- the call site's comment claimed it read the layer to
+        /// decide, and it took no layer at all. So ck-cmd's three-way split collapsed
+        /// to its third arm: a biped's bodies came back BOX_STABILIZED/INVALID/OFF
+        /// where the file had BOX_INERTIA/FIXED/LOW, and with them went bit 6 of
+        /// BSXFlags, which asks whether any body is dynamic.
+        ///
+        /// The profile is carried when the scene has one, because no layer predicts it
+        /// better than 88% -- see <see cref="FbxRigidBodyInfo.DefaultProfile"/> for the
+        /// distribution and for what a body carrying nothing gets instead.
+        ///
+        /// Only a static is stripped of its mass and inertia. Leaving a mass on one
+        /// makes Havok treat it as movable, which is how a piece of scenery ends up
+        /// falling through the world; taking it off anything else is what left every
+        /// rebuilt ragdoll weightless.
         /// </remarks>
-        private void WriteStaticMotion(NifItem body)
+        private void WriteMotionProfile(NifItem body, FbxObject bodyNode)
         {
-            SetEnum(body, @"Rigid Body Info\Motion System", "Motion System", "MO_SYS_BOX_STABILIZED");
-            SetEnum(body, @"Rigid Body Info\Solver Deactivation", "Solver Deactivation", "SOLVER_DEACTIVATION_OFF");
-            SetEnum(body, @"Rigid Body Info\Quality Type", "Motion Quality", "MO_QUAL_INVALID");
+            string layer = FbxRigidBodyInfo.LayerOf(bodyNode);
+            FbxRigidBodyInfo.MotionProfile profile = FbxRigidBodyInfo.ProfileOf(bodyNode, layer);
+
+            SetEnum(body, @"Rigid Body Info\Motion System", "Motion System", profile.MotionSystem);
+            SetEnum(body, @"Rigid Body Info\Quality Type", "Motion Quality", profile.QualityType);
+
+            SetEnum(
+                body, @"Rigid Body Info\Solver Deactivation",
+                "Solver Deactivation", profile.SolverDeactivation);
+
+            if (!FbxRigidBodyInfo.IsStatic(layer))
+                return;
 
             SetFloat(body, @"Rigid Body Info\Mass", 0f);
 

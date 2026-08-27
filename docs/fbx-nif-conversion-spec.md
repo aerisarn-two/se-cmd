@@ -1395,6 +1395,38 @@ Statics additionally get **mass 0 and a zeroed inertia tensor**. A rigid body wi
 animated ancestor is forced to `ANIMSTATIC`; `BIPED` bodies read `body_part` from the
 node property.
 
+##### What se-cmd does instead: carry, then fall back to that table
+
+The table above is a good fallback and a poor rule. Measured over the 14,408 rigid
+bodies Skyrim ships, no layer predicts its profile better than 88%:
+
+| Kind | Bodies | Mode | Share |
+| --- | --- | --- | --- |
+| static | 10,508 | `BOX_STABILIZED` / `INVALID` / `OFF` | 87.8% |
+| animstatic + biped | 2,158 | `BOX_INERTIA` / `FIXED` / `LOW` | 97.0% |
+| clutter | 1,742 | `SPHERE_STABILIZED` / `MOVING` / `LOW` | 85.8% |
+
+So se-cmd **carries the three enums** across the scene, by name, and uses the table only
+for a body that arrives carrying none. One value in it is corrected: ck-cmd writes
+`MO_SYS_DYNAMIC` for clutter and **no vanilla clutter body holds it**. The two are not
+really in conflict — nif.xml describes `DYNAMIC` as a request Havok resolves at
+construction into a sphere or box inertia, so ck-cmd writes the request and Bethesda
+writes the answer. A file records what a thing is, so this follows the corpus.
+
+Two defects lived here until the profile was measured:
+
+- `WriteStaticMotion` was called for **every** body and took no layer argument, so the
+  three-way split collapsed to its third arm. A biped's bodies came back
+  `BOX_STABILIZED` / `INVALID` / `OFF`, and bit 6 of `BSXFlags` — "has dynamic Havok
+  rigid bodies", which reads the quality type — went with them. It also stripped mass
+  and inertia from every body rather than from statics, leaving rebuilt ragdolls
+  weightless.
+- The collision layer was written to the **first** `HavokFilter` found on the body. A
+  rigid body has two: `bhkWorldObject`'s own and the copy inside `Rigid Body Info`. They
+  agree in all 14,408 vanilla bodies, so half-writing them is never right. Which of the
+  three `Rigid Body Info` spellings is live depends on the file version, so the fix
+  writes every layer field whose condition holds and skips the dormant ones.
+
 Havok shapes convert back via `convert_from_hk` (L4665), the mirror of §4.8, covering
 list, convex transform, transform, MOPP, sphere, box, capsule, convex vertices and
 compressed mesh. Capsule endpoints are **swapped** relative to Havok.

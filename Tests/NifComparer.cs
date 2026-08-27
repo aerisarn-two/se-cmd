@@ -91,6 +91,24 @@ namespace SECmd.Tests
                     NifItem ca = a.Children[i], cb = b.Children[i];
                     string p = $"{path}/{ca.Name}";
 
+                    // A field whose condition is false in both files is in neither
+                    // file. nif.xml spells some structures several times over for
+                    // several Havok generations -- a rigid body's info three times --
+                    // and every spelling is in the tree while only one is on disk. Which
+                    // one that is depends on the version, so the same name is live in an
+                    // SE file and dormant in an LE one.
+                    //
+                    // This guard changes no result today: it fires 60,330 times across
+                    // the fixtures and not one of those dormant fields differs. It is
+                    // here so that a writer which starts filling the wrong spelling is
+                    // reported as the writer bug it is, rather than as a difference in
+                    // bytes that neither file contains.
+                    //
+                    // Dormant on one side only is still reported: that is a real
+                    // structural difference between the two files.
+                    if (!left.EvalCondition(ca) && !right.EvalCondition(cb))
+                        continue;
+
                     if (ca.Value.IsLink)
                     {
                         NifItem? ta = left.GetBlock(ca), tb = right.GetBlock(cb);
