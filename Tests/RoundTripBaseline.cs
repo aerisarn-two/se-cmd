@@ -143,13 +143,30 @@ namespace SECmd.Tests
         /// twice somewhere down a 25-deep chain. That accounts for `Vertex`, `Normal`
         /// and a good deal of `UV`.</item>
         /// <item>A skinned SE shape keeps its geometry in the skin partition and the
-        /// rebuilt file puts it on the shape, which is what `Vertex Desc`, `Vertex Size`,
-        /// `Vertex Data`, `Num Vertices`, `Num Triangles` and `Data Size` are saying —
-        /// one cause, six names. Every skinned fixture keeps it in the partition with the
-        /// shape's own counts at zero, and `NifSkinWriter.WriteSkinPartitions` never
-        /// writes the partition's block-level vertex arrays at all, so the import has
-        /// nowhere to put it but the shape. Moving it is real work in the most delicate
-        /// part of the port, and is the largest thing left on this list.</item>
+        /// rebuilt file puts it on the shape: `Vertex Desc`, `Vertex Size`, `Vertex
+        /// Data`, `Num Vertices`, `Num Triangles` and `Data Size` are one cause under
+        /// six names. `NifSkinWriter.WriteSkinPartitions` sizes the per-partition arrays
+        /// and never touches the block's own, so the import has nowhere else to put it.
+        ///
+        /// Attempted and reverted, which is worth knowing before it is attempted again.
+        /// Copying the shape's vertex data into the partition and zeroing the shape's is
+        /// *not* enough, for two reasons found by doing it:
+        ///
+        /// The partition's vertex layout is its own, not the shape's. Its `Vertex Size`
+        /// came out 24 or 28 bytes against the shape's 40 — a different descriptor
+        /// holding different attributes — so the descriptor has to be built for the
+        /// partition rather than copied.
+        ///
+        /// And the form is not universal. `TestNifFile_Optimize_SE_to_LE` keeps its
+        /// geometry in *both* places, so an import that always moves it is wrong for
+        /// that file. Which form the source used is not derivable from the FBX; it has
+        /// to travel, the way `strips_parts` does.
+        ///
+        /// Two smaller things surfaced while the partition was briefly populated and
+        /// therefore briefly compared, and both are still true: renormalising bone
+        /// weights by a total that is already 1 shifts every weight into a neighbouring
+        /// half, and reducing a vertex to four influences picks a different four from
+        /// the source in 6 of 12,840 slots (the rest are zero-weight padding).</item>
         /// <item>The motion profile is applied rather than carried, so `Layer`,
         /// `Motion System`, `Quality Type`, `Solver Deactivation`, `Friction`,
         /// `Restitution` and the damping pair take the profile's values. This one may
