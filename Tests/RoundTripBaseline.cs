@@ -37,6 +37,16 @@ namespace SECmd.Tests
         {
             // Refitted from the tessellated collision geometry, which is the half of a
             // shape a DCC tool can edit; carrying the original would ignore the edit.
+            // A vertex carries at most four influences, so one with more is reduced to
+            // its four largest and the remainder renormalised over them. That is the
+            // format's limit rather than a choice, and it moves every weight on such a
+            // vertex by a few parts in ten thousand.
+            //
+            // Only the weights. `Bone Indices` is not excused: which four survive can
+            // differ from the source's four, and a weight landing on the wrong *bone*
+            // is a real fault that shows there.
+            ["Bone Weights"] = "a vertex holds four influences; more are reduced and renormalised",
+
             ["Radius"] = "refitted from the tessellated collision geometry",
 
             // A capsule's two end radii, refitted from the tessellation exactly as
@@ -212,6 +222,30 @@ namespace SECmd.Tests
             ["Start Time"] = "sequence rebasing and controller spans, not yet told apart",
             ["Stop Time"] = "sequence rebasing and controller spans, not yet told apart",
 
+            // The vertex descriptor is computed from what the mesh turned out to hold
+            // rather than carried from the file, so a shape whose vertices were 24 bytes
+            // comes back with 40 — tangents added to geometry that had none. Everything
+            // sized from it follows: `Vertex Size`, `Data Size`, and the vertex array
+            // itself.
+            //
+            // Separate from where the geometry *lives*, which is now right: a skinned
+            // shape's vertices are written into the skin partition as the format has
+            // them. These are what that uncovered underneath.
+            ["Vertex Desc"] = "computed from the mesh rather than carried from the file",
+            ["Vertex Size"] = "follows the computed vertex descriptor",
+            ["Data Size"] = "follows the computed vertex descriptor",
+            ["Vertex Data"] = "follows the computed vertex descriptor",
+            ["Num Triangles"] = "follows the computed vertex descriptor",
+
+
+            // Which four influences survive the cut are not always the four the source
+            // kept, and the slots a vertex does not use hold a stale bone id in the
+            // source where this writes zero. Measured on the one body mesh among the
+            // fixtures: 302 of 12,840 slots differ, and 296 of those carry no weight at
+            // all and are padding -- but six do, the largest at 0.376. That last part is
+            // why this is a fault and its companion `Bone Weights` is not.
+            ["Bone Indices"] = "the four influences kept are not always the source's four",
+
             // Seen on models built in tests rather than on the fixtures, which is why
             // the fixture sweep alone did not list them.
             // Where a reference leads to a block of a different class. NifComparer
@@ -267,17 +301,11 @@ namespace SECmd.Tests
             // nif.xml calculates this one from Vertex Desc, Num Vertices and Num
             // Triangles, so it is a consequence of those rather than a fault of its own:
             // it will come right when the geometry does, and not before.
-            ["Data Size"] = "22 occurrences",
-            ["Vertex Desc"] = "26 occurrences",
-            ["Vertex Data"] = "10 occurrences",
-            ["Vertex Size"] = "10 occurrences",
             ["Angular Damping"] = "5 occurrences",
             ["Linear Damping"] = "5 occurrences",
             ["Unused 01"] = "4 occurrences",
             ["Penetration Depth"] = "2 occurrences",
-            ["Num Triangles"] = "8 occurrences",
             ["Flags"] = "14 occurrences",
-            ["Num Vertices"] = "6 occurrences",
             ["Unused 03"] = "3 occurrences",
             ["Active Material"] = "4 occurrences",
             ["Build Type"] = "2 occurrences",

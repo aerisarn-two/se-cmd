@@ -817,6 +817,59 @@ namespace SECmd.Tests
             Assert.Equal(before, Shaders(RoundTrip(source)));
         }
 
+        /// <summary>A shape's vertex buffer, following the skin when it keeps none.</summary>
+        private static NifItem VertexBuffer(NifModel model, NifItem shape)
+        {
+            if (model.FindItem(shape, "Vertex Data") is { Children.Count: > 0 } own)
+                return own;
+
+            NifItem? skin = model.GetRef(shape, "Skin");
+
+            NifItem? partition = skin is null
+                ? null
+                : model.GetRef(skin, "Skin Partition")
+                  ?? (model.GetRef(skin, "Data") is { } data ? model.GetRef(data, "Skin Partition") : null);
+
+            return (partition is null ? null : model.FindItem(partition, "Vertex Data"))
+                   ?? model.FindItem(shape, "Vertex Data")!;
+        }
+
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void ASkinnedShapeKeepsItsGeometryWhereTheFormatDoes(string name)
+        {
+            // A skinned Skyrim SE shape keeps nothing in itself: its vertices live in
+            // the NiSkinPartition and the shape's own counts are zero. NifToFbx already
+            // reads it that way -- it follows the skin when the shape holds nothing --
+            // but the import had nowhere to put it back, because the partition writer
+            // sizes the per-partition arrays and never the block's own. So the geometry
+            // stayed on the shape and the partition came back empty.
+            NifModel source = Load(name);
+
+            static List<string> Where(NifModel m) =>
+                [.. m.Blocks
+                    .Where(b => m.BlockInherits(b, "BSTriShape") && m.GetRef(b, "Skin") is not null)
+                    .Select(b =>
+                    {
+                        NifItem? skin = m.GetRef(b, "Skin");
+                        NifItem? part = skin is null ? null
+                            : m.GetRef(skin, "Skin Partition")
+                              ?? (m.GetRef(skin, "Data") is { } d ? m.GetRef(d, "Skin Partition") : null);
+
+                        int own = m.FindItem(b, "Vertex Data")?.Children.Count ?? 0;
+                        int inPart = part is null ? 0 : m.FindItem(part, "Vertex Data")?.Children.Count ?? 0;
+
+                        return $"shape={own} partition={inPart}";
+                    })];
+
+            List<string> before = Where(source);
+
+            if (before.Count == 0)
+                return;
+
+            Assert.Equal(before, Where(RoundTrip(source)));
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {
@@ -2618,7 +2671,12 @@ namespace SECmd.Tests
             // twelve bytes of weights and indices, and the bit announcing them.
             Assert.Equal(descriptor, rebuilt.FindItem(shape, "Vertex Desc")!.Value.ToUInt64());
 
-            NifItem vertices = rebuilt.FindItem(shape, "Vertex Data")!;
+            // Wherever the vertex buffer actually is. A skinned SE shape keeps nothing in
+            // itself -- the vertices live in the skin partition -- which is how this
+            // fixture is written and now how it comes back. This read the shape's own
+            // array, which was populated only because the import put it in the wrong
+            // place.
+            NifItem vertices = VertexBuffer(rebuilt, shape);
 
             Assert.NotEmpty(vertices.Children);
 

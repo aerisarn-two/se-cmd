@@ -971,6 +971,9 @@ namespace SECmd.Conversion
             Remember(shape, node);
         }
 
+        /// <summary>Marks a skinned shape that kept its geometry in itself as well.</summary>
+        public const string ShapeKeepsGeometryProperty = "nif_shape_keeps_geometry";
+
         private void ConvertGeometry(FbxScene scene, NifItem shape, FbxObject? parent)
         {
             MeshGeometry? mesh;
@@ -1035,6 +1038,18 @@ namespace SECmd.Conversion
                 LodFields);
             FbxDynamicShape.Write(geometry, _model, shape);
             FbxLodSizes.Write(geometry, _model, shape);
+
+            // Whether a skinned shape kept a copy of its geometry in itself as well as
+            // in the skin partition. Almost none do -- the partition holds it and the
+            // shape's own counts are zero -- but `TestNifFile_Optimize_SE_to_LE` keeps
+            // both, and an import that always chooses one form is wrong for whichever
+            // files use the other. Nothing about the FBX can say which it was, so it
+            // travels, as a strips shape's seams do.
+            if (_model.GetRef(shape, "Skin") is not null
+                && _model.FindItem(shape, "Vertex Data") is { Children.Count: > 0 })
+            {
+                geometry.Properties.SetUserString(ShapeKeepsGeometryProperty, "1");
+            }
 
             // The geometry is named uniquely too, so two shapes sharing a name can be
             // told apart; this says which name each really had.

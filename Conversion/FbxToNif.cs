@@ -1657,7 +1657,7 @@ namespace SECmd.Conversion
             // been converted yet, so skins are wired up once the whole tree is
             // built.
             if (skin is not null)
-                _pendingSkins.Add((shape, skin, mesh.Vertices.Count, mesh.Triangles));
+                _pendingSkins.Add((shape, skin, mesh.Vertices.Count, mesh.Triangles, geometry));
 
             return shape;
         }
@@ -1727,9 +1727,19 @@ namespace SECmd.Conversion
                     if (!boneIndex.TryGetValue(name, out uint index))
                         continue;
 
-                    // Renormalised over the four that were kept, so a vertex whose
-                    // fifth influence was dropped is not left slightly limp.
-                    weights.Children[j].Value.SetFloat(total > 0f ? weight / total : 0f);
+                    // Renormalised over the four that were kept, so a vertex whose fifth
+                    // influence was dropped is not left slightly limp -- but only when it
+                    // needs it.
+                    //
+                    // Dividing by a total that is already one is not a no-op in floating
+                    // point: a total of 0.99999994 is enough to move a weight into the
+                    // neighbouring half, and the game stores these as halves. Every
+                    // weight on every fully-weighted vertex came back a few parts in ten
+                    // thousand adrift, for arithmetic with nothing to correct.
+                    bool normalised = MathF.Abs(total - 1f) < 1e-4f;
+
+                    weights.Children[j].Value.SetFloat(
+                        normalised ? weight : total > 0f ? weight / total : 0f);
 
                     if (j < indices.Children.Count)
                         indices.Children[j].Value.SetCount(index);
@@ -1767,7 +1777,8 @@ namespace SECmd.Conversion
         /// The triangles come along because a partition carries its own copy of
         /// them, remapped to the vertices that partition lists.
         /// </remarks>
-        private readonly List<(NifItem Shape, SkinData Skin, int VertexCount, List<NifTriangle> Triangles)>
+        private readonly List<(NifItem Shape, SkinData Skin, int VertexCount,
+            List<NifTriangle> Triangles, FbxObject Geometry)>
             _pendingSkins = [];
 
         /// <summary>
@@ -1856,7 +1867,7 @@ namespace SECmd.Conversion
             // on which block it was rather than on what is in it (§5.2.1).
             var shared = new Dictionary<int, (NifItem Data, NifItem Partition)>();
 
-            foreach ((NifItem shape, SkinData skin, int vertexCount, var triangles) in _pendingSkins)
+            foreach ((NifItem shape, SkinData skin, int vertexCount, var triangles, FbxObject geometry) in _pendingSkins)
             {
                 var missing = _model.WriteSkin(
                     shape, skin, _nodesByName, root, vertexCount, triangles,
@@ -1866,6 +1877,7 @@ namespace SECmd.Conversion
                     Warnings.Add($"{_model.GetName(shape)}: no node named \"{bone}\", its influence is dropped");
 
                 WriteVertexSkinning(shape, skin);
+                MoveGeometryIntoSkinPartition(shape, geometry);
             }
 
             _pendingSkins.Clear();
@@ -2517,6 +2529,118 @@ namespace SECmd.Conversion
 
             for (int i = 0; i < values.Count && i < array.Children.Count; i++)
                 array.Children[i].Value.Set(values[i]);
+        }
+
+        /// <summary>
+        /// Hands a skinned SE shape's geometry to its skin partition.
+        /// </summary>
+        /// <remarks>
+        /// A skinned `BSTriShape` keeps nothing in itself: the vertices and the triangles
+        /// live in the `NiSkinPartition` and the shape's own counts are zero. `NifToFbx`
+        /// already reads it that way, following the skin when the shape holds nothing,
+        /// and every skinned fixture but one is written that way.
+        ///
+        /// The import had nowhere else to put it. `NifSkinWriter.WriteSkinPartitions`
+        /// sizes the per-partition arrays and never touches the block's own, so the
+        /// geometry stayed on the shape and the partition came back empty — six fields
+        /// reporting one cause.
+        ///
+        /// The one exception keeps a copy in both places, and which form a file used
+        /// cannot be read back out of an FBX, so the exporter records it and this obeys
+        /// it. Done after the fact rather than written there to begin with, because the
+        /// partition does not exist until the skin is wired up, and that waits for every
+        /// bone node to be built.
+        /// </remarks>
+        private void MoveGeometryIntoSkinPartition(NifItem shape, FbxObject? geometry)
+        {
+            if (_model.FindItem(shape, "Vertex Data") is not { Children.Count: > 0 } vertices)
+                return;
+
+            NifItem? skin = _model.GetRef(shape, "Skin");
+
+            NifItem? partition = skin is null
+                ? null
+                : _model.GetRef(skin, "Skin Partition")
+                  ?? (_model.GetRef(skin, "Data") is { } data ? _model.GetRef(data, "Skin Partition") : null);
+
+            // Only the SSE form of the block has anywhere to put this.
+            if (partition is null || _model.FindItem(partition, "Vertex Desc") is null)
+                return;
+
+            ulong descriptor = _model.FindItem(shape, "Vertex Desc")?.Value.ToUInt64() ?? 0;
+
+            // nif.xml: the descriptor's low nibble is the vertex size in four-byte units,
+            // and the array's length reads as `Data Size / Vertex Size`, so both have to
+            // be right before it can be sized. The partition's descriptor is the shape's
+            // -- checked against every skinned fixture, where the two always agree.
+            var size = (uint)((descriptor & 0xF) * 4);
+
+            if (size == 0)
+                return;
+
+            int count = vertices.Children.Count;
+
+            _model.FindItem(partition, "Vertex Desc")?.Value.SetCount(descriptor);
+            _model.FindItem(partition, "Vertex Size")?.Value.SetCount(size);
+            _model.FindItem(partition, "Data Size")?.Value.SetCount((ulong)count * size);
+
+            if (_model.FindItem(partition, "Vertex Data") is not { } target)
+                return;
+
+            target.InvalidateConditionsRecursive();
+            _model.UpdateArraySize(target);
+
+            for (int i = 0; i < count && i < target.Children.Count; i++)
+                CopyValues(vertices.Children[i], target.Children[i]);
+
+            // A file that kept both copies keeps both.
+            if (geometry is not null
+                && geometry.Properties.GetString(NifToFbx.ShapeKeepsGeometryProperty).Length > 0)
+            {
+                return;
+            }
+
+            // Data Size at zero is what empties the shape's own vertex array — nif.xml
+            // makes the array conditional on it — and the triangles go with it.
+            SetCount(shape, "Num Triangles", 0);
+            SetCount(shape, "Data Size", 0);
+
+            // But not the vertex count, if this is a dynamic shape. A
+            // `BSDynamicTriShape` keeps its own second buffer of positions, sized by
+            // `Num Vertices`, and the game's dynamic shapes carry that count while their
+            // `Data Size` is zero. Zeroing it here threw the buffer away.
+            if (!_model.BlockInherits(shape, "BSDynamicTriShape"))
+                SetCount(shape, "Num Vertices", 0);
+
+            foreach (string array in new[] { "Vertex Data", "Triangles" })
+            {
+                if (_model.FindItem(shape, array) is not { } item)
+                    continue;
+
+                item.InvalidateConditionsRecursive();
+                _model.UpdateArraySize(item);
+            }
+        }
+
+        /// <summary>Copies one item's values into another of the same shape.</summary>
+        /// <remarks>
+        /// Sizing the destination as it goes. A vertex holds fixed arrays of its own —
+        /// four bone weights, four bone indices — and sizing the outer array does not
+        /// reach them, so without this the recursion finds nothing to write into and the
+        /// weights arrive as zeros while everything around them copies cleanly.
+        /// </remarks>
+        private void CopyValues(NifItem from, NifItem to)
+        {
+            to.Value = from.Value;
+
+            if (to.Children.Count < from.Children.Count)
+            {
+                to.InvalidateConditionsRecursive();
+                _model.UpdateArraySize(to);
+            }
+
+            for (int i = 0; i < from.Children.Count && i < to.Children.Count; i++)
+                CopyValues(from.Children[i], to.Children[i]);
         }
 
         private void SetCount(NifItem block, string field, uint value) =>
