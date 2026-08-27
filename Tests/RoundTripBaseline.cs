@@ -87,6 +87,29 @@ namespace SECmd.Tests
             // Calculated from the block graph rather than carried (bsxflags-spec.md).
             ["BSXFlags"] = "calculated from the block graph",
 
+            // A shape's own transform is baked into its vertices rather than left on
+            // the node, which is what ck-cmd does and what the spec records at §2: "the
+            // shape transform is therefore baked into the vertices, not left on the
+            // node". So a shape that had a transform comes back with its geometry in
+            // the parent's space and an identity transform of its own.
+            //
+            // It is lossy — the split between where a thing is and what shape it is
+            // does not survive, and an animation driving that node now moves geometry
+            // already displaced — but it is deliberate, documented and matched to the
+            // reference. Keyed by path for the transform itself, so that a *different*
+            // translation going missing somewhere else still fails.
+            ["Vertex"] = "the shape's transform is baked into its vertices (spec §2)",
+            ["Normal"] = "the shape's transform is baked into its vertices (spec §2)",
+            ["BSTriShape/Translation"] = "zeroed: the transform is baked into the vertices",
+            ["BSTriShape/Rotation"] = "zeroed: the transform is baked into the vertices",
+            ["BSTriShape/Scale"] = "reset: the transform is baked into the vertices",
+            ["NiTriShape/Translation"] = "zeroed: the transform is baked into the vertices",
+            ["NiTriShape/Rotation"] = "zeroed: the transform is baked into the vertices",
+            ["NiTriShape/Scale"] = "reset: the transform is baked into the vertices",
+            ["NiTriStrips/Translation"] = "zeroed: the transform is baked into the vertices",
+            ["NiTriStrips/Rotation"] = "zeroed: the transform is baked into the vertices",
+            ["NiTriStrips/Scale"] = "reset: the transform is baked into the vertices",
+
             // nif.xml's KeyType runs 1..5 and has no zero, so a key group carrying one
             // is a field nothing ever set — which is what a model built in a test looks
             // like. Writing LINEAR_KEY for it is normalisation, not loss.
@@ -135,6 +158,26 @@ namespace SECmd.Tests
             // Also found the moment synthetic models were compared in full, each by a
             // test that was looking at something else at the time.
             ["Look At"] = "a NiLookAtInterpolator's target reference is not carried",
+
+            // A transform track's static pose -- translation, rotation and scale alike --
+            // comes back as the "no value" sentinel (float.MinValue) where the source
+            // held real numbers.
+            //
+            // This one may well be correct: nif.xml uses that sentinel to mean "this
+            // interpolator has no resting value, read the keys instead", so a track that
+            // carries curves arguably should not also carry a pose. It is recorded here
+            // rather than in ByDesign because that has not been checked, and a defect in
+            // the wrong list is worse than one in this one. Keyed by path, so a
+            // translation going missing anywhere else still fails on its own account.
+            ["NiTransformInterpolator/Transform"] =
+                "a transform track's pose becomes the no-value sentinel; may be correct, unconfirmed",
+
+            // A strips shape's scale comes back as 1 where the source held 0.
+            ["bhkNiTriStripsShape/Scale"] = "a strips shape's scale is reset to 1",
+
+            // The chunks of a compressed mesh come back in a different order, so every
+            // per-chunk field reads as changed.
+            ["bhkCompressedMeshShapeData/Chunks"] = "chunk order is not preserved",
             ["BSTriShape"] = "a shape with no vertices comes back as NiTriShape",
             ["Strip Lengths"] = "a strips shape's strips are restructured, 1 group becoming 2",
             ["Points"] = "a strips shape's strips are restructured, 1 group becoming 2",
@@ -156,17 +199,13 @@ namespace SECmd.Tests
             ["Penetration Depth"] = "5 fixtures, 44 fields",
             ["Num Triangles"] = "5 fixtures, 10 fields",
             ["Flags"] = "4 fixtures, 31 fields",
-            ["Translation"] = "4 fixtures, 14 fields",
             ["Num Vertices"] = "4 fixtures, 9 fields",
-            ["Vertex"] = "3 fixtures, 2392 fields",
-            ["Normal"] = "3 fixtures, 1617 fields",
             ["Layer"] = "3 fixtures, 100 fields",
             ["Motion System"] = "3 fixtures, 48 fields",
             ["Quality Type"] = "3 fixtures, 48 fields",
             ["Solver Deactivation"] = "3 fixtures, 48 fields",
             ["Unused 03"] = "3 fixtures, 45 fields",
             ["Active Material"] = "3 fixtures, 9 fields",
-            ["Rotation"] = "3 fixtures, 5 fields",
             ["Build Type"] = "3 fixtures, 3 fields",
             ["Chunk Materials"] = "3 fixtures, 3 fields",
             ["Chunk Transforms"] = "3 fixtures, 3 fields",
@@ -200,7 +239,6 @@ namespace SECmd.Tests
             ["Bone Indices"] = "1 fixture, 930 fields",
             ["Vertex Colors"] = "1 fixture, 39 fields",
             ["Chained Entities"] = "1 fixture, 25 fields",
-            ["Scale"] = "1 fixture, 5 fields",
             ["Array Size"] = "1 fixture, 4 fields",
             ["Radius 1"] = "1 fixture, 4 fields",
             ["Radius 2"] = "1 fixture, 4 fields",

@@ -132,6 +132,17 @@ namespace SECmd.Tests
                 if (a.Name == "Flags" && left.BlockInherits(_owner, "NiAVObject"))
                     return (a.Value.ToUInt() & ~IgnoredAvFlag) == (b.Value.ToUInt() & ~IgnoredAvFlag);
 
+                // A quaternion and its negation are the same rotation: q and -q turn a
+                // body to exactly the same place, and which one a decomposition hands
+                // back is an accident of the arithmetic. Reported as a difference it is
+                // pure noise, and noise in this comparison is what lets a real
+                // difference hide in a long list.
+                //
+                // Only for a field actually spelled `Rotation`. A negated normal is not
+                // the same normal -- it is the surface pointing the other way.
+                if (a.Name == "Rotation" && NegatedQuaternion(a.Value.ToString(), b.Value.ToString()))
+                    return true;
+
                 string sa = a.Value.ToString(), sb = b.Value.ToString();
 
                 if (sa == sb)
@@ -140,6 +151,31 @@ namespace SECmd.Tests
                 // Everything with a float in it prints as text, so the numbers are
                 // pulled back out rather than the types enumerated.
                 return NumbersMatch(sa, sb);
+            }
+
+            /// <summary>Whether two four-component values differ only by sign throughout.</summary>
+            private static bool NegatedQuaternion(string left, string right)
+            {
+                string[] a = Split(left), b = Split(right);
+
+                if (a.Length != 4 || b.Length != 4)
+                    return false;
+
+                for (int i = 0; i < 4; i++)
+                {
+                    if (!float.TryParse(a[i], System.Globalization.NumberStyles.Float,
+                                        System.Globalization.CultureInfo.InvariantCulture, out float x)
+                        || !float.TryParse(b[i], System.Globalization.NumberStyles.Float,
+                                           System.Globalization.CultureInfo.InvariantCulture, out float y))
+                    {
+                        return false;
+                    }
+
+                    if (!Close(x, -y))
+                        return false;
+                }
+
+                return true;
             }
 
             private static bool NumbersMatch(string left, string right)
