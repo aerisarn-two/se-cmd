@@ -84,8 +84,14 @@ namespace SECmd.Tests
             ["Bitangent Y"] = "tangent space regenerated (§5.3.1)",
             ["Bitangent Z"] = "tangent space regenerated (§5.3.1)",
 
-            // Calculated from the block graph rather than carried (bsxflags-spec.md).
+            // Calculated from the block graph rather than carried (bsxflags-spec.md),
+            // and *added* to a file that had none -- which lengthens the root's extra
+            // data list by one. The corpus sweep has always excluded that; it was sitting
+            // in the defect list here only because the field names were collected by
+            // measurement rather than read.
             ["BSXFlags"] = "calculated from the block graph",
+            ["Num Extra Data List"] = "the calculated BSXFlags is added to a file that had none",
+            ["Extra Data List"] = "the calculated BSXFlags is added to a file that had none",
 
             // A shape's own transform is baked into its vertices rather than left on
             // the node, which is what ck-cmd does and what the spec records at §2: "the
@@ -138,7 +144,12 @@ namespace SECmd.Tests
         /// and a good deal of `UV`.</item>
         /// <item>A skinned SE shape keeps its geometry in the skin partition and the
         /// rebuilt file puts it on the shape, which is what `Vertex Desc`, `Vertex Size`,
-        /// `Vertex Data`, `Num Vertices` and `Num Triangles` are saying.</item>
+        /// `Vertex Data`, `Num Vertices`, `Num Triangles` and `Data Size` are saying —
+        /// one cause, six names. Every skinned fixture keeps it in the partition with the
+        /// shape's own counts at zero, and `NifSkinWriter.WriteSkinPartitions` never
+        /// writes the partition's block-level vertex arrays at all, so the import has
+        /// nowhere to put it but the shape. Moving it is real work in the most delicate
+        /// part of the port, and is the largest thing left on this list.</item>
         /// <item>The motion profile is applied rather than carried, so `Layer`,
         /// `Motion System`, `Quality Type`, `Solver Deactivation`, `Friction`,
         /// `Restitution` and the damping pair take the profile's values. This one may
@@ -168,7 +179,6 @@ namespace SECmd.Tests
             ["Controller"] = "9 occurrences",
             ["Num Objs"] = "9 occurrences",
             ["Objs"] = "9 occurrences",
-            ["Extra Data List"] = "5 occurrences",
             ["Entity B"] = "3 occurrences",
             ["Lighting Effect 1"] = "3 occurrences",
             ["Points"] = "a strips shape's strips are restructured",
@@ -210,8 +220,10 @@ namespace SECmd.Tests
             // the triangles first reach them, so a rebuilt shape holds the same UVs
             // shifted along by a place or two. Every per-vertex field says so at once.
 
+            // nif.xml calculates this one from Vertex Desc, Num Vertices and Num
+            // Triangles, so it is a consequence of those rather than a fault of its own:
+            // it will come right when the geometry does, and not before.
             ["Data Size"] = "22 occurrences",
-            ["Num Extra Data List"] = "9 occurrences",
             ["Vertex Desc"] = "26 occurrences",
             ["Vertex Data"] = "10 occurrences",
             ["Vertex Size"] = "10 occurrences",
