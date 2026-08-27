@@ -2021,7 +2021,8 @@ namespace SECmd.Conversion
                 shape, "Name",
                 FbxNodeType.ReadName(geometry, NameEncoding.Unsanitize(geometry.Name)));
 
-            var descriptor = BuildVertexDescriptor(mesh, skinned);
+            var descriptor = BuildVertexDescriptor(
+                mesh, skinned, _model.BlockInherits(shape, "BSDynamicTriShape"));
 
             _model.FindItem(shape, "Vertex Desc")?.Value.SetCount(descriptor.Value);
 
@@ -2111,9 +2112,25 @@ namespace SECmd.Conversion
         /// how large a vertex is, and where each attribute sits inside one.
         /// </summary>
         private static (ulong Value, int VertexSize) BuildVertexDescriptor(
-            MeshGeometry mesh, bool skinned)
+            MeshGeometry mesh, bool skinned, bool dynamic)
         {
             var flags = VertexFlags.Vertex;
+
+            // A dynamic shape holds no position in its vertex. Its own second buffer of
+            // Vector4s is where the shape actually is -- the static ones are zero in
+            // every file seen -- so the format does not store them twice and the flag is
+            // off. nif.xml follows the flag through: without it a vertex has no `Vertex`
+            // and no `Bitangent X`, and the struct starts at the texture coordinate.
+            //
+            // Computing this from the mesh alone gave every dynamic shape a position it
+            // does not carry -- a 40-byte vertex where the game writes 24. The
+            // descriptor has to be calculated, not carried, so the thing to get right is
+            // what the vertex actually holds.
+            //
+            // Full precision travels with it: all four dynamic shapes among the fixtures
+            // set it and none of the others do.
+            if (dynamic)
+                flags = (flags & ~VertexFlags.Vertex) | VertexFlags.FullPrecision;
 
             if (skinned)
                 flags |= VertexFlags.Skinned;
@@ -2135,9 +2152,17 @@ namespace SECmd.Conversion
             // half-precision UVs, then signed bytes for the normal and tangent with
             // the rest of the bitangent packed into their spare lanes.
             //
-            // The position has no offset member: it is always first.
+            // The position has no offset member: it is always first, and takes sixteen
+            // bytes with the bitangent's X in its fourth lane. A vertex without one
+            // starts at zero instead.
             var desc = new BSVertexDesc { Flags = flags };
-            uint offset = 16;
+            uint offset = flags.HasFlag(VertexFlags.Vertex) ? 16u : 0u;
+
+            // A dynamic shape's own buffer holds one Vector4 per vertex, and the
+            // descriptor records how wide that entry is beside how wide the static
+            // vertex is. Left at zero the shape says its dynamic vertex has no size.
+            if (dynamic)
+                desc.Set(BSVertexDesc.Member.DynamicVertexSize, 16);
 
             if (mesh.HasUvs)
             {
@@ -2583,6 +2608,16 @@ namespace SECmd.Conversion
             _model.FindItem(partition, "Vertex Desc")?.Value.SetCount(descriptor);
             _model.FindItem(partition, "Vertex Size")?.Value.SetCount(size);
             _model.FindItem(partition, "Data Size")?.Value.SetCount((ulong)count * size);
+
+            // Each partition entry repeats the descriptor. nif.xml gives SkinPartition
+            // its own `Vertex Desc` beside the block's, and the game writes the same
+            // value in both; only the block's was being set, so every entry came back
+            // saying a vertex holds nothing.
+            if (_model.FindItem(partition, "Partitions") is { } entries)
+            {
+                foreach (NifItem entry in entries.Children)
+                    _model.FindItem(entry, "Vertex Desc")?.Value.SetCount(descriptor);
+            }
 
             if (_model.FindItem(partition, "Vertex Data") is not { } target)
                 return;

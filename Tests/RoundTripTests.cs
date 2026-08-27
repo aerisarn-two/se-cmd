@@ -870,6 +870,39 @@ namespace SECmd.Tests
             Assert.Equal(before, Where(RoundTrip(source)));
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void ADynamicShapeHasNoPositionInItsVertex(string name)
+        {
+            // A BSDynamicTriShape keeps its positions in its own buffer of Vector4s --
+            // the static ones are zero in every file seen -- so the format does not
+            // store them twice and the descriptor's `Vertex` flag is off. nif.xml
+            // follows that through: without the flag a vertex has no position and no
+            // bitangent X, and the struct begins at the texture coordinate, 24 bytes
+            // rather than 40.
+            //
+            // The descriptor is calculated from what a vertex holds, not carried, so
+            // getting it right means knowing that a dynamic shape's vertex holds no
+            // position. Computing it from the mesh alone gave every dynamic shape a
+            // position it does not carry.
+            //
+            // Needs its own test: `Vertex Desc` is on the open list for an unrelated
+            // reason, so the general comparison excuses this case as well.
+            NifModel source = Load(name);
+
+            static List<string> Dynamic(NifModel m) =>
+                [.. m.Blocks
+                    .Where(b => m.BlockInherits(b, "BSDynamicTriShape"))
+                    .Select(b => m.FindItem(b, "Vertex Desc")?.Value.ToUInt64().ToString() ?? "-")];
+
+            List<string> before = Dynamic(source);
+
+            if (before.Count == 0)
+                return;
+
+            Assert.Equal(before, Dynamic(RoundTrip(source)));
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {
