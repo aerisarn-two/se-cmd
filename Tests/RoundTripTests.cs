@@ -1064,9 +1064,9 @@ namespace SECmd.Tests
                 [.. m.Blocks
                     .Where(b => m.BlockInherits(b, "bhkRigidBody"))
                     .SelectMany(b => Fbx.FbxRigidBodyInfo.Scalars
-                        .Select(f => (f, m.FindItem(b, $@"Rigid Body Info\{f}")))
+                        .Select(s => (s.Field, m.FindItem(b, $@"Rigid Body Info\{s.Field}")))
                         .Where(pair => pair.Item2 is not null)
-                        .Select(pair => (pair.f, pair.Item2!.Value.ToFloat())))];
+                        .Select(pair => (pair.Field, pair.Item2!.Value.ToFloat())))];
 
             List<(string, float)> before = Scalars(source);
 

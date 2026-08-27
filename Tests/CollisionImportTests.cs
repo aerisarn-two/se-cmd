@@ -55,6 +55,54 @@ namespace SECmd.Tests
 
         [Theory]
         [MemberData(nameof(CollisionFiles))]
+        public void ABodyAuthoredWithoutSettingsGetsBethesdaCommonestOnes(string nif, string unusedShape)
+        {
+            // A body modelled in a DCC tool carries no nif_rb_* properties at all, so
+            // the scalars have to fall back to something. That something is Bethesda's
+            // own commonest value, not nif.xml's default, because the two disagree:
+            // vanilla damping sits on a 1/1024 grid (0.099609375, not 0.1) and a
+            // static's penetration depth is 0.1 where nif.xml says 0.15.
+            NifModel source = NifModel.Load(PathTo(nif), Db);
+            FbxDocument document = new NifToFbx(source).Convert();
+            var scene = new FbxScene(document);
+
+            // Strip every carried setting, leaving the layer -- which is what decides
+            // static from moving, and which a DCC body does carry by convention.
+            foreach (FbxObject node in scene.Objects.Where(o => o.Class == "Model"))
+            {
+                foreach (FbxRigidBodyInfo.Scalar scalar in FbxRigidBodyInfo.Scalars)
+                    node.Properties.Remove(scalar.Property);
+            }
+
+            var converter = new FbxToNif(scene, new FbxToNifOptions
+            {
+                RootName = Path.GetFileNameWithoutExtension(nif),
+                LegendaryEdition = true
+            });
+
+            NifModel rebuilt = converter.Convert(Db);
+
+            List<NifItem> bodies =
+                [.. rebuilt.Blocks.Where(b => rebuilt.BlockInherits(b, "bhkRigidBody"))];
+
+            Assert.NotEmpty(bodies);
+
+            foreach (NifItem body in bodies)
+            {
+                bool isStatic = FbxRigidBodyInfo.IsStatic(FbxCollisionMaterial.LayerOf(rebuilt, body));
+
+                foreach (FbxRigidBodyInfo.Scalar scalar in FbxRigidBodyInfo.Scalars)
+                {
+                    NifItem? item = rebuilt.FindItem(body, $@"Rigid Body Info\{scalar.Field}");
+
+                    Assert.NotNull(item);
+                    Assert.Equal(scalar.Default(isStatic), item!.Value.ToFloat());
+                }
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(CollisionFiles))]
         public void RebuildsTheSameShapeKind(string nif, string expectedShape)
         {
             NifModel model = RoundTrip(nif, out _);

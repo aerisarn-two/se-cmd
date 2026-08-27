@@ -505,6 +505,35 @@ Three siblings are deliberately **not** carried: `Time Factor`, `Gravity Factor`
 `Rolling Friction Multiplier` hold a single value each across all 14,408 bodies (1, 1
 and 0), so nif.xml's default already *is* the authored value.
 
+##### Fallbacks for a body that carries none
+
+A body modelled in a DCC tool has no `nif_rb_*` properties at all. se-cmd writes each
+scalar explicitly in that case, rather than leaving the block's own initialisation to
+stand, using Bethesda's commonest value for the body's kind:
+
+| Field | Static | Moving | nif.xml |
+| --- | --- | --- | --- |
+| `Linear Damping` | 0.099609375 | 0.099609375 | 0.1 |
+| `Angular Damping` | 0.0498046875 | 0.0498046875 | 0.05 |
+| `Friction` | 0.5 | 0.5 | 0.5 |
+| `Restitution` | 0.4 | 0.4 | 0.4 |
+| `Penetration Depth` | 0.1 | 0.15 | 0.15 |
+| `Max Linear Velocity` | 104.4 | 104.4 | 104.4 |
+| `Max Angular Velocity` | 31.57 | 31.57 | 31.57 |
+
+Four agree with nif.xml and three do not, which is the reason for writing them at all:
+
+- **Damping.** 0.099609375 is 102/1024 and 0.0498046875 is 51/1024 — the exporter
+  quantises damping onto a 1/1024 grid, and 99.3% and 99.2% of static bodies sit
+  exactly there. nif.xml documents the round number that no vanilla file contains.
+- **Penetration depth**, the only field that splits by kind: statics take 0.1 (62.7%),
+  movers 0.15 (38.4%, which is nif.xml's default). With 2,185 distinct values it is
+  plainly computed per body, so the fallback is a starting point rather than an answer
+  — but it is the right starting point for each kind.
+
+Static here is `FbxRigidBodyInfo.IsStatic` — ck-cmd's division, anything outside
+`SKYL_ANIMSTATIC`, `SKYL_BIPED` and `SKYL_CLUTTER`.
+
 ### 4.9A Structural controllers on a particle system
 
 ck-cmd carries none of this: `FBXWrangler.cpp` has no occurrence of `NiParticleSystem`,

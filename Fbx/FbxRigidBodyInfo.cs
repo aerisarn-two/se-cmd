@@ -27,14 +27,29 @@ namespace SECmd.Fbx
         public const string LayerProperty = "nif_rb_layer";
 
         /// <summary>
-        /// The simulation scalars carried verbatim, each under <c>nif_rb_</c> + its
-        /// nif.xml name lowercased with spaces as underscores.
+        /// One simulation scalar: what it is called, and what a body that arrives
+        /// without it should get.
+        /// </summary>
+        /// <param name="Field">The nif.xml field name, under <c>Rigid Body Info</c>.</param>
+        /// <param name="Static">The value for a body on a layer Havok never moves.</param>
+        /// <param name="Moving">The value for a body that simulates.</param>
+        public readonly record struct Scalar(string Field, float Static, float Moving)
+        {
+            /// <summary>The property this scalar travels in.</summary>
+            public string Property => "nif_rb_" + Field.Replace(' ', '_').ToLowerInvariant();
+
+            /// <summary>The default for a body of the given kind.</summary>
+            public float Default(bool isStatic) => isStatic ? Static : Moving;
+        }
+
+        /// <summary>
+        /// The simulation scalars carried verbatim, with the value to fall back on.
         /// </summary>
         /// <remarks>
         /// These are authored, not derived. Across the 14,408 rigid bodies Skyrim
-        /// ships: friction takes 16 distinct values, angular damping 9, restitution 8,
-        /// linear damping 5, and penetration depth 2,185. ck-cmd reads every one of
-        /// them straight back off the body when it builds a ragdoll
+        /// ships: penetration depth takes 2,185 distinct values, friction 16, angular
+        /// damping 9, restitution 8, linear damping 5. ck-cmd reads every one of them
+        /// straight back off the body when it builds a ragdoll
         /// (`Skeleton.cpp:1003-1028`), which is what they are for.
         ///
         /// Damping is on the list even though that same ragdoll path overrides it --
@@ -43,25 +58,36 @@ namespace SECmd.Fbx
         /// is meaningless, and the 51 bodies shipping a zero linear damping against
         /// 14,158 shipping 0.0996 say it is read.
         ///
+        /// The fallbacks are Bethesda's own commonest values rather than nif.xml's
+        /// defaults, so that a body authored in a DCC tool -- which carries none of
+        /// these -- comes out looking like a body Bethesda exported. They agree for
+        /// friction, restitution and the two ceilings, and differ for three:
+        ///
+        /// - Damping. Vanilla holds 0.099609375 and 0.0498046875 where nif.xml says
+        ///   0.1 and 0.05. Those are 102/1024 and 51/1024: the exporter quantises
+        ///   damping onto a 1/1024 grid, and 99.3% and 99.2% of static bodies sit
+        ///   exactly there. nif.xml documents the round number nobody actually writes.
+        /// - Penetration depth, which is the one that splits by kind: statics take 0.1
+        ///   (62.7%) and movers 0.15 (38.4%, and nif.xml's default). With 2,185
+        ///   distinct values it is plainly computed per body, so this is a starting
+        ///   point rather than an answer -- but it is the right starting point for
+        ///   each kind.
+        ///
         /// Three siblings are deliberately absent: `Time Factor`, `Gravity Factor` and
         /// `Rolling Friction Multiplier` hold one value each across all 14,408 bodies
         /// (1, 1 and 0), so nif.xml's default is already the authored value and
         /// carrying them would be ceremony.
         /// </remarks>
-        public static readonly string[] Scalars =
+        public static readonly Scalar[] Scalars =
         [
-            "Linear Damping",
-            "Angular Damping",
-            "Friction",
-            "Restitution",
-            "Penetration Depth",
-            "Max Linear Velocity",
-            "Max Angular Velocity"
+            new("Linear Damping", 0.099609375f, 0.099609375f),
+            new("Angular Damping", 0.0498046875f, 0.0498046875f),
+            new("Friction", 0.5f, 0.5f),
+            new("Restitution", 0.4f, 0.4f),
+            new("Penetration Depth", 0.1f, 0.15f),
+            new("Max Linear Velocity", 104.4f, 104.4f),
+            new("Max Angular Velocity", 31.57f, 31.57f)
         ];
-
-        /// <summary>The property one of <see cref="Scalars"/> travels in.</summary>
-        public static string PropertyFor(string field) =>
-            "nif_rb_" + field.Replace(' ', '_').ToLowerInvariant();
 
         /// <summary>The layer assumed for a body that arrives without one.</summary>
         public const string DefaultLayer = "SKYL_STATIC";
@@ -77,23 +103,25 @@ namespace SECmd.Fbx
 
             bodyNode.Properties.SetUserString(LayerProperty, FbxCollisionMaterial.LayerOf(model, body));
 
-            foreach (string field in Scalars)
+            foreach (Scalar scalar in Scalars)
             {
-                if (model.FindItem(body, $@"Rigid Body Info\{field}") is not { } item)
+                if (model.FindItem(body, $@"Rigid Body Info\{scalar.Field}") is not { } item)
                     continue;
 
                 bodyNode.Properties.SetUserString(
-                    PropertyFor(field), item.Value.ToFloat().ToString("R", CultureInfo.InvariantCulture));
+                    scalar.Property, item.Value.ToFloat().ToString("R", CultureInfo.InvariantCulture));
             }
         }
 
-        /// <summary>One carried scalar, or null when the node carried none.</summary>
-        public static float? ScalarOf(FbxObject bodyNode, string field) =>
+        /// <summary>
+        /// One carried scalar, or the fallback when the node carried none.
+        /// </summary>
+        public static float ScalarOf(FbxObject bodyNode, Scalar scalar, bool isStatic) =>
             float.TryParse(
-                bodyNode.Properties.GetString(PropertyFor(field)),
+                bodyNode.Properties.GetString(scalar.Property),
                 NumberStyles.Float, CultureInfo.InvariantCulture, out float value)
                 ? value
-                : null;
+                : scalar.Default(isStatic);
 
         /// <summary>The mass carried with a node, or null when none was.</summary>
         public static float? MassOf(FbxObject bodyNode)

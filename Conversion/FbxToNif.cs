@@ -609,15 +609,22 @@ namespace SECmd.Conversion
         /// back, which is the same treatment the mass gets and for the same reason.
         ///
         /// A body that arrives without them -- one authored in a DCC tool rather than
-        /// converted from a NIF -- keeps nif.xml's defaults, which are Bethesda's own
-        /// commonest values.
+        /// converted from a NIF -- gets Bethesda's commonest value for each, which is
+        /// not always nif.xml's default: the damping pair is quantised onto a 1/1024
+        /// grid in every vanilla file, and the penetration depth a static wants is not
+        /// the one a mover wants. Written explicitly rather than left to the block's
+        /// own initialisation, so the value in the file is one this code chose.
         /// </remarks>
         private void WriteSimulationScalars(NifItem body, FbxObject bodyNode)
         {
-            foreach (string field in FbxRigidBodyInfo.Scalars)
+            bool isStatic = FbxRigidBodyInfo.IsStatic(FbxRigidBodyInfo.LayerOf(bodyNode));
+
+            foreach (FbxRigidBodyInfo.Scalar scalar in FbxRigidBodyInfo.Scalars)
             {
-                if (FbxRigidBodyInfo.ScalarOf(bodyNode, field) is { } value)
-                    SetFloat(body, $@"Rigid Body Info\{field}", value);
+                SetFloat(
+                    body,
+                    $@"Rigid Body Info\{scalar.Field}",
+                    FbxRigidBodyInfo.ScalarOf(bodyNode, scalar, isStatic));
             }
         }
 
