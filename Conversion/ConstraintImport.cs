@@ -19,6 +19,21 @@ namespace SECmd.Conversion
         /// <summary>The block wrapping the descriptor, or empty when there is none.</summary>
         public string Wrapper { get; init; } = string.Empty;
 
+        /// <summary>
+        /// The bodies a constraint *chain* passes through, in order, by node name.
+        /// </summary>
+        /// <remarks>
+        /// Empty for an ordinary constraint, which joins two bodies and says so in the
+        /// attachment node's name.
+        ///
+        /// A chain is not two bodies. `TestNifFile_DeepGraph_SE`'s rope is twenty-five,
+        /// and its `Entity A` and `Entity B` name only the first pair — the rest of the
+        /// rope is in `Chained Entities` and nowhere else. The entity fields are skipped
+        /// on the grounds that the scene hierarchy says which bodies are joined, which is
+        /// true of a pair and not of a chain, so this list travels by name.
+        /// </remarks>
+        public List<string> ChainedNames { get; init; } = [];
+
         /// <summary>The body that owned the constraint: entity A.</summary>
         /// <remarks>
         /// The second half of the node's name. The first half repeats the parent's

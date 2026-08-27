@@ -25,6 +25,14 @@ namespace SECmd.Fbx
         /// <summary>Marks the node as an attachment point, as FBXWrangler names it.</summary>
         public const string NameSuffix = "_attach_point";
 
+        /// <summary>Where a chain's ordered list of bodies rides.</summary>
+        /// <remarks>
+        /// Node names, separated by the same character the attachment point's own name
+        /// uses. A chain passes through more bodies than the two an attachment point can
+        /// name, and nothing else in the scene records the order.
+        /// </remarks>
+        public const string ChainedProperty = "hkc_chained_bodies";
+
         /// <summary>Separates the two body names in an attachment point's name.</summary>
         public const string NameSeparator = "_con_";
 
@@ -101,6 +109,18 @@ namespace SECmd.Fbx
             // skipped, since its live arm is what was just written.
             if (wrapper is not null)
                 WriteFields(model, constraint, node, string.Empty, skip: wrapper);
+
+            // A chain's bodies, in order. Entity A and Entity B name only the first
+            // pair; a rope of twenty-five is entirely in this list and nowhere else.
+            if (model.GetRefArray(constraint, @"Constraint Chain Info\Chained Entities").ToList()
+                is { Count: > 0 } chained)
+            {
+                node.Properties.SetUserString(
+                    ChainedProperty,
+                    string.Join(
+                        NameSeparator,
+                        chained.Select(body => bodies.TryGetValue(body, out var entry) ? entry.Name : string.Empty)));
+            }
 
             return node;
         }

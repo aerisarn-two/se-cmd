@@ -942,6 +942,37 @@ namespace SECmd.Tests
             Assert.Equal(before, Flags(RoundTrip(source)));
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void AConstraintChainKeepsEveryBodyItPassesThrough(string name)
+        {
+            // A constraint chain is not two bodies. `Entity A` and `Entity B` name only
+            // the first pair; the rest of the chain is in `Chained Entities` and nowhere
+            // else -- `TestNifFile_DeepGraph_SE`'s rope is twenty-five bodies, 4 through
+            // 52.
+            //
+            // Both entity fields are deliberately not carried, on the grounds that the
+            // scene hierarchy says which bodies are joined. That holds for a pair, where
+            // the constraint hangs off one body and names the other, and does not hold
+            // for a chain: nothing in the scene records the order. So every rebuilt chain
+            // came back joining nothing.
+            NifModel source = Load(name);
+
+            static List<string> Chains(NifModel m) =>
+                [.. m.Blocks
+                    .Where(b => m.FindItem(b, @"Constraint Chain Info\Chained Entities") is not null)
+                    .Select(b => string.Join(
+                        ",",
+                        m.GetRefArray(b, @"Constraint Chain Info\Chained Entities").Select(m.GetName)))];
+
+            List<string> before = Chains(source);
+
+            if (before.Count == 0 || before.All(c => c.Length == 0))
+                return;
+
+            Assert.Equal(before, Chains(RoundTrip(source)));
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

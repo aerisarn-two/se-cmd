@@ -84,6 +84,7 @@ namespace SECmd.Nif
                     continue;
 
                 LinkEntities(model, block, owner, other);
+                LinkChain(model, block, constraint.ChainedNames, bodies);
                 Attach(model, owner, block);
             }
         }
@@ -236,6 +237,44 @@ namespace SECmd.Nif
                 .SetLink(other is null ? -1 : model.IndexOf(other));
 
             model.FindItem(block, $"{prefix}Num Entities")?.Value.SetCount(2);
+        }
+
+        /// <summary>Relinks the bodies a constraint chain passes through, in order.</summary>
+        /// <remarks>
+        /// Entity A and Entity B name only the first pair. A chain of twenty-five bodies
+        /// keeps the rest here and nowhere else, so unlike the entity fields -- which the
+        /// scene hierarchy can reconstruct -- this list has to travel, and does, by node
+        /// name.
+        /// </remarks>
+        private static void LinkChain(
+            NifModel model, NifItem block, IReadOnlyList<string> names,
+            IReadOnlyDictionary<string, NifItem> bodies)
+        {
+            if (names.Count == 0
+                || model.FindItem(block, @"Constraint Chain Info\Chained Entities") is null)
+            {
+                return;
+            }
+
+            var chained = new List<NifItem>(names.Count);
+
+            foreach (string name in names)
+            {
+                if (bodies.TryGetValue(name, out NifItem? body))
+                    chained.Add(body);
+            }
+
+            if (model.SetArraySize(
+                    block,
+                    @"Constraint Chain Info\Num Entities A",
+                    @"Constraint Chain Info\Chained Entities",
+                    chained.Count) is not { } list)
+            {
+                return;
+            }
+
+            for (int i = 0; i < chained.Count && i < list.Children.Count; i++)
+                list.Children[i].Value.SetLink(model.IndexOf(chained[i]));
         }
 
         /// <summary>Adds the constraint to the body that owns it.</summary>

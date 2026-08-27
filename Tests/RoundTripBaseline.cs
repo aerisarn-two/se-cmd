@@ -119,6 +119,13 @@ namespace SECmd.Tests
             ["Solver Deactivation"] = "set from the collision layer by the motion profile (§5.7)",
             ["Quality Type"] = "set from the collision layer by the motion profile (§5.7)",
 
+            // A quadratic key's tangents. FBX cannot express them directly, so the
+            // exporter sets TangentAuto and lets the importer choose tangents that
+            // reproduce the curve's shape (spec §5A). The numbers therefore differ while
+            // the curve does not — which is the trade the spec records, not a loss.
+            ["Forward"] = "quadratic key tangents are re-chosen by the importer (§5A)",
+            ["Backward"] = "quadratic key tangents are re-chosen by the importer (§5A)",
+
             // Calculated from the block graph rather than carried (bsxflags-spec.md),
             // and *added* to a file that had none -- which lengthens the root's extra
             // data list by one. The corpus sweep has always excluded that; it was sitting
@@ -248,6 +255,20 @@ namespace SECmd.Tests
             ["BSTriShape/Data Size"] = "follows the vertex descriptor",
             ["NiSkinPartition/Data Size"] = "follows the vertex descriptor",
 
+            // A breakable constraint in the game's files often names only one entity, and
+            // the import links both from the scene -- the far body is the node the
+            // attachment hangs under, so there is always one to link. The source's null
+            // is not reproduced.
+            ["Entity B"] = "a constraint that named only one body comes back naming two",
+
+            // NiSkinData's own copy of the weights, which SE does not read -- it takes
+            // them from the vertex -- and which is rebuilt from the four influences that
+            // survived rather than from the source's list. The values differ by much more
+            // than rounding, so this is the influence limit showing through into the
+            // legacy copy rather than arithmetic drift.
+            ["Weight"] = "NiSkinData's legacy weights are rebuilt from the four kept influences",
+            ["Index"] = "NiSkinData's legacy weight list is rebuilt, so its order differs",
+
             // Which four influences survive the cut are not always the four the source
             // kept, and the slots a vertex does not use hold a stale bone id in the
             // source where this writes zero. Measured on the one body mesh among the
@@ -268,7 +289,6 @@ namespace SECmd.Tests
             ["Controller"] = "9 occurrences",
             ["Num Objs"] = "9 occurrences",
             ["Objs"] = "9 occurrences",
-            ["Entity B"] = "3 occurrences",
             ["Points"] = "a strips shape's strips are restructured",
             ["Strip Lengths"] = "a strips shape's strips are restructured",
             ["Children"] = "1 occurrence",
@@ -339,16 +359,11 @@ namespace SECmd.Tests
             ["Second Point"] = "3 occurrences",
             ["Friction"] = "1 occurrence",
             ["Restitution"] = "1 occurrence",
-            ["Backward"] = "7 occurrences",
-            ["Forward"] = "7 occurrences",
             ["Chunks"] = "2 occurrences",
             ["Num Chunks"] = "2 occurrences",
             ["Num Normals"] = "1 occurrence",
             ["Shader Flags 1"] = "1 occurrence",
             ["Unknown Float 1"] = "2 occurrences",
-            ["Index"] = "10 occurrences",
-            ["Weight"] = "9 occurrences",
-            ["Chained Entities"] = "11 occurrences",
             ["Array Size"] = "2 occurrences",
             ["Indices"] = "1 occurrence",
             ["Material Index"] = "2 occurrences",

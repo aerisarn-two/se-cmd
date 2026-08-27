@@ -68,6 +68,8 @@ namespace SECmd.Fbx
                 Wrapper = node.Properties.GetString(FbxConstraintWriter.WrapperProperty),
                 OwnerName = owner,
                 OtherName = other.Length > 0 ? other : ParentName(scene, node),
+                ChainedNames = [.. node.Properties.GetString(FbxConstraintWriter.ChainedProperty)
+                    .Split(FbxConstraintWriter.NameSeparator, StringSplitOptions.RemoveEmptyEntries)],
                 FrameB = ReadTransform(node)
             };
 
