@@ -1993,6 +1993,7 @@ namespace SECmd.Conversion
             if (_lodSizes is { } sizes)
                 FbxLodSizes.WriteSizes(_model, shape, sizes);
             FbxNodeType.ReadFields(geometry, _model, shape, "NiTriBasedGeom");
+            ReadActiveMaterial(geometry, shape);
 
             NifItem data = _model.InsertBlock("NiTriShapeData");
             WriteGeometryData(data, mesh);
@@ -2020,6 +2021,8 @@ namespace SECmd.Conversion
             _model.SetString(
                 shape, "Name",
                 FbxNodeType.ReadName(geometry, NameEncoding.Unsanitize(geometry.Name)));
+
+            ReadActiveMaterial(geometry, shape);
 
             var descriptor = BuildVertexDescriptor(
                 mesh, skinned, _model.BlockInherits(shape, "BSDynamicTriShape"));
@@ -2102,6 +2105,28 @@ namespace SECmd.Conversion
 
             if (mesh.HasColors && index < mesh.Colors.Count)
                 _model.FindItem(vertex, "Vertex Colors")?.Value.Set(mesh.Colors[index]);
+        }
+
+        /// <summary>Puts back the index of a geometry's active material.</summary>
+        /// <remarks>
+        /// `Material Data` sits on `NiGeometry`, below the base class the field carrier
+        /// treats as a shape's own, so nothing carried this and every rebuilt shape took
+        /// nif.xml's default of -1. The files hold 0 as often as -1 with no materials
+        /// either way, so there is nothing to assume and it has to travel.
+        /// </remarks>
+        private void ReadActiveMaterial(FbxObject geometry, NifItem shape)
+        {
+            string text = geometry.Properties.GetString(NifToFbx.ActiveMaterialProperty);
+
+            if (int.TryParse(
+                    text,
+                    System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out int active))
+            {
+                _model.FindItem(shape, @"Material Data\Active Material")?.Value.SetCount(
+                    unchecked((uint)active));
+            }
         }
 
         private static uint SNormToByte(float value) =>

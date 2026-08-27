@@ -71,6 +71,7 @@ namespace SECmd.Nif
                 if (sequence.Name == NifAnimAccess.DefaultSequenceName)
                 {
                     WriteStandaloneControllers(model, sequence, nodes, warnings);
+
                     continue;
                 }
 
@@ -811,6 +812,19 @@ namespace SECmd.Nif
                 {
                     model.SetRef(entry, "Interpolator", WriteInterpolator(model, track, sequence.Start));
                     model.SetString(entry, "Controller Type", "NiTransformController");
+
+                    // And which controller drives it. A transform track is driven by the
+                    // one multi-target controller hanging off the manager -- that is what
+                    // it is for, and it is where the source points -- while the property
+                    // branch below finds a controller per property. This entry set the
+                    // type and the interpolator and left the reference null, so the
+                    // engine had the keys and nothing bound to play them.
+                    if (node is not null && model.GetRef(manager, "Next Controller") is { } multi
+                        && model.BlockInherits(multi, "NiMultiTargetTransformController"))
+                    {
+                        model.SetRef(entry, "Controller", multi);
+                    }
+
                     continue;
                 }
 

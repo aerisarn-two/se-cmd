@@ -973,6 +973,60 @@ namespace SECmd.Tests
             Assert.Equal(before, Chains(RoundTrip(source)));
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void ATransformEntryNamesTheControllerThatDrivesIt(string name)
+        {
+            // A sequence entry says which node it drives, which interpolator holds the
+            // keys, and which controller plays them. The property entries set all three;
+            // the transform entry set the first two and left the reference null, so the
+            // engine had the keys and nothing bound to play them.
+            //
+            // A transform track is driven by the one multi-target controller hanging off
+            // the manager -- that is what it is for, and where the file points.
+            NifModel source = Load(name);
+
+            static int Bound(NifModel m) =>
+                m.Blocks
+                    .Where(b => b.Name == "NiControllerSequence")
+                    .Select(b => m.FindItem(b, "Controlled Blocks"))
+                    .Where(l => l is not null)
+                    .SelectMany(l => l!.Children)
+                    .Count(e => m.GetString(e, "Controller Type") == "NiTransformController"
+                                && m.GetRef(e, "Controller") is not null);
+
+            int before = Bound(source);
+
+            if (before == 0)
+                return;
+
+            Assert.Equal(before, Bound(RoundTrip(source)));
+        }
+
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void AGeometryKeepsItsActiveMaterial(string name)
+        {
+            // `Material Data` sits on NiGeometry, below the base class the field carrier
+            // treats as a shape's own, so nothing carried this and every rebuilt shape
+            // took nif.xml's default of -1. The fixtures hold 0 ten times and -1 six
+            // times, both with no materials at all, so there is nothing to assume.
+            NifModel source = Load(name);
+
+            static List<int> Active(NifModel m) =>
+                [.. m.Blocks
+                    .Select(b => m.FindItem(b, @"Material Data\Active Material"))
+                    .Where(i => i is not null)
+                    .Select(i => i!.Value.ToInt())];
+
+            List<int> before = Active(source);
+
+            if (before.Count == 0)
+                return;
+
+            Assert.Equal(before, Active(RoundTrip(source)));
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

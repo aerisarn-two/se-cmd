@@ -974,6 +974,16 @@ namespace SECmd.Conversion
         /// <summary>Marks a skinned shape that kept its geometry in itself as well.</summary>
         public const string ShapeKeepsGeometryProperty = "nif_shape_keeps_geometry";
 
+        /// <summary>Where a geometry's active material index rides.</summary>
+        /// <remarks>
+        /// `Material Data` sits on `NiGeometry`, below the base class the field carrier
+        /// treats as this block's own, so nothing carried it and every shape took
+        /// nif.xml's default of -1. The game's files hold both 0 and -1 -- ten and six of
+        /// the fixtures' shapes respectively, all with no materials at all -- so it is
+        /// not a constant to be assumed either way.
+        /// </remarks>
+        public const string ActiveMaterialProperty = "nif_active_material";
+
         private void ConvertGeometry(FbxScene scene, NifItem shape, FbxObject? parent)
         {
             MeshGeometry? mesh;
@@ -1049,6 +1059,13 @@ namespace SECmd.Conversion
                 && _model.FindItem(shape, "Vertex Data") is { Children.Count: > 0 })
             {
                 geometry.Properties.SetUserString(ShapeKeepsGeometryProperty, "1");
+            }
+
+            if (_model.FindItem(shape, @"Material Data\Active Material") is { } active)
+            {
+                geometry.Properties.SetUserString(
+                    ActiveMaterialProperty,
+                    active.Value.ToInt().ToString(System.Globalization.CultureInfo.InvariantCulture));
             }
 
             // The geometry is named uniquely too, so two shapes sharing a name can be

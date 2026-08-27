@@ -255,6 +255,29 @@ namespace SECmd.Tests
             ["BSTriShape/Data Size"] = "follows the vertex descriptor",
             ["NiSkinPartition/Data Size"] = "follows the vertex descriptor",
 
+            // The palette is built the way ck-cmd builds it -- FBXWrangler.cpp:4312 fills
+            // it from the multi-target controller's extra targets plus the conversion
+            // root, and nothing else -- so it holds two entries where Bethesda's own file
+            // holds eleven, including emitters and geometry.
+            //
+            // Widening it to every node a sequence names reaches five, which is neither
+            // ck-cmd's answer nor the file's. Left as ck-cmd has it: this port follows
+            // the reference and records where it differs, and inventing a third answer
+            // would be neither.
+            ["Num Objs"] = "built as ck-cmd builds it; Bethesda's own palettes hold more",
+            ["Objs"] = "built as ck-cmd builds it; Bethesda's own palettes hold more",
+
+            // A compressed mesh shape's back-reference to what it belongs to, and the
+            // user data beside it. Neither is read or written.
+            ["Target"] = "a compressed mesh shape's target is not carried",
+            ["User Data"] = "a compressed mesh shape's user data is not carried",
+
+            // What is left of the controller references. A controlled block's own is now
+            // set -- a transform entry points at the multi-target controller, as the file
+            // does -- and this is the root's, which gains a manager in a file that had
+            // none because the import builds one for the animation it was given.
+            ["Controller"] = "a file with no manager gains one when it carries animation",
+
             // A breakable constraint in the game's files often names only one entity, and
             // the import links both from the scene -- the far body is the node the
             // attachment hangs under, so there is always one to link. The source's null
@@ -286,9 +309,6 @@ namespace SECmd.Tests
             ["NiIntegerExtraData"] = "the extra data list comes back in a different order",
             ["BSTriShape"] = "a shape with no vertices comes back as NiTriShape",
 
-            ["Controller"] = "9 occurrences",
-            ["Num Objs"] = "9 occurrences",
-            ["Objs"] = "9 occurrences",
             ["Points"] = "a strips shape's strips are restructured",
             ["Strip Lengths"] = "a strips shape's strips are restructured",
             ["Children"] = "1 occurrence",
@@ -344,7 +364,6 @@ namespace SECmd.Tests
             // object flags differ separately, by a single bit in each case.
             ["Flags"] = "synthesised controllers and one AV object bit",
             ["Unused 03"] = "3 occurrences",
-            ["Active Material"] = "4 occurrences",
             ["Build Type"] = "2 occurrences",
             ["Chunk Materials"] = "3 occurrences",
             ["Chunk Transforms"] = "3 occurrences",
@@ -353,8 +372,6 @@ namespace SECmd.Tests
             ["Num Materials"] = "3 occurrences",
             ["Num Transforms"] = "3 occurrences",
             ["Offset"] = "2 occurrences",
-            ["Target"] = "3 occurrences",
-            ["User Data"] = "3 occurrences",
             ["First Point"] = "3 occurrences",
             ["Second Point"] = "3 occurrences",
             ["Friction"] = "1 occurrence",
