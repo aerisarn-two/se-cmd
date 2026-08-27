@@ -1,3 +1,4 @@
+using System.Globalization;
 using MeshIO.Formats.Fbx;
 using SECmd.Fbx;
 using SECmd.Nif;
@@ -409,6 +410,9 @@ namespace SECmd.Conversion
             if (shape.Name == "bhkNiTriStripsShape")
                 FbxStripsParts.Write(holder, _stripsParts);
 
+            if (shape.Name is "bhkCapsuleShape" or "bhkCylinderShape")
+                WriteShapeAxis(holder, shape);
+
             AddCollisionMaterial(scene, shape, holder, geometry);
         }
 
@@ -620,6 +624,43 @@ namespace SECmd.Conversion
             List<int> levels = FbxLodSizes.LevelPerTriangle(_model, shape, mesh.Triangles.Count);
 
             FbxMeshWriter.AddPerPolygonMaterialElement(geometry, [.. levels.Select(l => first + l)]);
+        }
+
+        /// <summary>The property a capsule's or cylinder's axis direction travels in.</summary>
+        public const string ShapeAxisProperty = "nif_shape_axis";
+
+        /// <summary>
+        /// Records which way round a capsule's or cylinder's two end points ran.
+        /// </summary>
+        /// <remarks>
+        /// Both tessellate to a cloud that is symmetric about their own middle, so the
+        /// fit on the way back cannot tell which end was the first point -- it has to
+        /// pick, and either choice is right for half the files. The direction is
+        /// therefore carried, and the fit turned to match it (spec §4.8.2).
+        ///
+        /// Only the direction, not the points: the points are refitted from whatever
+        /// the cloud has become, which is the whole reason collision goes through a
+        /// mesh at all.
+        /// </remarks>
+        private void WriteShapeAxis(FbxObject holder, NifItem shape)
+        {
+            // A cylinder's ends are Vector4 and a capsule's are Vector3, so they cannot
+            // share a reader.
+            bool cylinder = shape.Name == "bhkCylinderShape";
+
+            NifVector3 first = cylinder
+                ? Vector3Of(_model.FindItem(shape, "Vertex A"))
+                : _model.FindItem(shape, "First Point")?.Value.Get<NifVector3>() ?? default;
+
+            NifVector3 second = cylinder
+                ? Vector3Of(_model.FindItem(shape, "Vertex B"))
+                : _model.FindItem(shape, "Second Point")?.Value.Get<NifVector3>() ?? default;
+
+            holder.Properties.SetUserString(
+                ShapeAxisProperty,
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{second.X - first.X:R},{second.Y - first.Y:R},{second.Z - first.Z:R}"));
         }
 
         /// <summary>Fields the multi-bound carrier owns (§5.2.2).</summary>

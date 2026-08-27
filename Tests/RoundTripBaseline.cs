@@ -375,8 +375,6 @@ namespace SECmd.Tests
             ["Num Materials"] = "3 occurrences",
             ["Num Transforms"] = "3 occurrences",
             ["Offset"] = "2 occurrences",
-            ["First Point"] = "3 occurrences",
-            ["Second Point"] = "3 occurrences",
             ["Chunks"] = "2 occurrences",
             ["Num Chunks"] = "2 occurrences",
             ["Num Normals"] = "1 occurrence",

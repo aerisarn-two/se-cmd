@@ -1,3 +1,4 @@
+using System.Globalization;
 using SECmd.Havok;
 using SECmd.Fbx;
 using SECmd.Nif;
@@ -775,9 +776,9 @@ namespace SECmd.Conversion
                 else if (name.EndsWith("_sphere", StringComparison.Ordinal))
                     built = BuildSphere(points);
                 else if (name.EndsWith("_capsule", StringComparison.Ordinal))
-                    built = BuildCapsule(points);
+                    built = BuildCapsule(points, child);
                 else if (name.EndsWith("_cylinder", StringComparison.Ordinal))
-                    built = BuildCylinder(points);
+                    built = BuildCylinder(points, child);
                 else if (name.EndsWith("_convex", StringComparison.Ordinal))
                     built = BuildConvex(points);
                 else if (name.EndsWith("_plane", StringComparison.Ordinal))
@@ -1100,9 +1101,20 @@ namespace SECmd.Conversion
             return shape;
         }
 
-        private NifItem BuildCapsule(IReadOnlyList<NifVector3> points)
+        /// <summary>
+        /// Builds a capsule, keeping the end order the source had.
+        /// </summary>
+        /// <remarks>
+        /// The fit cannot recover which end was `First Point` -- a capsule's cloud is
+        /// symmetric about its middle -- so a capsule that came from a NIF carries the
+        /// direction it had, and the fitted pair is turned to match. Without it, a
+        /// capsule authored the way 94.9% of Skyrim's are came back with its two points
+        /// exchanged: the same volume, and not the same file.
+        /// </remarks>
+        private NifItem BuildCapsule(IReadOnlyList<NifVector3> points, FbxObject node)
         {
-            (NifVector3 first, NifVector3 second, float radius) = ShapeFitter.FitCapsule(points);
+            (NifVector3 first, NifVector3 second, float radius) =
+                ShapeFitter.FitCapsule(points, CarriedAxis(node));
 
             NifItem shape = _model.InsertBlock("bhkCapsuleShape");
             _model.FindItem(shape, "First Point")?.Value.Set(first);
@@ -1121,9 +1133,35 @@ namespace SECmd.Conversion
         /// Havok stores both points as four-component vectors, and the fourth
         /// component is not padding: it holds the radius again, and Havok reads it.
         /// </remarks>
-        private NifItem BuildCylinder(IReadOnlyList<NifVector3> points)
+        /// <summary>The axis carried on a node, or null when it carried none.</summary>
+        private static NifVector3? CarriedAxis(FbxObject node)
         {
-            (NifVector3 first, NifVector3 second, float radius) = ShapeFitter.FitCylinder(points);
+            string text = node.Properties.GetString(NifToFbx.ShapeAxisProperty);
+
+            if (text.Length == 0)
+                return null;
+
+            string[] parts = text.Split(',');
+
+            if (parts.Length != 3)
+                return null;
+
+            float[] axis = new float[3];
+
+            for (int i = 0; i < 3; i++)
+            {
+                if (!float.TryParse(
+                        parts[i], NumberStyles.Float, CultureInfo.InvariantCulture, out axis[i]))
+                    return null;
+            }
+
+            return new NifVector3(axis[0], axis[1], axis[2]);
+        }
+
+        private NifItem BuildCylinder(IReadOnlyList<NifVector3> points, FbxObject node)
+        {
+            (NifVector3 first, NifVector3 second, float radius) =
+                ShapeFitter.FitCylinder(points, CarriedAxis(node));
 
             NifItem shape = _model.InsertBlock("bhkCylinderShape");
 

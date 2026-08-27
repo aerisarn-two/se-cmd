@@ -452,6 +452,41 @@ whichever machine Bethesda exported on, flushed out with the rest of the struct.
 is nothing in them to reconstruct, so the round trip leaves the field at zero and says
 so on the baseline rather than pretending the gap is unfinished work.
 
+#### 4.8.2 Capsules and cylinders: the axis is not in the cloud
+
+Both tessellate to a point cloud, and both are refitted from it on the way back. Two
+things about them cannot be recovered from that cloud, and se-cmd carries the axis
+direction (`nif_shape_axis` on the shape's node) so it does not have to guess either.
+
+**Which end is first.** A capsule's cloud is symmetric about its own middle, so the fit
+must choose. Of the 1,966 capsules Skyrim ships, **1,865 (94.9%)** put `First Point` at
+the *positive* end of the axis; the fitter had chosen the negative end, so almost every
+capsule came back with its two endpoints exchanged. No vanilla capsule is tapered
+(`Radius 1` and `Radius 2` are equal to `Radius` in all 1,966), so the exchange is
+geometrically harmless — and it is still not the same file.
+
+**Which way the axis runs.** The fit took the longest side of the bounding box, which is
+right only for a capsule lying along X, Y or Z. **268 of the 1,966 do not** — they run
+diagonally, mostly in the skeletons, where a limb's collision follows the bone. Snapping
+those to the nearest world axis gave a box no longer than the capsule is thick,
+`halfLength - radius` came out at or below zero, and both endpoints collapsed onto the
+centre: a capsule of zero length where a limb used to be.
+
+The fallback for a shape with no hint is now the cloud's principal axis (dominant
+eigenvector of the covariance, by power iteration) rather than a box side. That is
+strictly better — it handles the diagonal case — but it is **not** sufficient on its own,
+which is why the hint exists: a capsule shorter than it is wide spreads further *across*
+its axis than along it, so PCA returns a direction perpendicular to the truth. Skyrim's
+skeletons are full of those too.
+
+The hint is a direction only. Endpoints and radius are still measured from the cloud, so
+a capsule stretched, moved or rescaled in a DCC tool comes back stretched, moved or
+rescaled — the reason collision goes through a mesh at all.
+
+Cylinders get the same treatment, from the same code. The evidence there is thin —
+Skyrim ships exactly **one** `bhkCylinderShape` — so the convention is carried rather
+than inferred.
+
 ### 4.9 Rigid bodies
 
 `visit_rigid_body` (L2318–2400). Creates a node named `<targetName>_rb`.

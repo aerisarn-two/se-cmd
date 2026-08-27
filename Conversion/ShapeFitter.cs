@@ -58,46 +58,56 @@ namespace SECmd.Conversion
         /// A capsule: the two endpoints of its axis, and its radius.
         /// </summary>
         /// <remarks>
-        /// The axis is taken as the longest extent of the bounding box, which is how
-        /// a capsule is always modelled in practice. The radius is the largest
-        /// distance from that axis, and the endpoints are pulled in by one radius so
-        /// the hemispherical caps land on the ends of the cloud rather than beyond
-        /// them.
+        /// The axis is the cloud's own principal direction, not the longest side of its
+        /// bounding box. A box axis is only right for a capsule that happens to lie
+        /// along X, Y or Z, and 268 of the 1,966 capsules Skyrim ships do not: they run
+        /// diagonally, mostly in the skeletons, where a limb's collision follows the
+        /// bone. Snapping those to the nearest world axis made the box longer than the
+        /// capsule is thick in no direction at all, `halfLength - radius` came out at
+        /// or below zero, and both endpoints collapsed onto the centre -- a capsule of
+        /// zero length where a limb used to be.
+        ///
+        /// The radius is the largest distance from that axis, and the endpoints are
+        /// pulled in by one radius so the hemispherical caps land on the ends of the
+        /// cloud rather than beyond them.
+        ///
+        /// Which end is "first" is not in the cloud either -- it is symmetric about its
+        /// own middle -- so with no hint the fit has to choose, and the choice is
+        /// Bethesda's: 1,865 of those 1,966 capsules put `First Point` at the
+        /// *positive* end of the axis.
+        ///
+        /// <paramref name="axisHint"/> settles both questions when the shape came from
+        /// a NIF, and is why it is passed. A principal axis is the best guess available
+        /// from a bare cloud, and on a capsule shorter than it is wide it is the wrong
+        /// guess: such a cloud spreads further *across* the axis than along it, so the
+        /// fit comes back perpendicular to the truth. Skyrim's skeletons are full of
+        /// them. The hint is a direction only -- the endpoints and radius are still
+        /// measured from the cloud, so a capsule stretched or moved in a DCC tool comes
+        /// back stretched or moved.
         /// </remarks>
-        public static (NifVector3 First, NifVector3 Second, float Radius) FitCapsule(IReadOnlyList<NifVector3> points)
+        public static (NifVector3 First, NifVector3 Second, float Radius) FitCapsule(
+            IReadOnlyList<NifVector3> points, NifVector3? axisHint = null)
         {
             if (points.Count == 0)
                 return (new NifVector3(), new NifVector3(), 0f);
 
-            (NifVector3 center, NifVector3 half) = FitBox(points);
+            NifVector3 center = Centroid(points);
 
-            // Longest box axis becomes the capsule axis.
-            NifVector3 direction;
-            float halfLength;
+            NifVector3? hint = Normalised(axisHint);
+            NifVector3 direction = hint ?? PrincipalAxis(points, center);
 
-            if (half.X >= half.Y && half.X >= half.Z)
-            {
-                direction = new NifVector3(1f, 0f, 0f);
-                halfLength = half.X;
-            }
-            else if (half.Y >= half.Z)
-            {
-                direction = new NifVector3(0f, 1f, 0f);
-                halfLength = half.Y;
-            }
-            else
-            {
-                direction = new NifVector3(0f, 0f, 1f);
-                halfLength = half.Z;
-            }
-
-            // Radius is the widest reach perpendicular to that axis.
+            // Extent along the axis, measured from the centroid rather than assumed
+            // symmetric: a cloud that has been edited need not be.
+            float min = float.PositiveInfinity, max = float.NegativeInfinity;
             float radius = 0f;
 
             foreach (NifVector3 p in points)
             {
                 float dx = p.X - center.X, dy = p.Y - center.Y, dz = p.Z - center.Z;
                 float along = dx * direction.X + dy * direction.Y + dz * direction.Z;
+
+                min = MathF.Min(min, along);
+                max = MathF.Max(max, along);
 
                 float px = dx - along * direction.X;
                 float py = dy - along * direction.Y;
@@ -106,21 +116,145 @@ namespace SECmd.Conversion
                 radius = MathF.Max(radius, MathF.Sqrt(px * px + py * py + pz * pz));
             }
 
-            // Pull the endpoints in so the caps sit at the extremes of the cloud.
-            float axisHalf = MathF.Max(0f, halfLength - radius);
+            // Pull the endpoints in so the caps sit at the extremes of the cloud. A
+            // cloud shorter than it is wide -- a capsule that is all cap -- gives a
+            // negative span, which is clamped to a single point at the centre.
+            float high = MathF.Max(max - radius, min + radius);
+            float low = MathF.Min(max - radius, min + radius);
+
+            if (high < low)
+                high = low = 0.5f * (min + max);
+
+            // The hint runs first-to-second, so with one the first point is the low end
+            // along it. Without one there is nothing to follow and the convention takes
+            // over: first at the positive end, which is where 94.9% of Skyrim's are.
+            (float firstAlong, float secondAlong) = hint is null ? (high, low) : (low, high);
 
             var first = new NifVector3(
-                center.X - direction.X * axisHalf,
-                center.Y - direction.Y * axisHalf,
-                center.Z - direction.Z * axisHalf);
+                center.X + direction.X * firstAlong,
+                center.Y + direction.Y * firstAlong,
+                center.Z + direction.Z * firstAlong);
 
             var second = new NifVector3(
-                center.X + direction.X * axisHalf,
-                center.Y + direction.Y * axisHalf,
-                center.Z + direction.Z * axisHalf);
+                center.X + direction.X * secondAlong,
+                center.Y + direction.Y * secondAlong,
+                center.Z + direction.Z * secondAlong);
 
             return (first, second, radius);
         }
+
+        /// <summary>A direction of unit length, or null when there is no direction in it.</summary>
+        private static NifVector3? Normalised(NifVector3? v)
+        {
+            if (v is not { } axis)
+                return null;
+
+            float length = MathF.Sqrt(axis.X * axis.X + axis.Y * axis.Y + axis.Z * axis.Z);
+
+            return length < 1e-12f
+                ? null
+                : new NifVector3(axis.X / length, axis.Y / length, axis.Z / length);
+        }
+
+        /// <summary>The mean of a point cloud.</summary>
+        private static NifVector3 Centroid(IReadOnlyList<NifVector3> points)
+        {
+            double x = 0, y = 0, z = 0;
+
+            foreach (NifVector3 p in points)
+            {
+                x += p.X;
+                y += p.Y;
+                z += p.Z;
+            }
+
+            return new NifVector3(
+                (float)(x / points.Count), (float)(y / points.Count), (float)(z / points.Count));
+        }
+
+        /// <summary>
+        /// The direction a point cloud is most spread along.
+        /// </summary>
+        /// <remarks>
+        /// The dominant eigenvector of the covariance, by power iteration -- twenty
+        /// passes, which is far past convergence for a 3x3 and costs nothing at these
+        /// cloud sizes.
+        ///
+        /// Seeded from the widest covariance column rather than a fixed vector, because
+        /// power iteration cannot leave a starting vector that is exactly orthogonal to
+        /// the answer, and a fixed seed hits that on precisely the axis-aligned capsules
+        /// that are the common case. The result is sign-normalised so the axis does not
+        /// flip between two runs on the same cloud.
+        ///
+        /// Doubles throughout: the covariance of a cloud in Havok units squares numbers
+        /// that are already small, and in floats the smallest capsules lose the axis in
+        /// the rounding.
+        /// </remarks>
+        private static NifVector3 PrincipalAxis(IReadOnlyList<NifVector3> points, NifVector3 center)
+        {
+            double xx = 0, xy = 0, xz = 0, yy = 0, yz = 0, zz = 0;
+
+            foreach (NifVector3 p in points)
+            {
+                double dx = p.X - center.X, dy = p.Y - center.Y, dz = p.Z - center.Z;
+
+                xx += dx * dx; xy += dx * dy; xz += dx * dz;
+                yy += dy * dy; yz += dy * dz; zz += dz * dz;
+            }
+
+            // The widest column is the best-conditioned seed.
+            double[][] columns =
+            [
+                [xx, xy, xz],
+                [xy, yy, yz],
+                [xz, yz, zz]
+            ];
+
+            double[] v = columns[0];
+
+            foreach (double[] column in columns)
+            {
+                if (Norm(column) > Norm(v))
+                    v = column;
+            }
+
+            if (Norm(v) < 1e-30)
+                return new NifVector3(1f, 0f, 0f);
+
+            v = [v[0], v[1], v[2]];
+
+            for (int i = 0; i < 20; i++)
+            {
+                double[] next =
+                [
+                    xx * v[0] + xy * v[1] + xz * v[2],
+                    xy * v[0] + yy * v[1] + yz * v[2],
+                    xz * v[0] + yz * v[1] + zz * v[2]
+                ];
+
+                double norm = Math.Sqrt(Norm(next));
+
+                if (norm < 1e-30)
+                    break;
+
+                v = [next[0] / norm, next[1] / norm, next[2] / norm];
+            }
+
+            double length = Math.Sqrt(Norm(v));
+
+            if (length < 1e-30)
+                return new NifVector3(1f, 0f, 0f);
+
+            // A consistent sign, so the same cloud never fits two opposite axes.
+            double sign = v[0] + v[1] + v[2] < 0 ? -1 : 1;
+
+            return new NifVector3(
+                (float)(sign * v[0] / length),
+                (float)(sign * v[1] / length),
+                (float)(sign * v[2] / length));
+        }
+
+        private static double Norm(double[] v) => v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
 
         /// <summary>
         /// The two end points and radius of a cylinder fitted to a point cloud.
@@ -132,9 +266,9 @@ namespace SECmd.Conversion
         /// Reusing the capsule fit here would shorten every cylinder by two radii.
         /// </remarks>
         public static (NifVector3 First, NifVector3 Second, float Radius) FitCylinder(
-            IReadOnlyList<NifVector3> points)
+            IReadOnlyList<NifVector3> points, NifVector3? axisHint = null)
         {
-            (NifVector3 first, NifVector3 second, float radius) = FitCapsule(points);
+            (NifVector3 first, NifVector3 second, float radius) = FitCapsule(points, axisHint);
 
             // Push the ends back out to where the cloud actually reaches.
             var axis = new NifVector3(second.X - first.X, second.Y - first.Y, second.Z - first.Z);

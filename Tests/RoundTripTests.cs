@@ -1076,6 +1076,58 @@ namespace SECmd.Tests
             Assert.Equal(before, Scalars(RoundTrip(source)));
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void ACapsuleKeepsItsAxisAndWhichEndCameFirst(string name)
+        {
+            // Two defects sat on top of each other here. The fit snapped the axis to
+            // the longest side of the bounding box, which is right only for a capsule
+            // lying along X, Y or Z -- 268 of Skyrim's 1,966 run diagonally, mostly in
+            // the skeletons where a limb's collision follows the bone, and those came
+            // back with both endpoints collapsed onto the centre. And the end order was
+            // reversed against Bethesda's, so 94.9% of capsules came back with their
+            // two points exchanged: the same volume, and not the same file.
+            NifModel source = Load(name);
+
+            static List<(NifVector3, NifVector3)> Capsules(NifModel m) =>
+                [.. m.Blocks
+                    .Where(b => b.Name == "bhkCapsuleShape")
+                    .Select(b => (
+                        m.FindItem(b, "First Point")!.Value.Get<NifVector3>(),
+                        m.FindItem(b, "Second Point")!.Value.Get<NifVector3>()))];
+
+            List<(NifVector3, NifVector3)> before = Capsules(source);
+
+            if (before.Count == 0)
+                return;
+
+            List<(NifVector3, NifVector3)> after = Capsules(RoundTrip(source));
+
+            Assert.Equal(before.Count, after.Count);
+
+            for (int i = 0; i < before.Count; i++)
+            {
+                // A capsule of zero length is the collapse this guards against.
+                Assert.True(
+                    Distance(after[i].Item1, after[i].Item2) > 0.5f * Distance(before[i].Item1, before[i].Item2),
+                    $"capsule {i} of {name} came back {Distance(after[i].Item1, after[i].Item2)} long, "
+                    + $"where it was {Distance(before[i].Item1, before[i].Item2)}");
+
+                // And each end has to be the end it was, not the other one.
+                Assert.True(
+                    Distance(before[i].Item1, after[i].Item1) < 1e-4f
+                    && Distance(before[i].Item2, after[i].Item2) < 1e-4f,
+                    $"capsule {i} of {name} came back with its ends moved or exchanged");
+            }
+        }
+
+        private static float Distance(NifVector3 a, NifVector3 b)
+        {
+            float dx = a.X - b.X, dy = a.Y - b.Y, dz = a.Z - b.Z;
+
+            return MathF.Sqrt(dx * dx + dy * dy + dz * dz);
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {
