@@ -1389,6 +1389,45 @@ namespace SECmd.Tests
             }
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void ANodeAuthoredWithoutFlagsGetsWhatItsClassUsuallyHas(string name)
+        {
+            // A scene modelled in a DCC tool carries no nif_av_flags, and one value for
+            // every node is the wrong answer: the two big classes pull opposite ways.
+            // Of 49,469 NiNodes 60.4% are 0xE, and of 30,106 BSTriShapes 68.4% are
+            // 0x8000E -- so nif.xml's single 0x8000E is right for barely half a file.
+            NifModel source = Load(name);
+            var scene = new FbxScene(new NifToFbx(source).Convert());
+
+            foreach (FbxObject node in scene.Objects)
+                node.Properties.Remove(FbxNodeType.FlagsProperty);
+
+            NifItem sourceRoot = source.GetBlock(source.FindItem(source.Footer, "Roots")!.Children[0])!;
+
+            NifModel rebuilt = new FbxToNif(scene, new FbxToNifOptions
+            {
+                RootName = source.GetName(sourceRoot),
+                Version = source.Version,
+                UserVersion = source.UserVersion,
+                LegendaryEdition = source.BSVersion < 100
+            }).Convert(Db);
+
+            List<NifItem> nodes =
+                [.. rebuilt.Blocks.Where(b => rebuilt.BlockInherits(b, "NiAVObject")
+                                              && rebuilt.FindItem(b, "Flags") is { Children.Count: 0 })];
+
+            Assert.NotEmpty(nodes);
+
+            Assert.All(nodes, b => Assert.Equal(
+                FbxNodeType.DefaultFlagsFor(b.Name), rebuilt.GetUInt(b, "Flags")));
+
+            // And at least one of them must not be the schema's blanket value, or this
+            // is passing on a file that happens to hold nothing but 0x8000E classes.
+            if (nodes.Any(b => b.Name is "NiNode" or "BSDynamicTriShape"))
+                Assert.Contains(nodes, b => rebuilt.GetUInt(b, "Flags") != FbxNodeType.DefaultFlags);
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

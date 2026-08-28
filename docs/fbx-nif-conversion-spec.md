@@ -1460,8 +1460,44 @@ Bit 19 is the one worth chasing, being the only common variable. What was tried:
 
 Nothing reaches the ~100% a derivation needs, and the names say why: hidden, mesh LOD
 and the four *no anim sync* axes are decisions an artist makes, not consequences of the
-block graph. So the flags **travel**, on `nif_av_flags`, and a node arriving without one
-keeps nif.xml's default.
+block graph. So the flags **travel**, on `nif_av_flags`.
+
+##### What a node arriving without them gets
+
+nif.xml's single `0x8000E` is right for barely half a file, and the two classes that
+dominate a mesh pull in opposite directions. So the fallback is **per class**, from the
+commonest value each one carries, measured over 102,000 AV objects in half the meshes:
+
+| Class | Flags | Share | Of |
+| --- | --- | --- | --- |
+| `NiNode` | `0xE` | 60.4% | 49,469 |
+| `BSTriShape` | `0x8000E` | 68.4% | 30,106 |
+| `BSDynamicTriShape` | `0xE` | 79.1% | 10,575 |
+| `BSFadeNode` | `0x8000E` | 65.7% | 9,135 |
+| `NiBillboardNode` | `0x8000E` | 43.6% | 1,012 |
+| `NiParticleSystem` | `0x8000E` | 67.1% | 777 |
+| `BSValueNode` | `0x8000E` | 87.5% | 337 |
+| `BSLeafAnimNode` | `0x8000E` | 55.1% | 138 |
+| `BSOrderedNode` | `0x8000E` | 37.3% | 126 |
+| `NiTriShape` | `0x8000E` | 71.5% | 123 |
+| `BSMultiBoundNode` | `0x8000E` | 75.0% | 120 |
+| `BSStripParticleSystem` | `0x4000E` | 39.8% | 93 |
+| `NiSwitchNode` | `0xE` | 61.7% | 81 |
+| `NiCamera` | `0x8000E` | 87.3% | 71 |
+| `BSMasterParticleSystem` | `0x8000E` | 95.7% | 46 |
+| `BSTreeNode` | `0x8080E` | 65.5% | 29 |
+| `BSLODTriShape` | `0x800000E` | 62.5% | 24 |
+| `BSBlastNode` | `0xF` | 63.2% | 19 |
+
+Classes below nineteen samples, and classes not listed, keep `0x8000E`: under that a
+mode is not evidence.
+
+nif.xml carries typed defaults for many of these and mostly agrees — `NiNode` `0xE`,
+`BSTriShape` `0x8000E`, `BSFadeNode` `0x8000E`, `BSTreeNode` `0x8080E` and
+`BSLODTriShape` `0x800000E` all match what the files hold. Where it differs the corpus
+wins, as everywhere else here: nif.xml gives `BSLeafAnimNode` `0x808000E` where 55.1% of
+them are `0x8000E`, `BSMultiBoundNode` `0xE` where 75.0% are `0x8000E`, and `BSBlastNode`
+`0x8000F` where 63.2% are `0xF`.
 
 This is the opposite conclusion from `BSXFlags`, and for a reason worth keeping straight:
 every bit of `BSXFlags` is a statement *about* the graph — whether it animates, whether it

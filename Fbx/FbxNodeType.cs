@@ -213,18 +213,94 @@ namespace SECmd.Fbx
                 flags.Value.ToUInt().ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
 
-        /// <summary>Puts them back, leaving the schema default when none travelled.</summary>
+        /// <summary>
+        /// What a node of a given class gets when nothing travelled with it.
+        /// </summary>
+        /// <remarks>
+        /// A scene authored in a DCC tool carries no flags, and one value for every node
+        /// is the wrong answer: the classes disagree, and they disagree about the bit
+        /// that varies most. Measured over 102,000 AV objects in half of Skyrim's
+        /// meshes, the commonest value per class, with its share:
+        ///
+        /// | Class | Flags | Share | Of |
+        /// | --- | --- | --- | --- |
+        /// | `NiNode` | `0xE` | 60.4% | 49,469 |
+        /// | `BSTriShape` | `0x8000E` | 68.4% | 30,106 |
+        /// | `BSDynamicTriShape` | `0xE` | 79.1% | 10,575 |
+        /// | `BSFadeNode` | `0x8000E` | 65.7% | 9,135 |
+        /// | `NiBillboardNode` | `0x8000E` | 43.6% | 1,012 |
+        /// | `NiParticleSystem` | `0x8000E` | 67.1% | 777 |
+        /// | `BSValueNode` | `0x8000E` | 87.5% | 337 |
+        /// | `BSLeafAnimNode` | `0x8000E` | 55.1% | 138 |
+        /// | `BSOrderedNode` | `0x8000E` | 37.3% | 126 |
+        /// | `NiTriShape` | `0x8000E` | 71.5% | 123 |
+        /// | `BSMultiBoundNode` | `0x8000E` | 75.0% | 120 |
+        /// | `BSStripParticleSystem` | `0x4000E` | 39.8% | 93 |
+        /// | `NiSwitchNode` | `0xE` | 61.7% | 81 |
+        /// | `NiCamera` | `0x8000E` | 87.3% | 71 |
+        /// | `BSMasterParticleSystem` | `0x8000E` | 95.7% | 46 |
+        /// | `BSTreeNode` | `0x8080E` | 65.5% | 29 |
+        /// | `BSLODTriShape` | `0x800000E` | 62.5% | 24 |
+        /// | `BSBlastNode` | `0xF` | 63.2% | 19 |
+        ///
+        /// The two big node classes pull opposite ways -- `NiNode` towards `0xE` and
+        /// `BSTriShape` towards `0x8000E` -- which is why a single default served
+        /// neither, and why nif.xml's own `0x8000E` is right for barely half the file.
+        ///
+        /// nif.xml carries typed defaults for many of these and they mostly agree:
+        /// `NiNode` 0xE, `BSTriShape` 0x8000E, `BSFadeNode` 0x8000E, `BSTreeNode`
+        /// 0x8080E and `BSLODTriShape` 0x800000E all match. Where it differs the corpus
+        /// wins, as it does everywhere else in this project: nif.xml gives
+        /// `BSLeafAnimNode` 0x808000E where 55.1% of them are 0x8000E, `BSMultiBoundNode`
+        /// 0xE where 75.0% are 0x8000E, and `BSBlastNode` 0x8000F where 63.2% are 0xF.
+        ///
+        /// Classes not listed keep nif.xml's `0x8000E`. Only classes with at least
+        /// nineteen samples are here; below that the mode is not evidence.
+        /// </remarks>
+        private static readonly Dictionary<string, uint> ClassFlags = new(StringComparer.Ordinal)
+        {
+            ["NiNode"] = 0xE,
+            ["BSDynamicTriShape"] = 0xE,
+            ["NiSwitchNode"] = 0xE,
+            ["BSTriShape"] = 0x8000E,
+            ["BSFadeNode"] = 0x8000E,
+            ["NiBillboardNode"] = 0x8000E,
+            ["NiParticleSystem"] = 0x8000E,
+            ["BSValueNode"] = 0x8000E,
+            ["BSLeafAnimNode"] = 0x8000E,
+            ["BSOrderedNode"] = 0x8000E,
+            ["NiTriShape"] = 0x8000E,
+            ["BSMultiBoundNode"] = 0x8000E,
+            ["NiCamera"] = 0x8000E,
+            ["BSMasterParticleSystem"] = 0x8000E,
+            ["BSStripParticleSystem"] = 0x4000E,
+            ["BSTreeNode"] = 0x8080E,
+            ["BSLODTriShape"] = 0x800000E,
+            ["BSBlastNode"] = 0xF
+        };
+
+        /// <summary>nif.xml's own default, for a class nothing was measured for.</summary>
+        public const uint DefaultFlags = 0x8000E;
+
+        /// <summary>The flags a node of this class is built with.</summary>
+        public static uint DefaultFlagsFor(string blockClass) =>
+            ClassFlags.TryGetValue(blockClass, out uint flags) ? flags : DefaultFlags;
+
+        /// <summary>
+        /// Puts a node's flags back, or gives it the ones its class usually has.
+        /// </summary>
         public static void ReadFlags(FbxObject node, NifModel model, NifItem block)
         {
-            if (node.Properties.GetString(FlagsProperty) is not { Length: > 0 } text
-                || !uint.TryParse(text, System.Globalization.NumberStyles.Integer,
-                                  System.Globalization.CultureInfo.InvariantCulture, out uint value))
-            {
+            if (model.FindItem(block, "Flags") is not { Children.Count: 0 } flags)
                 return;
-            }
 
-            if (model.FindItem(block, "Flags") is { Children.Count: 0 } flags)
-                flags.Value.SetCount(value);
+            flags.Value.SetCount(
+                uint.TryParse(
+                    node.Properties.GetString(FlagsProperty),
+                    System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture, out uint carried)
+                    ? carried
+                    : DefaultFlagsFor(block.Name));
         }
 
         public static string Read(FbxObject node, NifModel model, string fallback, string ancestor = "NiNode")

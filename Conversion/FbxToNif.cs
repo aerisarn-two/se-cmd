@@ -131,6 +131,11 @@ namespace SECmd.Conversion
             // Named after the file rather than after any node in the scene (§5.2).
             _model.SetString(root, "Name", _options.RootName);
 
+            // What its class usually carries. Overridden below when the scene brought
+            // real flags with it; set here because the branch that reads them only runs
+            // for a scene whose single root is an empty node.
+            _model.FindItem(root, "Flags")?.Value.SetCount(FbxNodeType.DefaultFlagsFor(rootType));
+
             // The root is built here rather than by the walk, so everything the walk
             // does for a node has to be done for it too.
             if (sceneRoots.Count == 1 && !HasGeometry(sceneRoots[0]))
