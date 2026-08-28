@@ -294,6 +294,19 @@ namespace SECmd.Tests
             // 14,047 of their 15,188 slots -- 92.5% -- are empty; the fixture here has
             // one real target and thirteen nulls behind it. se-cmd writes the real ones
             // and stops, which is the same content without the padding.
+            // The same padding, on a node's child list. Rarer there -- 238 of the 30,942
+            // nodes sampled have a null child, and 445 of 47,024 slots -- but real: the
+            // fixture that flags this has a root whose one child slot holds -1. se-cmd
+            // writes the children that exist and stops.
+            ["Num Children"] = "Bethesda leaves empty child slots; this writes the real ones",
+            ["Children"] = "Bethesda leaves empty child slots; this writes the real ones",
+
+            // Where BSXFlags sits among a node's other extra data. se-cmd appends it,
+            // which is the commonest place -- of the 707 multi-entry lists sampled that
+            // hold one, 402 have it last -- but not a rule: 191 have it first and 114
+            // somewhere in between. Nothing about the block says where it belongs.
+            ["NiIntegerExtraData"] = "BSXFlags is appended; Bethesda puts it last 57% of the time",
+
             ["Num Extra Targets"] = "Bethesda pads this array; 92.5% of vanilla slots are empty",
             ["Extra Targets"] = "Bethesda pads this array; 92.5% of vanilla slots are empty",
 
@@ -358,13 +371,11 @@ namespace SECmd.Tests
             // reports these under the *class* name rather than the field's, since that
             // is what actually differs.
             ["NiPSysEmitterCtlr"] = "a particle system's controller chain comes back headed by a different class",
-            ["NiIntegerExtraData"] = "the extra data list comes back in a different order",
             ["BSTriShape"] = "a shape with no vertices comes back as NiTriShape",
 
             ["Points"] = "a strips shape's strips are restructured",
             ["Num Strips"] = "a strips shape's strips are restructured",
             ["Strip Lengths"] = "a strips shape's strips are restructured",
-            ["Children"] = "1 occurrence",
             ["Look At"] = "a NiLookAtInterpolator's target reference is not carried",
             // A shader property's own name is not carried. Found the moment the
             // synthetic models were compared in full: the test that put a
@@ -439,7 +450,6 @@ namespace SECmd.Tests
             // the file's own planes are gone.
             ["Num Normals"] = "seven near-duplicate face planes the hull fit leaves behind",
             ["Next Controller"] = "1 occurrence",
-            ["Num Children"] = "1 occurrence",
         };
 
         /// <summary>Every difference that is neither derived nor already recorded.</summary>
