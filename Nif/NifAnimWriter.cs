@@ -19,11 +19,33 @@ namespace SECmd.Nif
     /// </remarks>
     public static class NifAnimWriter
     {
-        /// <summary>Manager flags: active, and driven by the animation system.</summary>
-        private const uint ManagerFlags = 12;
+        /// <summary>
+        /// Bit 6 of a controller's flags, "Compute Scaled Time".
+        /// </summary>
+        /// <remarks>
+        /// nif.xml gives it `default="1"` and Skyrim agrees without exception: all
+        /// 7,107 `NiTimeController`s in a fifth of the game's meshes have it set, across
+        /// every one of the 8 distinct flag values they use.
+        ///
+        /// FBXWrangler writes 12 for a manager and 44 for a multi-target controller,
+        /// and both lack this bit; the constants below were taken from it. Every
+        /// structural controller se-cmd built therefore came back 0x40 short of what
+        /// the file it was rebuilt from had, and short of what nif.xml says a
+        /// controller starts life with.
+        /// </remarks>
+        private const uint ComputeScaledTime = 0x0040;
 
-        /// <summary>Transform controller flags, as FBXWrangler writes them.</summary>
-        private const uint TransformControllerFlags = 44;
+        /// <summary>A blend interpolator's "Manager Controlled" bit, which all of them have.</summary>
+        private const uint BlendManagerControlled = 1;
+
+        /// <summary>And the array size all of them carry.</summary>
+        private const uint BlendArraySize = 2;
+
+        /// <summary>Manager flags: active, and driven by the animation system.</summary>
+        private const uint ManagerFlags = 12 | ComputeScaledTime;
+
+        /// <summary>Transform controller flags, as FBXWrangler writes them, plus §5.6A.</summary>
+        private const uint TransformControllerFlags = 44 | ComputeScaledTime;
 
         /// <summary>Play once and hold, which is what an exported take means.</summary>
         /// <summary>Rotation stored as three separate axis groups.</summary>
@@ -227,8 +249,24 @@ namespace SECmd.Nif
                 _ => "NiBlendFloatInterpolator"
             };
 
-            if (model.KnowsBlock(blend))
-                model.SetRef(controller, field, model.InsertBlock(blend));
+            if (!model.KnowsBlock(blend))
+                return;
+
+            NifItem interpolator = model.InsertBlock(blend);
+
+            // Every blend interpolator Skyrim ships is the same block: of the 3,593 in a
+            // third of the game's meshes, all 3,593 hold flags 1, array size 2 and a
+            // zero weight threshold. Flags bit 0 is "Manager Controlled", which one
+            // reached through a sequence necessarily is -- and nif.xml makes five of the
+            // block's fields conditional on that bit being clear, so leaving it at zero
+            // wrote five fields the file does not have.
+            model.FindItem(interpolator, "Flags")?.Value.SetCount(BlendManagerControlled);
+            interpolator.InvalidateConditionsRecursive();
+
+            model.FindItem(interpolator, "Array Size")?.Value.SetCount(BlendArraySize);
+            model.FindItem(interpolator, "Weight Threshold")?.Value.SetFloat(0f);
+
+            model.SetRef(controller, field, interpolator);
         }
 
         /// <summary>
@@ -583,8 +621,11 @@ namespace SECmd.Nif
         /// The fallback only. A controller that came from a file brings its own flags,
         /// and the game's are as often 72 or 108 -- writing this constant over them left
         /// every shader controller active and looping whatever it had been.
+        ///
+        /// Carries <see cref="ComputeScaledTime"/> for the same reason the two above
+        /// do: no vanilla controller is without it.
         /// </remarks>
-        private const uint StandaloneControllerFlags = 0x000C;
+        private const uint StandaloneControllerFlags = 0x000C | ComputeScaledTime;
 
         /// <summary>A group's carried controller flags, or the constant for one with none.</summary>
         private static uint FlagsFor(IEnumerable<AnimProperty> group, uint fallback)

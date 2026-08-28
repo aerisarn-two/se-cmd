@@ -370,7 +370,6 @@ namespace SECmd.Tests
             // controller, the blend interpolators it makes to hold a sequence's output --
             // which have no source to read from and are written from constants. The AV
             // object flags differ separately, by a single bit in each case.
-            ["Flags"] = "synthesised controllers and one AV object bit",
             ["Build Type"] = "2 occurrences",
             ["Chunk Materials"] = "3 occurrences",
             ["Chunk Transforms"] = "3 occurrences",
@@ -384,7 +383,6 @@ namespace SECmd.Tests
             ["Num Normals"] = "1 occurrence",
             ["Shader Flags 1"] = "1 occurrence",
             ["Unknown Float 1"] = "2 occurrences",
-            ["Array Size"] = "2 occurrences",
             ["Indices"] = "1 occurrence",
             ["Material Index"] = "2 occurrences",
             ["Num Indices"] = "1 occurrence",

@@ -136,6 +136,7 @@ namespace SECmd.Conversion
             if (sceneRoots.Count == 1 && !HasGeometry(sceneRoots[0]))
             {
                 FbxNodeType.ReadFields(sceneRoots[0], _model, root, "NiNode");
+                FbxNodeType.ReadFlags(sceneRoots[0], _model, root);
                 FbxExtraDataWriter.ReadExtraData(sceneRoots[0], _model, root, Warnings);
                 FbxMultiBound.Read(sceneRoots[0], _model, root, Warnings);
                 FbxNodeControllers.Read(sceneRoots[0], _model, root, Warnings);
@@ -346,6 +347,7 @@ namespace SECmd.Conversion
                 : _model.InsertBlock(blockType);
 
             _model.SetString(node, "Name", FbxNodeType.ReadName(model, name));
+            FbxNodeType.ReadFlags(model, _model, node);
             _model.SetTransform(node, transform);
 
             // Keyed by the FBX name rather than the NIF one: that is what an animation
@@ -2024,6 +2026,7 @@ namespace SECmd.Conversion
             NifItem shape = _model.InsertBlock(type);
 
             _model.SetString(shape, "Name", FbxNodeType.ReadName(model, name));
+            FbxNodeType.ReadFlags(model, _model, shape);
             _model.SetTransform(shape, transform);
             _nodesByName.TryAdd(name, shape);
 
@@ -2096,6 +2099,7 @@ namespace SECmd.Conversion
             _model.SetString(
                 shape, "Name",
                 FbxNodeType.ReadName(geometry, NameEncoding.Unsanitize(geometry.Name)));
+            FbxNodeType.ReadFlags(geometry, _model, shape);
 
             // A BSLODTriShape's levels are counts into its one triangle list, and a
             // shape whose counts are all zero draws nothing at any distance.
@@ -2133,6 +2137,7 @@ namespace SECmd.Conversion
             _model.SetString(
                 shape, "Name",
                 FbxNodeType.ReadName(geometry, NameEncoding.Unsanitize(geometry.Name)));
+            FbxNodeType.ReadFlags(geometry, _model, shape);
 
             ReadActiveMaterial(geometry, shape);
 

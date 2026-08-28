@@ -212,6 +212,7 @@ namespace SECmd.Conversion
             // exported under its class name, since FBX has no anonymous object. This
             // is what says the name was empty rather than that.
             FbxNodeType.WriteName(node, _model, block);
+            FbxNodeType.WriteFlags(node, _model, block);
 
             // Everything hanging off the node that FBX has no place for: behaviour
             // graph paths, string data, bounds. BSXFlags is left out, since the import
@@ -1000,6 +1001,7 @@ namespace SECmd.Conversion
                 LodFields);
 
             FbxNodeType.WriteName(node, _model, shape);
+            FbxNodeType.WriteFlags(node, _model, shape);
             FbxDynamicShape.Write(node, _model, shape);
             FbxLodSizes.Write(node, _model, shape);
             FbxExtraDataWriter.AddExtraData(node, _model, shape);
@@ -1112,6 +1114,7 @@ namespace SECmd.Conversion
             // The geometry is named uniquely too, so two shapes sharing a name can be
             // told apart; this says which name each really had.
             FbxNodeType.WriteName(geometry, _model, shape);
+            FbxNodeType.WriteFlags(geometry, _model, shape);
 
             // A shape carries extra data as a node does, and it was going nowhere: a
             // glow plant's two NiBooleanExtraData hang on its NiTriShape, not on the

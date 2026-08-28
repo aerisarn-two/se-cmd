@@ -1302,6 +1302,59 @@ namespace SECmd.Tests
                 $"{name}: emptying NiSkinData left the rebuilt mesh with no vertex weights at all");
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void ANodeKeepsTheFlagsItWasAuthoredWith(string name)
+        {
+            // Flags sits on NiAVObject, below the class each node adds to, so the
+            // own-fields carrier never saw it and every rebuilt node took nif.xml's
+            // default of 0x8000E.
+            //
+            // The default covers 44% of them. Across 42,955 AV objects in a fifth of
+            // Skyrim's meshes the field takes 23 distinct values, and 0xE -- the same
+            // flags without the 0x80000 bit -- accounts for another 44%. Nothing about
+            // the graph says which: see the spec for what was measured against it.
+            NifModel source = Load(name);
+
+            static List<uint> Flags(NifModel m) =>
+                [.. m.Blocks
+                    .Where(b => m.BlockInherits(b, "NiAVObject"))
+                    .Select(b => m.FindItem(b, "Flags"))
+                    .Where(f => f is { Children.Count: 0 })
+                    .Select(f => f!.Value.ToUInt())];
+
+            List<uint> before = Flags(source);
+
+            if (before.Count == 0)
+                return;
+
+            Assert.Equal(before, Flags(RoundTrip(source)));
+        }
+
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void ABlendInterpolatorLooksLikeEveryOtherOne(string name)
+        {
+            // All 3,593 blend interpolators in a third of Skyrim's meshes are the same
+            // block: flags 1, array size 2, zero weight threshold. Flags bit 0 is
+            // "Manager Controlled", which one reached through a sequence necessarily is,
+            // and nif.xml makes five of the block's fields conditional on that bit being
+            // clear -- so leaving it at zero wrote five fields the file does not have.
+            NifModel rebuilt = RoundTrip(Load(name));
+
+            List<NifItem> blends =
+                [.. rebuilt.Blocks.Where(b => rebuilt.BlockInherits(b, "NiBlendInterpolator"))];
+
+            if (blends.Count == 0)
+                return;
+
+            Assert.All(blends, b =>
+            {
+                Assert.Equal(1u, rebuilt.GetUInt(b, "Flags"));
+                Assert.Equal(2u, rebuilt.GetUInt(b, "Array Size"));
+            });
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

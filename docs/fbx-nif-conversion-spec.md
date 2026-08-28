@@ -1426,6 +1426,69 @@ Skinned animations are written out as Havok (`.hkx`) behaviour files instead, an
 root gains a `BSBehaviorGraphExtraData` (`BGED`) pointing at the generated project
 under `animations/<name>`.
 
+### 5.6B `NiAVObject.Flags`: measured, and not derivable
+
+The question worth settling first is whether these can be *calculated* from the graph,
+as `BSXFlags` is (`bsxflags-spec.md`), rather than carried. They cannot. Measured over
+**42,955** AV objects in **4,409** meshes, a fifth of what Skyrim ships:
+
+| Bit | NifSkope's name | Set on | Verdict |
+| --- | --- | --- | --- |
+| 1, 2, 3 | Selective Update / Transforms / Controller | **100%** | constant `0xE` |
+| 0 | Hidden | 1.5% | authored |
+| 7 | Sel. Upd. Transforms Override | 3.5% | authored |
+| 18 | No Anim Sync (Z) | 4.8% | authored |
+| 19 | No Anim Sync (S) | 53.6% | authored |
+| 27 | Mesh LOD (Skyrim) | 1.9% | authored |
+
+Only the `0xE` base is a rule: every one of the 42,955 objects has those three bits.
+nif.xml's full default of `0x8000E` is **not** — it covers 44% of them, and plain `0xE`
+covers another 44%. nif.xml half-says so itself: "Skyrim lacks it sometimes."
+
+Bit 19 is the one worth chasing, being the only common variable. What was tried:
+
+- **Structure of the object.** Being a shape, being skinned, having a collision object,
+  having a controller — none separates it. 11,568 of 17,633 shapes have it, and so do
+  11,441 non-shapes.
+- **Uniformity within a file.** Closer: 3,938 of 4,409 files are all-on or all-off, and
+  a node agrees with its file's root in **41,990 of 42,955** cases (97.75%). But that is
+  a propagation rule, not a computation — it needs the root's value from somewhere — and
+  471 files are internally mixed.
+- **Facts about the file, for the root's own value.** The best of six predicates is
+  "the file has no skin", at 86.4% precision and 90.1% recall. Having collision is 85.0%
+  precise; having a controller manager, 61.2%.
+
+Nothing reaches the ~100% a derivation needs, and the names say why: hidden, mesh LOD
+and the four *no anim sync* axes are decisions an artist makes, not consequences of the
+block graph. So the flags **travel**, on `nif_av_flags`, and a node arriving without one
+keeps nif.xml's default.
+
+This is the opposite conclusion from `BSXFlags`, and for a reason worth keeping straight:
+every bit of `BSXFlags` is a statement *about* the graph — whether it animates, whether it
+collides — so a carried one would describe the file the FBX came from. These are
+statements about intent, which the graph does not contain.
+
+### 5.6C Blend interpolators
+
+Every blend interpolator Skyrim ships is the same block: of the **3,593** in a third of
+the meshes, all 3,593 hold flags 1, array size 2 and a zero weight threshold. Flags bit 0
+is "Manager Controlled", which one reached through a sequence necessarily is — and
+nif.xml makes five of the block's fields (`Interp Count`, `Single Index`, `High
+Priority`, `Next High Priority`, `Single Time`) conditional on that bit being **clear**,
+so leaving it at zero wrote five fields the file does not have.
+
+### 5.6D Controller flags: bit 6
+
+`TimeControllerFlags` bit 6 is "Compute Scaled Time", and nif.xml gives it `default="1"`.
+Skyrim agrees without exception: all **7,107** `NiTimeController`s sampled have it set,
+across every one of the 8 distinct flag values they use.
+
+FBXWrangler writes **12** for a manager and **44** for a multi-target transform
+controller, and neither has this bit; se-cmd took both constants from it. Every
+structural controller it built therefore came back `0x40` short of the file it was
+rebuilt from, and short of what nif.xml says a controller starts life with. se-cmd now
+writes 76 and 108.
+
 ### 5.7 Collision
 
 `buildCollisions` (L5092). For each deferred `_rb`/`_sp` node, every mesh under the

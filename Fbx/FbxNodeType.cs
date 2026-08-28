@@ -184,6 +184,49 @@ namespace SECmd.Fbx
         public static string ReadName(FbxObject node, string fallback) =>
             node.Properties.Has(NameProperty) ? node.Properties.GetString(NameProperty) : fallback;
 
+        /// <summary>The property an AV object's own flags travel in.</summary>
+        /// <remarks>
+        /// `Flags` sits on `NiAVObject`, below the class each node adds to, so the
+        /// own-fields carrier above never sees it and every rebuilt node took nif.xml's
+        /// default of 0x8000E.
+        ///
+        /// That default is not a safe assumption. Across 42,955 AV objects in a fifth
+        /// of Skyrim's meshes the field takes **23** distinct values, and 0x8000E
+        /// accounts for only 44% of them -- 0xE, the same flags without the 0x80000
+        /// bit, accounts for another 44%. nif.xml says as much in its own comment:
+        /// "FO4 lacks the 0x80000 flag always. Skyrim lacks it sometimes." Per class it
+        /// is no better; `NiNode`'s commonest value covers 59.1% of 20,834 of them.
+        ///
+        /// The bits say whether a node is hidden, how it is culled, and whether it has
+        /// a bounding volume, so a wrong one is not cosmetic.
+        /// </remarks>
+        public const string FlagsProperty = "nif_av_flags";
+
+        /// <summary>Records an AV object's flags, when it has any.</summary>
+        public static void WriteFlags(FbxObject node, NifModel model, NifItem block)
+        {
+            if (model.FindItem(block, "Flags") is not { Children.Count: 0 } flags)
+                return;
+
+            node.Properties.SetUserString(
+                FlagsProperty,
+                flags.Value.ToUInt().ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        /// <summary>Puts them back, leaving the schema default when none travelled.</summary>
+        public static void ReadFlags(FbxObject node, NifModel model, NifItem block)
+        {
+            if (node.Properties.GetString(FlagsProperty) is not { Length: > 0 } text
+                || !uint.TryParse(text, System.Globalization.NumberStyles.Integer,
+                                  System.Globalization.CultureInfo.InvariantCulture, out uint value))
+            {
+                return;
+            }
+
+            if (model.FindItem(block, "Flags") is { Children.Count: 0 } flags)
+                flags.Value.SetCount(value);
+        }
+
         public static string Read(FbxObject node, NifModel model, string fallback, string ancestor = "NiNode")
         {
             string name = node.Properties.GetString(Property);
