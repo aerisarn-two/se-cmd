@@ -79,7 +79,8 @@ namespace SECmd.Fbx
             double BX, double BY, double BZ,
             double U, double V,
             double R, double G, double B, double A,
-            string Skin);
+            string Skin,
+            double UnusedW, double EyeData);
 
         /// <summary>Reads a geometry object, or null when it holds no mesh.</summary>
         /// <summary>
@@ -133,6 +134,12 @@ namespace SECmd.Fbx
             var tangents = LayerElement.Find(geometry, "LayerElementTangent", "Tangents");
             var bitangents = LayerElement.Find(geometry, "LayerElementBinormal", "Binormals");
             var uvs = LayerElement.Find(geometry, "LayerElementUV", "UV");
+
+            // The second UV set, if the exporter wrote one: the vertex's fourth word in
+            // U and the eye marker in V. Found by its name, since Find takes the first
+            // element of a kind and that is the real UVs.
+            var extra = LayerElement.FindNamed(
+                geometry, "LayerElementUV", "UV", FbxMeshWriter.VertexExtraElementName);
             var colors = LayerElement.Find(geometry, "LayerElementColor", "Colors");
 
             var mesh = new MeshGeometry();
@@ -240,6 +247,7 @@ namespace SECmd.Fbx
                 NifVector3 bitangent = bitangents.ReadVector3(at.ControlPoint, polygon, at.Corner);
                 NifVector2 uv = uvs.ReadVector2(at.ControlPoint, polygon, at.Corner);
                 NifColor4 color = colors.ReadColor4(at.ControlPoint, polygon, at.Corner);
+                NifVector2 spare = extra.ReadVector2(at.ControlPoint, polygon, at.Corner);
 
                 // What a vertex *is* includes which bones move it. That is not in any
                 // layer element — FBX keeps it on the skin deformer, indexed by control
@@ -258,7 +266,8 @@ namespace SECmd.Fbx
                     bitangent.X, bitangent.Y, bitangent.Z,
                     uv.X, uv.Y,
                     color.R, color.G, color.B, color.A,
-                    skin);
+                    skin,
+                    spare.X, spare.Y);
 
                 if (seen.TryGetValue(key, out ushort existing))
                 {
@@ -285,6 +294,15 @@ namespace SECmd.Fbx
                 mesh.VertexOfControlPoint[at.ControlPoint] = index;
 
                 mesh.Vertices.Add(position);
+
+                if (extra.Exists)
+                {
+                    // Back to a uint exactly: it went out as one and a double holds it
+                    // whole. Rounding first, because a double that came through a file
+                    // may be a hair off the integer it stands for.
+                    mesh.UnusedW.Add((uint)Math.Round(spare.X));
+                    mesh.EyeData.Add(spare.Y);
+                }
 
                 if (normals.Exists)
                     mesh.Normals.Add(normal);
@@ -341,9 +359,37 @@ namespace SECmd.Fbx
             public bool PerControlPoint =>
                 _mapping is FbxMappingMode.None or FbxMappingMode.AllSame or FbxMappingMode.ByControlPoint;
 
-            public static LayerElement Find(FbxObject geometry, string elementName, string arrayName)
+            /// <summary>
+            /// The first element of a kind, skipping the one the exporter reserves.
+            /// </summary>
+            /// <remarks>
+            /// The vertex-extra channel is a second `LayerElementUV`, because FBX has no
+            /// per-vertex scalar of its own. Taking simply the first element of a kind
+            /// picked it up as the real texture coordinates on any mesh that has none,
+            /// and 31,118 UVs came back holding a packed vertex word.
+            /// </remarks>
+            public static LayerElement Find(FbxObject geometry, string elementName, string arrayName) =>
+                Read(
+                    geometry.Node.Nodes.FirstOrDefault(
+                        n => n.Name == elementName && !IsReserved(n)),
+                    arrayName);
+
+            private static bool IsReserved(FbxNode element) =>
+                element.Nodes.FirstOrDefault(c => c.Name == "Name")?.Properties.FirstOrDefault()
+                    as string == FbxMeshWriter.VertexExtraElementName;
+
+            /// <summary>The element of a kind carrying a particular layer name.</summary>
+            public static LayerElement FindNamed(
+                FbxObject geometry, string elementName, string arrayName, string layerName) =>
+                Read(
+                    geometry.Node.Nodes.FirstOrDefault(
+                        n => n.Name == elementName
+                             && n.Nodes.FirstOrDefault(c => c.Name == "Name")?.Properties.FirstOrDefault()
+                                as string == layerName),
+                    arrayName);
+
+            private static LayerElement Read(FbxNode? element, string arrayName)
             {
-                FbxNode? element = geometry.Node.Nodes.FirstOrDefault(n => n.Name == elementName);
 
                 if (element is null)
                     return new LayerElement(null, null, FbxMappingMode.None, FbxReferenceMode.Direct);

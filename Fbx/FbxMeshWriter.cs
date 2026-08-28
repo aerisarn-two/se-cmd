@@ -125,6 +125,36 @@ namespace SECmd.Fbx
                 layerElements.Add("LayerElementUV");
             }
 
+            // The two per-vertex words nothing else has a channel for: the fourth word
+            // of an SSE vertex, and the eye marker. A second UV set carries them,
+            // because FBX has no per-vertex scalar of its own and a UV set is the one
+            // channel every DCC tool keeps. Named, so the reader can tell it from the
+            // real one -- LayerElement.Find takes the first element of a kind, and the
+            // real UVs are written above.
+            //
+            // A uint in a double is exact below 2^53, so the fourth word survives
+            // whole rather than as a float that happens to look like it.
+            if (mesh.HasUnusedW || mesh.HasEyeData)
+            {
+                int count = Math.Max(mesh.UnusedW.Count, mesh.EyeData.Count);
+                var extra = new double[count * 2];
+
+                for (int i = 0; i < count; i++)
+                {
+                    extra[i * 2] = i < mesh.UnusedW.Count ? mesh.UnusedW[i] : 0d;
+                    extra[i * 2 + 1] = i < mesh.EyeData.Count ? mesh.EyeData[i] : 0d;
+                }
+
+                var element = new FbxNode("LayerElementUV", 1);
+                element.Nodes.Add(new FbxNode("Version", LayerElementVersion));
+                element.Nodes.Add(new FbxNode("Name", VertexExtraElementName));
+                element.Nodes.Add(new FbxNode("MappingInformationType", "ByControlPoint"));
+                element.Nodes.Add(new FbxNode("ReferenceInformationType", "Direct"));
+                element.Nodes.Add(new FbxNode("UV", extra));
+
+                node.Nodes.Add(element);
+            }
+
             if (mesh.HasColors)
             {
                 var colors = new double[mesh.Colors.Count * 4];
@@ -168,6 +198,9 @@ namespace SECmd.Fbx
         /// lets an artist reassign — which is what makes the levels authorable rather
         /// than merely reproducible.
         /// </remarks>
+        /// <summary>The name of the UV set carrying the two unchannelled vertex words.</summary>
+        public const string VertexExtraElementName = "nif_vertex_extra";
+
         public static void AddPerPolygonMaterialElement(FbxObject geometry, IReadOnlyList<int> perPolygon)
         {
             // The shape already has the one-material element every mesh gets; a mesh

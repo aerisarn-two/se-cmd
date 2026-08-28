@@ -1564,6 +1564,16 @@ namespace SECmd.Conversion
             foreach (NifVector3 n in _model.GetNormals(data))
                 mesh.Normals.Add(transform.ApplyDirection(n));
 
+            // A NiTriShapeData keeps its tangent space in arrays beside the normals.
+            // These were not read, so a shape's tangents never reached the FBX and the
+            // import regenerated a set for every shape with UVs -- including shapes
+            // that had none, which changes their vertex layout.
+            foreach (NifVector3 t in _model.GetTangents(data))
+                mesh.Tangents.Add(transform.ApplyDirection(t));
+
+            foreach (NifVector3 b in _model.GetBitangents(data))
+                mesh.Bitangents.Add(transform.ApplyDirection(b));
+
             // NIF's V axis points the other way from FBX's.
             foreach (NifVector2 uv in _model.GetUvSet(data))
                 mesh.Uvs.Add(new NifVector2(uv.X, 1f - uv.Y));
@@ -1681,6 +1691,12 @@ namespace SECmd.Conversion
             bool hasUvs = _model.FindItem(first, "UV") is not null;
             bool hasColors = _model.FindItem(first, "Vertex Colors") is not null;
 
+            // The fourth word of the vertex when there are no tangents to occupy it,
+            // and the eye marker. Both are live only under their own flag, and both
+            // hold data the name "unused" does not suggest -- see MeshGeometry.
+            bool hasUnusedW = _model.FindItem(first, "Unused W") is not null;
+            bool hasEyeData = _model.FindItem(first, "Eye Data") is not null;
+
             // A dynamic shape keeps its positions in the buffer the engine writes
             // into every frame, and the static entries beside them are zero. Reading
             // those instead collapses the whole mesh onto the origin -- 136 vertices
@@ -1727,6 +1743,12 @@ namespace SECmd.Conversion
                 if (hasColors)
                     mesh.Colors.Add(_model.FindItem(vertex, "Vertex Colors")?.Value.Get<NifColor4>()
                                     ?? new NifColor4(1f, 1f, 1f, 1f));
+
+                if (hasUnusedW)
+                    mesh.UnusedW.Add(_model.FindItem(vertex, "Unused W")?.Value.ToUInt() ?? 0u);
+
+                if (hasEyeData)
+                    mesh.EyeData.Add(_model.FindItem(vertex, "Eye Data")?.Value.ToFloat() ?? 0f);
             }
 
             // Every partition contributes triangles over the shared vertex array, so

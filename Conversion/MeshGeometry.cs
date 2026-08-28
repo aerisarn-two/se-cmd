@@ -59,6 +59,29 @@ namespace SECmd.Conversion
         public List<int> TriangleMaterials { get; } = [];
 
         /// <summary>
+        /// The fourth word of an SSE vertex, where the shape has no tangents.
+        /// </summary>
+        /// <remarks>
+        /// nif.xml gives `Bitangent X` and `Unused W` the same slot, chosen by the
+        /// Tangents flag, so this is only live on a shape without them -- 1,019 of the
+        /// 13,534 vanilla shapes sampled. The name says unused and the data disagrees:
+        /// 15,708 of 21,215 slots are non-zero across 7,586 distinct values, the
+        /// commonest being 0x3F800000, which is 1.0 -- the homogeneous w of a position.
+        /// Typed uint because it is not always a meaningful float.
+        /// </remarks>
+        public List<uint> UnusedW { get; } = [];
+
+        /// <summary>
+        /// The per-vertex eye marker, where the shape carries one.
+        /// </summary>
+        /// <remarks>
+        /// Live only under the Eye_Data flag, which 536 of the sampled shapes set. Every
+        /// non-zero value in vanilla is exactly 1.0 -- 1,060 of 32,000 slots -- so it
+        /// marks which vertices are the eye rather than measuring anything.
+        /// </remarks>
+        public List<float> EyeData { get; } = [];
+
+        /// <summary>
         /// Which vertex each FBX control point became, when the mesh was read from FBX.
         /// </summary>
         /// <remarks>
@@ -78,6 +101,12 @@ namespace SECmd.Conversion
         public bool HasUvs => Uvs.Count > 0;
 
         public bool HasColors => Colors.Count > 0;
+
+        /// <summary>Whether the vertex's fourth word travelled with it.</summary>
+        public bool HasUnusedW => UnusedW.Count > 0;
+
+        /// <summary>Whether the eye marker travelled with it.</summary>
+        public bool HasEyeData => EyeData.Count > 0;
 
         public bool HasTangents => Tangents.Count > 0 && Bitangents.Count > 0;
 

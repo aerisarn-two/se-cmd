@@ -1915,11 +1915,18 @@ namespace SECmd.Conversion
             if (!mesh.HasNormals)
                 mesh.RecalculateNormals();
 
-            // Normal maps are read in tangent space, so a shape without one is lit as
-            // though its normal map were flat. FBX may or may not carry tangents, and
-            // the ones it carries were split for FBX's own vertex layout, so they are
-            // regenerated here from the geometry that will actually be written.
-            if (mesh.HasUvs)
+            // Normal maps are read in tangent space, so tangents a shape has are
+            // regenerated here rather than carried: the ones the FBX holds were split
+            // for its own vertex layout, and these have to match the vertices actually
+            // being written.
+            //
+            // Regenerated, not introduced. A shape whose FBX carries no tangents did
+            // not have them in the NIF it came from, or was authored without them, and
+            // giving it some changes the vertex layout: nif.xml puts `Bitangent X` and
+            // `Unused W` in the same slot and picks between them by the Tangents flag,
+            // so a shape that gains tangents loses whatever that word held. 105 of the
+            // shapes sampled were gaining them.
+            if (mesh.HasUvs && mesh.HasTangents)
                 TangentSpace.Generate(mesh);
 
             // Which geometry class this was, when the scene says. The edition only
@@ -2400,6 +2407,16 @@ namespace SECmd.Conversion
 
             if (mesh.HasColors && index < mesh.Colors.Count)
                 _model.FindItem(vertex, "Vertex Colors")?.Value.Set(mesh.Colors[index]);
+
+            // The two words with no channel of their own, back where they came from.
+            // Only written when the layout has them: Unused W shares its slot with
+            // Bitangent X and exists only on a shape without tangents, and Eye Data
+            // only under its own flag.
+            if (mesh.HasUnusedW && index < mesh.UnusedW.Count)
+                _model.FindItem(vertex, "Unused W")?.Value.SetCount(mesh.UnusedW[index]);
+
+            if (mesh.HasEyeData && index < mesh.EyeData.Count)
+                _model.FindItem(vertex, "Eye Data")?.Value.SetFloat(mesh.EyeData[index]);
         }
 
         /// <summary>Puts back the index of a geometry's active material.</summary>
@@ -2467,6 +2484,12 @@ namespace SECmd.Conversion
             if (mesh.HasColors)
                 flags |= VertexFlags.Colors;
 
+            // The eye marker has its own flag and its own place at the end of the
+            // vertex. Without it nif.xml gives the field no condition to be live under,
+            // so a value written into it goes nowhere.
+            if (mesh.HasEyeData)
+                flags |= VertexFlags.EyeData;
+
             // Field order and sizes follow BSVertexDataSSE: a full-precision
             // position, a float taking the fourth lane (the bitangent's X),
             // half-precision UVs, then signed bytes for the normal and tangent with
@@ -2515,6 +2538,14 @@ namespace SECmd.Conversion
                 // a shape without them is fully rigged in an editor and rigid in game.
                 desc.Set(BSVertexDesc.Member.SkinningDataOffset, offset);
                 offset += 12;
+            }
+
+            // Last in the vertex, after the weights: one float saying whether this
+            // vertex is the eye.
+            if (mesh.HasEyeData)
+            {
+                desc.Set(BSVertexDesc.Member.EyeDataOffset, offset);
+                offset += 4;
             }
 
             desc.VertexSize = offset;

@@ -1156,6 +1156,41 @@ rebuilt `NiSkinData` came back holding the right weights on the right vertices i
 order that is nobody's. The surviving influences and the scale are now worked out first
 and applied to each bone's existing list in place, which keeps the order the file had.
 
+#### 5.3.0A Two vertex words with no channel of their own
+
+`BSVertexDataSSE` has two fields nothing carried, and neither is the padding its name
+suggests.
+
+**`Unused W`** shares its slot with `Bitangent X`, chosen by the Tangents flag:
+
+```xml
+<field name="Bitangent X" type="float" cond="(#ARG# #BITAND# 0x11) == 0x11" />
+<field name="Unused W"    type="uint"  cond="(#ARG# #BITAND# 0x11) == 0x1"  />
+```
+
+So it is live only on a shape *without* tangents — 1,019 of the 13,534 sampled, 7.5%.
+The name says unused and the data disagrees: of 21,215 slots, **15,708 are non-zero
+across 7,586 distinct values**, the commonest being `0x3F800000`, which is 1.0 — the
+homogeneous **w** of a position. nif.xml types it `uint` because it is not always a
+meaningful float.
+
+**`Eye Data`** is live under its own flag, which 536 shapes set. Every non-zero value in
+vanilla is exactly 1.0 — 1,060 of 32,000 slots — so it marks which vertices are the eye.
+
+Both now travel in a second `LayerElementUV` named `nif_vertex_extra`: FBX has no
+per-vertex scalar of its own, a UV set is the one channel every DCC tool keeps, and a
+`uint` fits a `double` exactly below 2^53. The reader skips that element when looking for
+real texture coordinates — taking simply the first element of a kind picked it up as the
+UVs on any mesh that has none, and 31,118 UVs came back holding a packed vertex word.
+
+**And tangents are no longer invented.** `TangentSpace.Generate` ran for every shape with
+UVs, so 105 of the sampled shapes gained tangents they never had — which moves the slot
+from `Unused W` to `Bitangent X` and loses the word. Two changes together: a
+`NiTriShapeData`'s tangent arrays are now read (they never were, so tangents never
+reached the FBX from that path and generation was covering for it), and generation only
+runs for a mesh that already has them. Across the sample tangents now agree on **2,297
+shapes with none gained and none lost**, and `Unused W` and `Eye Data` differ **nowhere**.
+
 #### 5.3.1A The two shader flag words
 
 Nothing read or wrote `Shader Flags 1` and `Shader Flags 2`, so every rebuilt shader took
