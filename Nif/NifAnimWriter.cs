@@ -750,21 +750,47 @@ namespace SECmd.Nif
         /// in: a chain is walked in order and two controllers on one property can
         /// disagree about what they set.
         /// </remarks>
+        /// <summary>
+        /// Hangs a controller on the end of a host's chain, keeping the switch last.
+        /// </summary>
+        /// <remarks>
+        /// A `NiPSysUpdateCtlr` is not a controller like the others: it is the switch
+        /// that makes a particle system run at all, holding no interpolator and no keys
+        /// (spec §4.9A). Skyrim puts it at the *end* of the chain without exception --
+        /// of the 516 particle systems sampled, 515 have it last and none has it
+        /// anywhere else; the one remaining has none at all.
+        ///
+        /// Appending blindly made it the head instead, since it is attached before the
+        /// emitter controller that a sequence names, and the file came back with the
+        /// chain inverted.
+        /// </remarks>
         private static void Attach(NifModel model, NifItem host, NifItem controller)
         {
-            if (model.GetRef(host, "Controller") is not { } first)
+            var chain = new List<NifItem>();
+
+            for (NifItem? c = model.GetRef(host, "Controller");
+                 c is not null && !chain.Contains(c);
+                 c = model.GetRef(c, "Next Controller"))
             {
-                model.SetRef(host, "Controller", controller);
-                return;
+                chain.Add(c);
             }
 
-            NifItem last = first;
+            if (chain.Contains(controller))
+                return;
 
-            while (model.GetRef(last, "Next Controller") is { } next)
-                last = next;
+            chain.Add(controller);
 
-            model.SetRef(last, "Next Controller", controller);
+            if (chain.Count > 1 && chain.Any(IsRunSwitch))
+                chain = [.. chain.Where(c => !IsRunSwitch(c)), .. chain.Where(IsRunSwitch)];
+
+            model.SetRef(host, "Controller", chain[0]);
+
+            for (int i = 0; i < chain.Count; i++)
+                model.SetRef(chain[i], "Next Controller", i + 1 < chain.Count ? chain[i + 1] : null);
         }
+
+        /// <summary>The controller that runs a particle system rather than animating it.</summary>
+        private static bool IsRunSwitch(NifItem controller) => controller.Name == "NiPSysUpdateCtlr";
 
         private static NifItem WriteMultiTargetController(
             NifModel model, NifItem root, List<NifItem> targets)

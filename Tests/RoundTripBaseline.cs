@@ -287,6 +287,19 @@ namespace SECmd.Tests
             // the import links both from the scene -- the far body is the node the
             // attachment hangs under, so there is always one to link. The source's null
             // is not reproduced.
+            // The MOPP tree's quantisation, and the chunk bounds it is derived from.
+            // Both come out a millimetre off, which is Havok quantising a mesh it built
+            // itself rather than the one Bethesda built.
+            //
+            // The tree's origin sits a margin below those bounds, and the margin is not
+            // a constant in Bethesda's own files: TestNifFile_RootNonZero uses 0.05,
+            // which is what mopper produces and what matches there, while
+            // TestNifFile_Furniture_Col_SE uses 0.005 and does not. Neither mopper nor
+            // ck-cmd sets the MOPP fit tolerances that would decide it -- both leave
+            // Havok's defaults -- so there is no setting to copy across.
+            ["Min"] = "Havok quantises the mesh it was given, not the one Bethesda had",
+            ["Offset"] = "the MOPP origin's margin is not constant in vanilla either",
+
             ["Entity B"] = "a constraint that named only one body comes back naming two",
 
             // Bethesda over-allocates this array and leaves the rest empty. Every one of
@@ -365,12 +378,6 @@ namespace SECmd.Tests
             // buffer's slot order in all 1,764,398 vertices where the two agree.
             ["Bone Indices"] = "the fixture's NiSkinData and vertex buffer disagree; vanilla's do not",
 
-            // Seen on models built in tests rather than on the fixtures, which is why
-            // the fixture sweep alone did not list them.
-            // Where a reference leads to a block of a different class. NifComparer
-            // reports these under the *class* name rather than the field's, since that
-            // is what actually differs.
-            ["NiPSysEmitterCtlr"] = "a particle system's controller chain comes back headed by a different class",
             ["BSTriShape"] = "a shape with no vertices comes back as NiTriShape",
 
             ["Points"] = "a strips shape's strips are restructured",
@@ -426,8 +433,6 @@ namespace SECmd.Tests
             // Triangles, so it is a consequence of those rather than a fault of its own:
             // it will come right when the geometry does, and not before.
 
-            ["Min"] = "3 occurrences",
-            ["Offset"] = "2 occurrences",
             // The hull's own corners come back exactly -- 326 of 326 on the fixture that
             // flags this -- and every one of its 165 face planes is reproduced. There are
             // 172 of them rather than 165, the extras being a face the quickhull found
@@ -435,7 +440,6 @@ namespace SECmd.Tests
             // trades the extras for real faces: at 3e-3 the count reaches 166 and two of
             // the file's own planes are gone.
             ["Num Normals"] = "seven near-duplicate face planes the hull fit leaves behind",
-            ["Next Controller"] = "1 occurrence",
         };
 
         /// <summary>Every difference that is neither derived nor already recorded.</summary>

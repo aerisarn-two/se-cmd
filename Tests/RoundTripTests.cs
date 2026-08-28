@@ -1728,6 +1728,48 @@ namespace SECmd.Tests
             Assert.All(trees, t => Assert.Equal(1u, rebuilt.GetUInt(t, @"MOPP Code\Build Type")));
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void AParticleSystemsRunSwitchComesLast(string name)
+        {
+            // NiPSysUpdateCtlr is the switch that makes a particle system run, not an
+            // animation: it holds no interpolator and no keys. Skyrim puts it at the end
+            // of the controller chain without exception -- of 516 particle systems
+            // sampled, 515 have it last, none has it elsewhere, and one has none at all.
+            //
+            // Attaching controllers by appending made it the head instead, since it is
+            // attached before the emitter controller a sequence names, so the chain came
+            // back inverted.
+            NifModel rebuilt = RoundTrip(Load(name));
+
+            int checked_ = 0;
+
+            foreach (NifItem system in rebuilt.Blocks.Where(b => rebuilt.BlockInherits(b, "NiParticleSystem")))
+            {
+                var chain = new List<string>();
+
+                for (NifItem? c = rebuilt.GetRef(system, "Controller");
+                     c is not null && chain.Count < 16;
+                     c = rebuilt.GetRef(c, "Next Controller"))
+                {
+                    chain.Add(c.Name);
+                }
+
+                int at = chain.IndexOf("NiPSysUpdateCtlr");
+
+                if (at < 0)
+                    continue;
+
+                checked_++;
+
+                Assert.True(
+                    at == chain.Count - 1,
+                    $"{name}: the run switch is at {at} of {chain.Count}: {string.Join(" -> ", chain)}");
+            }
+
+            _ = checked_;
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

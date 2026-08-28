@@ -483,3 +483,22 @@ So the survey's practical consequences are narrower than its conclusions:
 - **Do not bake.** Both `FbxCache` (§6.1) and Alembic (§7.4) want a simulation, and a
   NIF contains none. Producing one means reimplementing Gamebryo's particle engine, and
   the result would be one-way even then.
+
+
+## The run switch comes last
+
+`NiPSysUpdateCtlr` is not a controller like the others: it holds no interpolator and no
+keys, and is the switch that makes a particle system run at all. Skyrim puts it at the
+**end** of the system's controller chain without exception — of the 516 particle systems
+sampled, **515 have it last, none has it anywhere else**, and the one remaining has none
+at all. The chains around it vary freely:
+
+```
+NiPSysEmitterCtlr -> NiPSysUpdateCtlr                                         156
+NiPSysModifierActiveCtlr x3 -> NiPSysEmitterCtlr -> NiPSysUpdateCtlr          106
+BSPSysMultiTargetEmitterCtlr -> NiPSysUpdateCtlr                               26
+```
+
+se-cmd attached controllers by appending to the chain, and the run switch is attached
+before the emitter controller a sequence names, so it became the *head* and the file came
+back inverted. The attach step now keeps it at the tail.
