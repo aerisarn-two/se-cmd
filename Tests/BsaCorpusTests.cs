@@ -283,6 +283,80 @@ namespace SECmd.Tests
         }
 
         /// <summary>
+        /// The same round trip, compared field by field rather than block by block.
+        /// </summary>
+        /// <remarks>
+        /// The sweep above asks whether the rebuilt file still has the same blocks,
+        /// which catches something being dropped whole. This asks whether the fields in
+        /// them still say the same thing, which is what the fixtures are held to and
+        /// what `RoundTripBaseline` records the known exceptions of.
+        ///
+        /// Separate from the block sweep because it is a different question with a
+        /// different answer, and because it will be noisier for a long time: the
+        /// baseline was written against two dozen fixtures and the game ships 22,047
+        /// meshes. A field it reports is either a defect the fixtures never reached or
+        /// an entry the baseline is missing, and both are worth knowing.
+        ///
+        /// Reported as counts per field rather than as differences: a mesh that has
+        /// drifted in one field has usually drifted in it a thousand times, and the
+        /// field name is the part that says what to look at.
+        /// </remarks>
+        [Fact]
+        public void EveryVanillaMeshAgreesFieldByField()
+        {
+            Sweep((original, db) =>
+            {
+                using var input = new MemoryStream(original);
+                NifModel source = NifModel.Load(input, db);
+
+                if (source.FindItem(source.Footer, "Roots") is not { Children.Count: > 0 } roots
+                    || source.GetBlock(roots.Children[0]) is not { } root)
+                {
+                    return null;
+                }
+
+                NifModel rebuilt = new FbxToNif(
+                    new FbxScene(new NifToFbx(source).Convert()),
+                    new FbxToNifOptions
+                    {
+                        RootName = source.GetName(root),
+                        Version = source.Version,
+                        UserVersion = source.UserVersion,
+                        LegendaryEdition = source.BSVersion < 100
+                    }).Convert(db);
+
+                List<NifDifference> unexplained = RoundTripBaseline.Unexplained(source, rebuilt);
+
+                if (unexplained.Count == 0)
+                    return null;
+
+                return string.Join(
+                    ", ",
+                    unexplained.GroupBy(d => d.Field)
+                        .OrderByDescending(g => g.Count())
+                        .Take(6)
+                        .Select(g => $"{g.Key} x{g.Count()}"));
+            },
+            ceiling: KnownFieldDivergence);
+        }
+
+        /// <summary>
+        /// The share of vanilla meshes known to differ in some field, as a ratchet.
+        /// </summary>
+        /// <remarks>
+        /// 400 of 600 on the first sweep that asked. A ceiling rather than a list
+        /// because naming the meshes would be longer than the code and would say less:
+        /// what matters is that the number falls and never rises.
+        ///
+        /// The fields behind it, most first: skin weights and the bone lists that hold
+        /// them, vertex counts inside `NiSkinData`, `Data Size` and the vertex
+        /// descriptor. They are the shape of one problem rather than fifty, and none of
+        /// them is reachable from the two dozen fixtures the baseline was written
+        /// against.
+        /// </remarks>
+        private const double KnownFieldDivergence = 0.67;
+
+        /// <summary>
         /// How the two files' blocks differ, ignoring the differences that are meant
         /// to be there.
         /// </summary>
@@ -421,7 +495,10 @@ namespace SECmd.Tests
 
         private static readonly object TraceLock = new();
 
-        private static void Sweep(Func<byte[], NifXmlDatabase, string?> check, string[]? tolerated = null)
+        private static void Sweep(
+            Func<byte[], NifXmlDatabase, string?> check,
+            string[]? tolerated = null,
+            double ceiling = 0)
         {
             var allowed = new HashSet<string>(tolerated ?? [], StringComparer.OrdinalIgnoreCase);
 
@@ -476,7 +553,26 @@ namespace SECmd.Tests
             if (failures.IsEmpty)
                 return;
 
-            Assert.Fail(Describe(failures, checked_, stopwatch.Elapsed));
+            // A sweep with a ceiling is a ratchet rather than a gate: it records how
+            // much of the game is known to differ and fails when that grows. Used where
+            // the answer is "most of it, and each one is its own investigation" -- a
+            // list of the offenders would be longer than the code.
+            double share = checked_ == 0 ? 1 : (double)failures.Count / checked_;
+
+            if (ceiling > 0 && share <= ceiling)
+            {
+                // Written even though the sweep passes: the list is the point of a
+                // ratchet. Without it a run under the ceiling says only "still bad",
+                // where the file says which meshes and in which fields.
+                ListFailures(failures);
+                return;
+            }
+
+            string overBy = ceiling > 0
+                ? $" -- {share:P1} of the sweep against a ceiling of {ceiling:P1}"
+                : string.Empty;
+
+            Assert.Fail(Describe(failures, checked_, stopwatch.Elapsed) + overBy);
         }
 
         /// <summary>Checks one batch, in parallel.</summary>
