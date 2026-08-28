@@ -276,12 +276,6 @@ namespace SECmd.Tests
             // root, and nothing else -- so it holds two entries where Bethesda's own file
             // holds eleven, including emitters and geometry.
             //
-            // Widening it to every node a sequence names reaches five, which is neither
-            // ck-cmd's answer nor the file's. Left as ck-cmd has it: this port follows
-            // the reference and records where it differs, and inventing a third answer
-            // would be neither.
-            ["Num Objs"] = "built as ck-cmd builds it; Bethesda's own palettes hold more",
-            ["Objs"] = "built as ck-cmd builds it; Bethesda's own palettes hold more",
 
             // What is left of the controller references. A controlled block's own is now
             // set -- a transform entry points at the multi-target controller, as the file
@@ -294,6 +288,28 @@ namespace SECmd.Tests
             // attachment hangs under, so there is always one to link. The source's null
             // is not reproduced.
             ["Entity B"] = "a constraint that named only one body comes back naming two",
+
+            // Bethesda over-allocates this array and leaves the rest empty. Every one of
+            // the 419 multi-target controllers sampled from the game has null slots, and
+            // 14,047 of their 15,188 slots -- 92.5% -- are empty; the fixture here has
+            // one real target and thirteen nulls behind it. se-cmd writes the real ones
+            // and stops, which is the same content without the padding.
+            ["Num Extra Targets"] = "Bethesda pads this array; 92.5% of vanilla slots are empty",
+            ["Extra Targets"] = "Bethesda pads this array; 92.5% of vanilla slots are empty",
+
+            // The palette maps a name to a block so the engine can resolve a sequence
+            // without walking the tree. ck-cmd builds it from the multi-target
+            // controller's targets plus the conversion root (FBXWrangler.cpp:4312) and
+            // this follows it, which for the fixture is 2 entries against Bethesda's 11.
+            //
+            // Bethesda's rule was looked for and not found. "Every named AV object bar
+            // the root" matches 322 of the 419 palettes sampled, 77%, and the ones it
+            // misses exclude more still -- fxgreybeardshoutfaas leaves out its
+            // OrderedRenderingNode as well as its root. Worth knowing: the entry's Name
+            // is the block's own name in every vanilla palette, 7,811 entries with no
+            // exception, so it is only *which* blocks are listed that is unclear.
+            ["Num Objs"] = "built as ck-cmd builds it; Bethesda lists more and by no rule found",
+            ["Objs"] = "built as ck-cmd builds it; Bethesda lists more and by no rule found",
 
             // A controller shared by several sequences no longer claims nif.xml's
             // inverted infinite span -- it now covers the keys it is given -- but which
@@ -416,10 +432,8 @@ namespace SECmd.Tests
             ["Min"] = "3 occurrences",
             ["Offset"] = "2 occurrences",
             ["Num Normals"] = "1 occurrence",
-            ["Extra Targets"] = "1 occurrence",
             ["Next Controller"] = "1 occurrence",
             ["Num Children"] = "1 occurrence",
-            ["Num Extra Targets"] = "1 occurrence",
         };
 
         /// <summary>Every difference that is neither derived nor already recorded.</summary>

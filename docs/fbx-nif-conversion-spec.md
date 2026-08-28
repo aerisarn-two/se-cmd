@@ -1609,6 +1609,31 @@ every bit of `BSXFlags` is a statement *about* the graph — whether it animates
 collides — so a carried one would describe the file the FBX came from. These are
 statements about intent, which the graph does not contain.
 
+### 5.6A.1 The object palette and the extra-target list
+
+Both are built as ck-cmd builds them, and both differ from Bethesda's files. What was
+measured, so the question is not reopened from scratch:
+
+**`Extra Targets`** is padded in vanilla. Every one of the **419** multi-target
+controllers sampled has null slots, and **14,047 of 15,188** slots — 92.5% — are empty.
+`TestNifFile_Animated_LE` has one real target and thirteen `-1`s behind it. se-cmd writes
+the real targets and stops, which is the same content without the padding.
+
+**`Objs`** maps a name to a block so the engine can resolve a sequence without walking
+the tree. ck-cmd fills it from the multi-target controller's targets plus the conversion
+root (`FBXWrangler.cpp:4312`), which for that fixture is 2 entries against Bethesda's 11.
+
+Bethesda's rule was looked for and not found:
+
+- *Every named AV object* — 35 of 419.
+- *Every named AV object except the root* — **322 of 419 (77%)**, the best of the three.
+- *Every named `NiNode`* — 0 of 419.
+
+The 97 that miss exclude more still: `fxgreybeardshoutfaas.nif` leaves out its
+`OrderedRenderingNode` as well as its root. One thing is settled, though — the entry's
+`Name` is the block's own name in **7,811 of 7,811** vanilla palette entries, so only
+*which* blocks are listed is unclear, not how they are named.
+
 ### 5.6B.1 Controller spans
 
 `NiTimeController` starts `Start Time` at FLT_MAX and `Stop Time` at -FLT_MAX, and se-cmd
