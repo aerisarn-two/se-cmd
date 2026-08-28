@@ -426,7 +426,69 @@ namespace SECmd.Conversion
                     unknown.Value.ToFloat().ToString("R", CultureInfo.InvariantCulture));
             }
 
-            AddCollisionMaterial(scene, shape, holder, geometry);
+            if (shape.Name == "bhkCompressedMeshShape")
+                AddChunkMaterials(scene, shape, holder, geometry, mesh);
+            else
+                AddCollisionMaterial(scene, shape, holder, geometry);
+        }
+
+        /// <summary>
+        /// Writes a chunked mesh's material table into the scene, and says which
+        /// material each polygon is made of.
+        /// </summary>
+        /// <remarks>
+        /// A compressed mesh keeps its materials in a table on its *data* block and its
+        /// chunks index into it, so `FbxCollisionMaterial.NameOf` -- which looks for a
+        /// material field on the shape and does not follow refs -- found nothing, and
+        /// the mesh went out with no material at all. Every rebuilt mesh collision was
+        /// therefore one substance, whatever the file said, and a floor of stone and
+        /// wood came back as neither.
+        ///
+        /// The table becomes one FBX material per entry, connected in the table's own
+        /// order so a per-polygon index means the same thing on the way back. The
+        /// per-polygon channel is the one every DCC tool exposes and lets an artist
+        /// reassign, which is what makes a multi-material collision mesh editable.
+        /// </remarks>
+        private void AddChunkMaterials(
+            FbxScene scene, NifItem shape, FbxObject holder, FbxObject geometry, MeshGeometry mesh)
+        {
+            if (_model.GetRef(shape, "Data") is not { } data
+                || _model.FindItem(data, "Chunk Materials") is not { Children.Count: > 0 } table)
+            {
+                AddCollisionMaterial(scene, shape, holder, geometry);
+                return;
+            }
+
+            string layer = FbxCollisionMaterial.LayerOf(_model, _shapeOwners.GetValueOrDefault(shape));
+
+            foreach (NifItem entry in table.Children)
+            {
+                string material = FbxCollisionMaterial.NameOf(_model, entry);
+
+                if (material.Length == 0)
+                    continue;
+
+                // Not shared through _collisionMaterials: the order a holder's materials
+                // connect in is what a per-polygon index addresses, so each mesh gets
+                // its own table rather than whichever object was cached first.
+                FbxObject fbxMaterial = scene.AddObject("Material", material, string.Empty);
+                fbxMaterial.Node.Nodes.Add(new FbxNode("Version", 102));
+                fbxMaterial.Node.Nodes.Add(new FbxNode("ShadingModel", "Phong"));
+                fbxMaterial.Node.Nodes.Add(new FbxNode("MultiLayer", 0));
+
+                fbxMaterial.Properties.Set(
+                    FbxCollisionMaterial.LayerProperty, "KString", "", FbxProperties.UserFlags, layer);
+
+                scene.Connect(fbxMaterial, holder);
+            }
+
+            // Only worth a channel when the chunks disagree; one material for the whole
+            // mesh is what a mesh with no channel already means.
+            if (mesh.TriangleMaterials.Count == mesh.Triangles.Count
+                && mesh.TriangleMaterials.Distinct().Count() > 1)
+            {
+                FbxMeshWriter.AddPerPolygonMaterialElement(geometry, mesh.TriangleMaterials);
+            }
         }
 
         /// <summary>
@@ -787,7 +849,10 @@ namespace SECmd.Conversion
                     NifTriangle t = _model.FindItem(item, "Triangle")?.Value.Get<NifTriangle>() ?? default;
 
                     if (t.V1 < mesh.Vertices.Count && t.V2 < mesh.Vertices.Count && t.V3 < mesh.Vertices.Count)
+                    {
                         mesh.Triangles.Add(t);
+                        mesh.TriangleMaterials.Add((int)_model.GetUInt(item, "Material"));
+                    }
                 }
             }
 
@@ -812,6 +877,9 @@ namespace SECmd.Conversion
             {
                 NifVector4 origin = _model.FindItem(chunk, "Translation")?.Value.Get<NifVector4>() ?? default;
                 int transformIndex = (int)_model.GetUInt(chunk, "Transform Index");
+
+                // Which entry of the shape's material table this chunk is made of.
+                int chunkMaterial = (int)_model.GetUInt(chunk, "Material Index");
 
                 NifTransform placement = transformIndex >= 0 && transformIndex < transforms.Count
                     ? transforms[transformIndex]
@@ -851,6 +919,8 @@ namespace SECmd.Conversion
                         mesh.Triangles.Add((f & 1) == 1
                             ? new NifTriangle((ushort)c, (ushort)b, (ushort)a)
                             : new NifTriangle((ushort)a, (ushort)b, (ushort)c));
+
+                        mesh.TriangleMaterials.Add(chunkMaterial);
                     }
 
                     at += length;
@@ -863,6 +933,8 @@ namespace SECmd.Conversion
                         (ushort)(firstVertex + indices[f]),
                         (ushort)(firstVertex + indices[f + 1]),
                         (ushort)(firstVertex + indices[f + 2])));
+
+                    mesh.TriangleMaterials.Add(chunkMaterial);
                 }
             }
 

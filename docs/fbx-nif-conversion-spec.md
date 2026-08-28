@@ -487,6 +487,41 @@ Cylinders get the same treatment, from the same code. The evidence there is thin
 Skyrim ships exactly **one** `bhkCylinderShape` — so the convention is carried rather
 than inferred.
 
+#### 4.8.3 A chunked mesh's materials
+
+A `bhkCompressedMeshShape` keeps its Havok materials in a table on its **data** block,
+and each chunk indexes into it — nif.xml: "Materials used by Chunks. Chunks refer to
+this table by index." Three things had to be true for that to survive a round trip, and
+none of them were.
+
+**The scene never carried them.** `FbxCollisionMaterial.NameOf` looks for a material
+field on the shape and does not follow refs, so it never reached the table. A collision
+mesh went into the FBX with *no material attached at all*. se-cmd now writes one FBX
+material per table entry, connected in the table's own order, plus a per-polygon
+material channel saying which chunk each triangle came from — the one channel every DCC
+tool exposes and lets an artist reassign, which is what makes such a mesh editable.
+
+**mopper was never told them.** Havok gives a chunk the material of the triangles that
+built it, so the material has to be on the geometry before the shape is built. ck-cmd
+sets both halves — `hkpNamedMeshMaterial` entries on the shape (`HKXWrangler.cpp:3354`)
+and a material index on every triangle (`FBXWrangler.cpp:1886`) — which is why its chunk
+indices mean something. mopper's compressed mesh path carried the note
+`// material indices later on` and did neither, so `Chunk::m_materialInfo` was never
+written and held whatever was in that memory.
+
+mopper's new `-ccmm` takes a material count and one index per geometry, and does both.
+`-ccm` is upstream and its input format is somebody else's contract, so this is a new
+flag rather than a change to it; se-cmd asks once per binary and falls back, and refuses
+rather than merging when a mesh has more than one material and the flag is missing.
+
+**And the index was written unchecked.** se-cmd put mopper's number straight into the
+field. It came out as 1,660,488,161 on one run and 1,689,562,200 on the next, indexing a
+table of one entry — a number the engine would have read past the end of the array. It
+is now Havok's real index, clamped to the table.
+
+se-cmd sends one geometry per material, splitting the mesh by its per-polygon channel and
+renumbering each piece's vertices, since Havok welds and indexes per geometry.
+
 ### 4.9 Rigid bodies
 
 `visit_rigid_body` (L2318–2400). Creates a node named `<targetName>_rb`.

@@ -69,7 +69,8 @@ namespace SECmd.Havok
         /// the MOPP tree all have to come from the same pass. Only backends that can
         /// do it return anything; the rest return null.
         /// </remarks>
-        CompressedMeshResult? GenerateCompressedMesh(IReadOnlyList<MoppGeometry> geometries) => null;
+        CompressedMeshResult? GenerateCompressedMesh(
+            IReadOnlyList<MoppGeometry> geometries, int materials = 1) => null;
 
         /// <summary>
         /// Builds MOPP code for a shape collection that is not a mesh.
@@ -91,7 +92,19 @@ namespace SECmd.Havok
     }
 
     /// <summary>One geometry going into a compressed mesh shape.</summary>
-    public sealed record MoppGeometry(IReadOnlyList<NifVector3> Vertices, IReadOnlyList<NifTriangle> Triangles);
+    /// <summary>
+    /// One piece of geometry for a compressed mesh, and which material it is made of.
+    /// </summary>
+    /// <remarks>
+    /// The material is an index into the table the caller sends alongside. Havok gives
+    /// a chunk the material of the triangles that went into it, so a mesh with two
+    /// materials has to arrive as two geometries -- one per material -- or every chunk
+    /// comes back claiming the same one.
+    /// </remarks>
+    public sealed record MoppGeometry(
+        IReadOnlyList<NifVector3> Vertices,
+        IReadOnlyList<NifTriangle> Triangles,
+        int Material = 0);
 
     /// <summary>A chunk of a compressed mesh shape, as Havok packed it.</summary>
     public sealed record CompressedMeshChunk(

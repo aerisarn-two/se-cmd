@@ -407,17 +407,14 @@ namespace SECmd.Tests
             // compressed mesh path is the one taken here. Writing 1 would make the file
             // misdescribe a tree the engine walks. Fix belongs upstream (spec §5.6E).
             ["Build Type"] = "mopper chunk-subdivides a compressed mesh; Bethesda's does not",
-            ["Chunk Materials"] = "3 occurrences",
             ["Chunk Transforms"] = "3 occurrences",
             ["Min"] = "3 occurrences",
-            ["Num Materials"] = "3 occurrences",
             ["Num Transforms"] = "3 occurrences",
             ["Offset"] = "2 occurrences",
             ["Chunks"] = "2 occurrences",
             ["Num Chunks"] = "2 occurrences",
             ["Num Normals"] = "1 occurrence",
             ["Indices"] = "1 occurrence",
-            ["Material Index"] = "2 occurrences",
             ["Num Indices"] = "1 occurrence",
             ["Num Strips"] = "1 occurrence",
             ["Num Welding Info"] = "1 occurrence",

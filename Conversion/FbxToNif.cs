@@ -1092,6 +1092,13 @@ namespace SECmd.Conversion
         /// </remarks>
         private void ReadCollisionMaterial(NifItem shape, FbxObject holder, string name)
         {
+            // A chunked mesh keeps its materials in a table on its data block, one per
+            // chunk, and WriteChunkMaterials has already filled it from these same FBX
+            // materials. The shape itself has no material field to apply one to, so
+            // asking would only produce a warning about a material that did travel.
+            if (shape.Name == "bhkCompressedMeshShape" || shape.Name == "bhkMoppBvTreeShape")
+                return;
+
             FbxObject? material = _scene.ChildrenOf(holder.Id)
                 .FirstOrDefault(o => o.Class == "Material" && !FbxLodSizes.IsLevelMaterial(o.Name));
 
@@ -1445,8 +1452,10 @@ namespace SECmd.Conversion
                     v.Z * ShapeTessellator.BhkScaleFactorInverse));
             }
 
-            CompressedMeshResult? built = generator.GenerateCompressedMesh(
-                [new MoppGeometry(vertices, mesh.Triangles)]);
+            List<string> materials = CollisionMaterialsOf(node);
+            List<MoppGeometry> pieces = SplitByMaterial(geometry!, mesh, vertices, materials.Count);
+
+            CompressedMeshResult? built = generator.GenerateCompressedMesh(pieces, materials.Count);
 
             if (built is null)
             {
@@ -1489,7 +1498,7 @@ namespace SECmd.Conversion
             _model.FindItem(shape, "Scale Copy")?.Value.Set(new NifVector4(1f, 1f, 1f, 0f));
             _model.SetRef(shape, "Data", data);
 
-            WriteCompressedMeshData(data, built);
+            WriteCompressedMeshData(data, built, materials);
 
             // Havok reaches the shape through a MOPP tree, never directly.
             NifItem mopp = _model.InsertBlock("bhkMoppBvTreeShape");
@@ -1526,8 +1535,83 @@ namespace SECmd.Conversion
             }
         }
 
+        /// <summary>
+        /// The Havok material of each material attached to a collision node, in the
+        /// order the chunk table will hold them.
+        /// </summary>
+        private List<string> CollisionMaterialsOf(FbxObject node) =>
+            [.. _scene.ChildrenOf(node.Id)
+                .Where(o => o.Class == "Material" && !FbxLodSizes.IsLevelMaterial(o.Name))
+                .Select(o => NameEncoding.Unsanitize(o.Name))];
+
+        /// <summary>
+        /// Splits a collision mesh into one piece per material.
+        /// </summary>
+        /// <remarks>
+        /// Havok gives a chunk the material of the triangles that built it, so a mesh
+        /// with two materials has to reach mopper as two geometries. Sent whole, every
+        /// chunk comes back on the same material and a floor of stone and wood collides
+        /// as one substance.
+        ///
+        /// Each piece carries only the vertices its own triangles reach, renumbered,
+        /// since Havok welds and indexes per geometry.
+        /// </remarks>
+        private static List<MoppGeometry> SplitByMaterial(
+            FbxObject geometry, MeshGeometry mesh, List<NifVector3> vertices, int materialCount)
+        {
+            List<int>? perPolygon = FbxMeshReader.ReadPolygonMaterials(geometry);
+
+            if (materialCount <= 1 || perPolygon is null || mesh.TrianglePolygons.Count != mesh.Triangles.Count)
+                return [new MoppGeometry(vertices, mesh.Triangles)];
+
+            var byMaterial = new SortedDictionary<int, List<NifTriangle>>();
+
+            for (int i = 0; i < mesh.Triangles.Count; i++)
+            {
+                int polygon = mesh.TrianglePolygons[i];
+
+                int material = polygon >= 0 && polygon < perPolygon.Count
+                    ? Math.Clamp(perPolygon[polygon], 0, materialCount - 1)
+                    : 0;
+
+                if (!byMaterial.TryGetValue(material, out var list))
+                    byMaterial[material] = list = [];
+
+                list.Add(mesh.Triangles[i]);
+            }
+
+            var pieces = new List<MoppGeometry>(byMaterial.Count);
+
+            foreach ((int material, List<NifTriangle> triangles) in byMaterial)
+            {
+                var map = new Dictionary<ushort, ushort>();
+                var own = new List<NifVector3>();
+                var renumbered = new List<NifTriangle>(triangles.Count);
+
+                ushort Index(ushort vertex)
+                {
+                    if (map.TryGetValue(vertex, out ushort mapped))
+                        return mapped;
+
+                    mapped = (ushort)own.Count;
+                    map[vertex] = mapped;
+                    own.Add(vertices[vertex]);
+
+                    return mapped;
+                }
+
+                foreach (NifTriangle t in triangles)
+                    renumbered.Add(new NifTriangle(Index(t.V1), Index(t.V2), Index(t.V3)));
+
+                pieces.Add(new MoppGeometry(own, renumbered, material));
+            }
+
+            return pieces;
+        }
+
         /// <summary>Writes the chunked mesh Havok produced.</summary>
-        private void WriteCompressedMeshData(NifItem data, CompressedMeshResult built)
+        private void WriteCompressedMeshData(
+            NifItem data, CompressedMeshResult built, IReadOnlyList<string> materials)
         {
             _model.FindItem(data, @"AABB\Min")?.Value.Set(built.BoundsMin);
             _model.FindItem(data, @"AABB\Max")?.Value.Set(built.BoundsMax);
@@ -1569,6 +1653,8 @@ namespace SECmd.Conversion
                 }
             }
 
+            WriteChunkMaterials(data, materials);
+
             if (_model.SetArraySize(data, "Num Chunks", "Chunks", built.Chunks.Count) is not { } chunks)
                 return;
 
@@ -1578,7 +1664,17 @@ namespace SECmd.Conversion
                 NifItem chunk = chunks.Children[i];
 
                 _model.FindItem(chunk, "Translation")?.Value.Set(source.Offset);
-                _model.FindItem(chunk, "Material Index")?.Value.SetCount(source.MaterialInfo);
+
+                // Havok's own index into the table written above, which is meaningful
+                // now that the materials reach it: mopper's -ccmm sets a material on
+                // every triangle of a geometry, and Havok gives each chunk the material
+                // its triangles carried. Clamped all the same -- an index outside the
+                // table is a number the engine would read past the end of it, and this
+                // field used to hold exactly that.
+                uint material = built.Chunks[i].MaterialInfo;
+
+                _model.FindItem(chunk, "Material Index")?.Value.SetCount(
+                    material < (uint)Math.Max(materials.Count, 1) ? material : 0u);
                 _model.FindItem(chunk, "Transform Index")?.Value.SetCount(source.TransformIndex);
 
                 // mopper prints a hard-coded 65535 here, which is what Havok expects.
@@ -1588,6 +1684,41 @@ namespace SECmd.Conversion
                 WriteUShorts(chunk, "Num Indices", "Indices", source.Indices);
                 WriteUShorts(chunk, "Num Strips", "Strips", source.StripLengths);
                 WriteUShorts(chunk, "Num Welding Info", "Welding Info", source.WeldingInfo);
+            }
+        }
+
+        /// <summary>
+        /// Writes the one-entry material table a rebuilt chunked mesh refers to.
+        /// </summary>
+        /// <remarks>
+        /// A compressed mesh shape has no material of its own: its materials live in
+        /// this table on the data block, and the chunks index into it. So
+        /// `FbxCollisionMaterial.Apply`, which looks for a material field on the shape
+        /// and does not follow refs, never found one -- every rebuilt mesh collision
+        /// kept the default material whatever the scene said.
+        ///
+        /// One entry per material on the collision node, in the order the FBX connects
+        /// them, which is the order the geometry's per-polygon material channel indexes.
+        /// </remarks>
+        private void WriteChunkMaterials(NifItem data, IReadOnlyList<string> materials)
+        {
+            if (_model.SetArraySize(data, "Num Materials", "Chunk Materials", Math.Max(materials.Count, 1))
+                is not { Children.Count: > 0 } table)
+            {
+                return;
+            }
+
+            for (int i = 0; i < materials.Count && i < table.Children.Count; i++)
+            {
+                if (materials[i].Length == 0)
+                    continue;
+
+                if (!FbxCollisionMaterial.Apply(_model, table.Children[i], materials[i]))
+                {
+                    Warnings.Add(
+                        $"\"{materials[i]}\" is not a Skyrim Havok material, "
+                        + "the chunked mesh keeps the default for it");
+                }
             }
         }
 

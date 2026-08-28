@@ -47,6 +47,18 @@ namespace SECmd.Conversion
         public List<int> TrianglePolygons { get; } = [];
 
         /// <summary>
+        /// The material each triangle is made of, when the mesh came from a shape that
+        /// records one.
+        /// </summary>
+        /// <remarks>
+        /// An index into the shape's own material table, not a Havok material. Only a
+        /// chunked collision mesh fills this: its chunks each name a material, and
+        /// losing that on the way out is what made every rebuilt mesh collision a
+        /// single substance.
+        /// </remarks>
+        public List<int> TriangleMaterials { get; } = [];
+
+        /// <summary>
         /// Which vertex each FBX control point became, when the mesh was read from FBX.
         /// </summary>
         /// <remarks>

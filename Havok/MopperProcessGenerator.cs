@@ -167,10 +167,40 @@ namespace SECmd.Havok
         }
 
         /// <inheritdoc/>
-        public CompressedMeshResult? GenerateCompressedMesh(IReadOnlyList<MoppGeometry> geometries)
+        public CompressedMeshResult? GenerateCompressedMesh(
+            IReadOnlyList<MoppGeometry> geometries, int materials = 1)
         {
             if (!IsAvailable || geometries.Count == 0)
                 return null;
+
+            // -ccmm carries the material table, so Havok can give each chunk the
+            // material of the triangles that built it. A mopper without it -- the stock
+            // niftools build, where -ccm is upstream and -ccmm is not -- writes nothing
+            // this can read, so the old command is tried after it.
+            //
+            // Asked once per binary, not once per shape. Attempt retries three times
+            // before giving up, so probing on every mesh made an older mopper pay nine
+            // failed runs for each one and took a corpus sweep from one minute to five.
+            if (SupportsMaterials)
+            {
+                if (Attempt(() => ParseCompressedMeshOutput(
+                        Run("-ccmm", BuildCompressedMeshInput(geometries, materials)))) is { } carried)
+                {
+                    return carried;
+                }
+
+                _supportsMaterials = false;
+            }
+
+            // Falling back with several materials would silently merge them into one
+            // substance, which is worse than saying so.
+            if (materials > 1)
+            {
+                _reason = "this mopper has no -ccmm, so a collision mesh with more than "
+                    + "one material cannot be built. Rebuild mopper from the fork that has it.";
+
+                return null;
+            }
 
             return Attempt(() => ParseCompressedMeshOutput(Run("-ccm", BuildCompressedMeshInput(geometries))));
         }
@@ -179,14 +209,22 @@ namespace SECmd.Havok
         /// Serialises geometries into mopper's <c>-ccm</c> input: a geometry count,
         /// then per geometry a vertex list and a triangle list.
         /// </summary>
-        internal static string BuildCompressedMeshInput(IReadOnlyList<MoppGeometry> geometries)
+        internal static string BuildCompressedMeshInput(
+            IReadOnlyList<MoppGeometry> geometries, int? materials = null)
         {
             var text = new StringBuilder();
+
+            // The table comes first under -ccmm, and not at all under -ccm.
+            if (materials is { } count)
+                text.Append(count).Append('\n');
 
             text.Append(geometries.Count).Append('\n');
 
             foreach (MoppGeometry geometry in geometries)
             {
+                if (materials is not null)
+                    text.Append(geometry.Material).Append('\n');
+
                 text.Append(geometry.Vertices.Count).Append('\n');
 
                 foreach (NifVector3 v in geometry.Vertices)
@@ -581,6 +619,15 @@ namespace SECmd.Havok
         /// way through a sweep of the corpus -- so the same input did not produce the
         /// same file twice, which is worse than a shape that is always missing.
         /// </remarks>
+        /// <summary>Whether the resolved mopper understands <c>-ccmm</c>.</summary>
+        /// <remarks>
+        /// Assumed until one run says otherwise, then remembered. The flag is this
+        /// fork's; a stock niftools mopper has only <c>-ccm</c>.
+        /// </remarks>
+        private static bool SupportsMaterials => _supportsMaterials;
+
+        private static volatile bool _supportsMaterials = true;
+
         private const int Attempts = 3;
 
         /// <summary>

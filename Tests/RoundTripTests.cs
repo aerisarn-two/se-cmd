@@ -1555,6 +1555,40 @@ namespace SECmd.Tests
                 Assert.NotEqual(source.Calculate(), storedInSource);
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void AChunkPointsInsideItsMaterialTable(string name)
+        {
+            // nif.xml: chunks "refer to this table by index". se-cmd was writing the
+            // number mopper prints, and mopper never fills it -- `// material indices
+            // later on` is an unfinished line in its compressed mesh path, so Havok's
+            // chunk carries whatever was in that memory. It came out as 1,660,488,161
+            // on one run and 1,689,562,200 on the next, indexing a table of one.
+            NifModel rebuilt = RoundTrip(Load(name));
+
+            List<NifItem> data =
+                [.. rebuilt.Blocks.Where(b => b.Name == "bhkCompressedMeshShapeData")];
+
+            if (data.Count == 0)
+                return;
+
+            foreach (NifItem block in data)
+            {
+                uint materials = rebuilt.GetUInt(block, "Num Materials");
+
+                Assert.True(materials > 0, $"{name}: a chunked mesh with no material table");
+
+                foreach (NifItem chunk in rebuilt.FindItem(block, "Chunks")?.Children ?? [])
+                {
+                    uint index = rebuilt.GetUInt(chunk, "Material Index");
+
+                    Assert.True(
+                        index < materials,
+                        $"{name}: chunk material index {index} into a table of {materials}");
+                }
+            }
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {
