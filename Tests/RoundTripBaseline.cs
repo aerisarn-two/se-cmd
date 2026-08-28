@@ -162,6 +162,7 @@ namespace SECmd.Tests
             // like. Writing LINEAR_KEY for it is normalisation, not loss.
             ["Interpolation"] = "0 is not a KeyType; an unset one becomes LINEAR_KEY",
 
+
             // BSXFlags is calculated from the finished graph, never carried, because
             // every bit is a statement about that graph (see `docs/bsxflags-spec.md`).
             // So a file whose own flags disagree with its own contents comes back
@@ -232,7 +233,10 @@ namespace SECmd.Tests
         /// And the form is not universal. `TestNifFile_Optimize_SE_to_LE` keeps its
         /// geometry in *both* places, so an import that always moves it is wrong for
         /// that file. Which form the source used is not derivable from the FBX; it has
-        /// to travel, the way `strips_parts` does.
+        /// to travel, the way `strips_parts` does. (That fixture's *vertex layout* was
+        /// separately corrected — it held a weightless Legendary vertex in a Special
+        /// Edition file — but it still keeps geometry in both places, which is what
+        /// this paragraph is about.)
         ///
         /// Two smaller things surfaced while the partition was briefly populated and
         /// therefore briefly compared, and both are still true: renormalising bone
@@ -266,15 +270,6 @@ namespace SECmd.Tests
             // them. These are what that uncovered underneath.
 
 
-            // A shape can have a skin while its vertices carry no weights -- the
-            // descriptor's Skinned flag is off and NiSkinData holds them instead. The
-            // import packs weights into the vertex whenever a skin exists, so such a
-            // shape is rebuilt with a wider vertex than it had. `Vertex Size` and the
-            // two `Data Size` fields follow the descriptor.
-            ["Vertex Desc"] = "weights are packed into the vertex even when the source kept them in NiSkinData",
-            ["Vertex Size"] = "follows the vertex descriptor",
-            ["BSTriShape/Data Size"] = "follows the vertex descriptor",
-            ["NiSkinPartition/Data Size"] = "follows the vertex descriptor",
 
             // The palette is built the way ck-cmd builds it -- FBXWrangler.cpp:4312 fills
             // it from the multi-target controller's extra targets plus the conversion

@@ -1589,6 +1589,43 @@ namespace SECmd.Tests
             }
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void ASkinnedShapeCarriesItsWeightsInItsVertex(string name)
+        {
+            // Where SSE keeps a skinned shape's weights, without exception: of the 8,912
+            // skinned BSTriShapes sampled from the game, all 8,912 set the Skinned flag
+            // in their vertex descriptor. None keeps them only in the partition's own
+            // arrays.
+            //
+            // TestNifFile_Optimize_SE_to_LE used to be the exception and no longer is.
+            // It is a Bethesda-version-100 file, and it held a 28-byte vertex with no
+            // weights in it -- the Legendary layout inside a Special Edition file, which
+            // made a correct rebuild look like a defect. Its two shapes now carry the
+            // weights their skin partition already described, so the file says one thing
+            // rather than two.
+            NifModel rebuilt = RoundTrip(Load(name));
+
+            foreach (NifItem shape in rebuilt.Blocks.Where(b => rebuilt.BlockInherits(b, "BSTriShape")))
+            {
+                if (rebuilt.GetRef(shape, "Skin") is null) continue;
+                if (rebuilt.FindItem(shape, "Vertex Desc") is not { } item) continue;
+
+                var descriptor = new BSVertexDesc(item.Value.ToUInt64());
+
+                Assert.True(
+                    descriptor.HasFlag(VertexFlags.Skinned),
+                    $"{name}: a skinned shape came back with no weights in its vertex");
+
+                // And the slots the flag promises are really there.
+                if (rebuilt.FindItem(shape, "Vertex Data") is { Children.Count: > 0 } buffer)
+                {
+                    Assert.NotNull(rebuilt.FindItem(buffer.Children[0], "Bone Weights"));
+                    Assert.NotNull(rebuilt.FindItem(buffer.Children[0], "Bone Indices"));
+                }
+            }
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {
