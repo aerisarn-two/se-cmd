@@ -1626,6 +1626,33 @@ namespace SECmd.Tests
             }
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void AnInterpolatorKeepsItsOwnTransform(string name)
+        {
+            // A transform interpolator carries a transform beside its keys: the value a
+            // channel the keys do not drive falls back to. It was read only when the
+            // interpolator had no data at all, and written only for a track with no
+            // keys, so an interpolator with both lost it and came back holding the unset
+            // sentinel. Of the 4,764 transform interpolators sampled from the game,
+            // 1,749 hold a real translation there.
+            NifModel source = Load(name);
+
+            static List<NifVector3> Bases(NifModel m) =>
+                [.. m.Blocks
+                    .Where(b => b.Name == "NiTransformInterpolator")
+                    .Select(b => m.FindItem(b, @"Transform\Translation"))
+                    .Where(i => i is not null)
+                    .Select(i => i!.Value.Get<NifVector3>())];
+
+            List<NifVector3> before = Bases(source);
+
+            if (before.Count == 0 || before.All(v => v.X == float.MinValue))
+                return;
+
+            Assert.Equal(before, Bases(RoundTrip(source)));
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

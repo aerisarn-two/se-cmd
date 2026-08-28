@@ -571,12 +571,11 @@ namespace SECmd.Nif
         /// </remarks>
         private static void ReadTransform(NifModel model, NifItem interpolator, AnimTrack track)
         {
-            if (model.GetRef(interpolator, "Data") is { } data)
-            {
-                ReadTransformTrack(model, data, track);
-                return;
-            }
-
+            // The interpolator's own transform, whether or not it also has keys. Read
+            // only when it had none, a track that has both lost it: 1,749 of the 4,764
+            // transform interpolators sampled from the game hold a real translation
+            // here, against 3,015 holding the unset sentinel, so it is not a field that
+            // only appears on a posed track.
             var pose = new AnimPose(
                 model.FindItem(interpolator, @"Transform\Translation")?.Value.Get<NifVector3>()
                     ?? new NifVector3(),
@@ -586,6 +585,9 @@ namespace SECmd.Nif
 
             if (!pose.IsEmpty)
                 track.Pose = pose;
+
+            if (model.GetRef(interpolator, "Data") is { } data)
+                ReadTransformTrack(model, data, track);
         }
 
         private static AnimTrack TrackFor(Dictionary<string, AnimTrack> tracks, string name)

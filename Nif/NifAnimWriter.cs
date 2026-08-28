@@ -1147,13 +1147,27 @@ namespace SECmd.Nif
 
             model.SetRef(interpolator, "Data", data);
 
-            // The base transform is left unset so the node's own is used for whatever
-            // the keys do not drive.
-            WriteTransform(
-                model, interpolator,
-                new NifVector3(UnsetTransform, UnsetTransform, UnsetTransform),
-                new NifQuat(UnsetTransform, UnsetTransform, UnsetTransform, UnsetTransform),
-                UnsetTransform);
+            // A track with keys can still carry a transform of its own: the value a
+            // channel the keys do not drive falls back to. 1,749 of the 4,764 transform
+            // interpolators sampled from the game hold a real translation here, against
+            // 3,015 holding the unset sentinel, so it is not only a posed track's field.
+            //
+            // Where there is none, the sentinel says so and the node's own transform is
+            // used instead.
+            if (track.Pose is { } baseTransform)
+            {
+                WriteTransform(
+                    model, interpolator,
+                    baseTransform.Translation, baseTransform.Rotation, baseTransform.Scale);
+            }
+            else
+            {
+                WriteTransform(
+                    model, interpolator,
+                    new NifVector3(UnsetTransform, UnsetTransform, UnsetTransform),
+                    new NifQuat(UnsetTransform, UnsetTransform, UnsetTransform, UnsetTransform),
+                    UnsetTransform);
+            }
 
             return interpolator;
         }

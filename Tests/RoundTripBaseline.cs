@@ -364,14 +364,6 @@ namespace SECmd.Tests
             // comes back as the "no value" sentinel (float.MinValue) where the source
             // held real numbers.
             //
-            // This one may well be correct: nif.xml uses that sentinel to mean "this
-            // interpolator has no resting value, read the keys instead", so a track that
-            // carries curves arguably should not also carry a pose. It is recorded here
-            // rather than in ByDesign because that has not been checked, and a defect in
-            // the wrong list is worse than one in this one. Keyed by path, so a
-            // translation going missing anywhere else still fails on its own account.
-            ["NiTransformInterpolator/Transform"] =
-                "a transform track's pose becomes the no-value sentinel; may be correct, unconfirmed",
 
             // A strips shape's scale comes back as 1 where the source held 0.
             ["bhkNiTriStripsShape/Scale"] = "a strips shape's scale is reset to 1",
