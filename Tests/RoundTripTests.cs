@@ -23,6 +23,25 @@ namespace SECmd.Tests
     {
         private static readonly NifXmlDatabase Db = NifXmlDatabase.LoadEmbedded();
 
+        /// <summary>
+        /// The conversion alone, for a test that deliberately builds a model the full
+        /// comparison would have plenty to say about.
+        /// </summary>
+        private static NifModel Rebuilt(NifModel source)
+        {
+            NifItem root = source.GetBlock(source.FindItem(source.Footer, "Roots")!.Children[0])!;
+
+            return new FbxToNif(
+                new FbxScene(new NifToFbx(source).Convert()),
+                new FbxToNifOptions
+                {
+                    RootName = source.GetName(root),
+                    Version = source.Version,
+                    UserVersion = source.UserVersion,
+                    LegendaryEdition = source.BSVersion < 100
+                }).Convert(Db);
+        }
+
         private static NifModel RoundTrip(NifModel source)
         {
             NifItem root = source.GetBlock(source.FindItem(source.Footer, "Roots")!.Children[0])!;
@@ -1229,6 +1248,58 @@ namespace SECmd.Tests
                 // Order included: these are lists in the file, not sets.
                 Assert.Equal(before[i].Item2, after[i].Item2);
             }
+        }
+
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void AShapeWithEmptySkinDataTakesItsWeightsFromTheBuffer(string name)
+        {
+            // Some shapes keep their weights only in the vertex buffer and leave
+            // NiSkinData's bone list empty -- treepineforestash03.nif is one, with every
+            // vertex fully weighted to bone 0 in the buffer and nothing at all beside
+            // it. Reading the bone list by preference has to fall back for those, or the
+            // rebuilt mesh comes back with no weights and collapses onto its root.
+            //
+            // Worth pinning because it is what makes reading NiSkinData safe at all:
+            // over 1,768,446 vanilla skinned vertices, every case where the buffer holds
+            // an influence NiSkinData lacks is a shape whose NiSkinData is empty. With
+            // the fallback counted, the number of influences lost is zero.
+            NifModel source = Load(name);
+
+            List<NifItem> emptied = [];
+
+            foreach (NifItem data in source.Blocks.Where(b => b.Name == "NiSkinData").ToList())
+            {
+                if (source.FindItem(data, "Bone List") is not { Children.Count: > 0 } list)
+                    continue;
+
+                foreach (NifItem entry in list.Children)
+                    source.SetArraySize(entry, "Num Vertices", "Vertex Weights", 0);
+
+                emptied.Add(data);
+            }
+
+            if (emptied.Count == 0)
+                return;
+
+            NifModel rebuilt = Rebuilt(source);
+
+            static int Weighted(NifModel m) =>
+                m.Blocks
+                    .Where(b => b.Name == "NiSkinPartition")
+                    .Select(p => m.FindItem(p, "Vertex Data"))
+                    .Where(v => v is not null)
+                    .SelectMany(v => v!.Children)
+                    .Count(vertex => m.FindItem(vertex, "Bone Weights") is { } w
+                                     && w.Children.Any(c => c.Value.ToFloat() > 0f));
+
+            // The source still has its buffer, so the rebuild must still have one.
+            if (Weighted(source) == 0)
+                return;
+
+            Assert.True(
+                Weighted(rebuilt) > 0,
+                $"{name}: emptying NiSkinData left the rebuilt mesh with no vertex weights at all");
         }
 
         [Fact]

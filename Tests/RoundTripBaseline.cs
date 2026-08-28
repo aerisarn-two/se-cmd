@@ -290,13 +290,27 @@ namespace SECmd.Tests
             // is not reproduced.
             ["Entity B"] = "a constraint that named only one body comes back naming two",
 
-            // Which four influences survive the cut are not always the four the source
-            // kept, and the slots a vertex does not use hold a stale bone id in the
-            // source where this writes zero. Measured on the one body mesh among the
-            // fixtures: 302 of 12,840 slots differ, and 296 of those carry no weight at
-            // all and are padding -- but six do, the largest at 0.376. That last part is
-            // why this is a fault and its companion `Bone Weights` is not.
-            ["Bone Indices"] = "the four influences kept are not always the source's four",
+            // Not our selection: the fixture's own two copies of the weights disagree,
+            // and only one of them can be rebuilt from the other.
+            //
+            // 302 of 12,840 slots in TestNifFile_LooseBlocks_SE differ, all of them
+            // where the file's NiSkinData and its vertex buffer say different things.
+            // 296 are a fourth influence the buffer carries and NiSkinData omits
+            // outright -- vertex 1628 has b3 at 0.0001 in the buffer and three
+            // influences in NiSkinData. The other six are ties: vertex 2235 weights
+            // b4 and b1 at 0.375977 each, and the buffer's slot order for a tie is the
+            // authoring order, which a per-bone list sorted by bone does not record.
+            //
+            // Reading NiSkinData, as this does, reproduces it exactly and loses those
+            // 302 buffer slots; reading the buffer would do the reverse. Both would
+            // need carrying separately, and FBX has one skin per mesh.
+            //
+            // Vanilla does not have the problem. Over 1,768,446 skinned vertices in a
+            // seventh of Skyrim's meshes, once the empty-NiSkinData fallback is
+            // accounted for, the buffer holds an influence NiSkinData lacks exactly
+            // **zero** times, and sorting NiSkinData by descending weight reproduces the
+            // buffer's slot order in all 1,764,398 vertices where the two agree.
+            ["Bone Indices"] = "the fixture's NiSkinData and vertex buffer disagree; vanilla's do not",
 
             // Seen on models built in tests rather than on the fixtures, which is why
             // the fixture sweep alone did not list them.

@@ -1017,6 +1017,33 @@ and neither agree with the file. The partition normalises unconditionally (it ho
 floats, so there is no neighbouring half to round into); the vertex buffer keeps a 1e-4
 guard, because it does.
 
+##### Which copy to read
+
+Both copies exist in almost every skinned shape — **8,876** of the 8,912 vanilla skins
+sampled carry a `NiSkinData` bone list *and* a vertex buffer — so the reader has to
+choose. se-cmd reads the bone list, and falls back to the partition when it holds no
+weights at all.
+
+That fallback is not a nicety. Some vanilla shapes leave `NiSkinData` completely empty
+and keep everything in the buffer: `dlc02/landscape/trees/treepineforestash03.nif` has
+every vertex fully weighted to bone 0 in the buffer and nothing beside it. Without the
+fallback those meshes rebuild with no weights at all and collapse onto their root.
+
+With the fallback counted, reading the bone list loses nothing. Over **1,768,446**
+skinned vertices in a seventh of Skyrim's meshes:
+
+- the buffer holds an influence `NiSkinData` lacks **zero** times;
+- `NiSkinData` holds one the buffer lacks 4,048 times (0.23%) — the influence limit
+  working as intended, since the buffer keeps only the heaviest four;
+- and sorting `NiSkinData` by descending weight reproduces the buffer's slot order in
+  **all 1,764,398** vertices where the two agree.
+
+`TestNifFile_LooseBlocks_SE` is the exception the open list records: its two copies
+genuinely disagree, so 302 of its 12,840 buffer slots cannot be rebuilt from the bone
+list. 296 are a fourth influence the buffer carries and `NiSkinData` omits; six are ties
+whose slot order a per-bone list does not record. Reproducing both would mean carrying
+both, and FBX has one skin per mesh.
+
 *Order.* `LimitInfluences` rebuilt each bone's weight list by walking a dictionary, so a
 rebuilt `NiSkinData` came back holding the right weights on the right vertices in an
 order that is nobody's. The surviving influences and the scale are now worked out first
