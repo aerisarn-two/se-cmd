@@ -351,6 +351,7 @@ namespace SECmd.Tests
             ["BSTriShape"] = "a shape with no vertices comes back as NiTriShape",
 
             ["Points"] = "a strips shape's strips are restructured",
+            ["Num Strips"] = "a strips shape's strips are restructured",
             ["Strip Lengths"] = "a strips shape's strips are restructured",
             ["Children"] = "1 occurrence",
             ["Look At"] = "a NiLookAtInterpolator's target reference is not carried",
@@ -382,7 +383,25 @@ namespace SECmd.Tests
 
             // The chunks of a compressed mesh come back in a different order, so every
             // per-chunk field reads as changed.
-            ["bhkCompressedMeshShapeData/Chunks"] = "chunk order is not preserved",
+            // What is left of the chunk decomposition after mopper was given the
+            // shape-builder settings HKXWrangler uses -- one stripper pass, welding on,
+            // a 0.001 tolerance (HKXWrangler.cpp:3349). Those decide how Havok cuts the
+            // mesh into strips and which vertices it merges, and so decide every array
+            // in a chunk. With mopper's own 5,000 passes and no welding, the fixtures
+            // differed in 12,600 fields; with ck-cmd's, in 25.
+            //
+            // The residue is a millimetre on a chunk origin and one chunk's worth of
+            // strips, which is Havok being run twice rather than a field going
+            // uncarried. Ten sibling entries that existed only to excuse the old
+            // wholesale mismatch are gone.
+            ["bhkCompressedMeshShapeData/Chunks"] = "Havok chunks the mesh its own way",
+
+            // And it makes one fewer of them: 13 where the file has 14, 2 where it has
+            // 3. Close, and not the same. Before mopper was given the shape-builder
+            // settings HKXWrangler uses it was 1 where the file had 2 -- half the
+            // chunks -- so what is left is the last of the difference rather than the
+            // bulk of it.
+            ["Num Chunks"] = "Havok cuts one chunk fewer than Bethesda's build did",
 
             // Not the V flip -- that is fixed and asserted by AUvSurvivesTheRoundTrip.
             // What is left is vertex *order*: the reader numbers vertices in the order
@@ -407,19 +426,9 @@ namespace SECmd.Tests
             // compressed mesh path is the one taken here. Writing 1 would make the file
             // misdescribe a tree the engine walks. Fix belongs upstream (spec §5.6E).
             ["Build Type"] = "mopper chunk-subdivides a compressed mesh; Bethesda's does not",
-            ["Chunk Transforms"] = "3 occurrences",
             ["Min"] = "3 occurrences",
-            ["Num Transforms"] = "3 occurrences",
             ["Offset"] = "2 occurrences",
-            ["Chunks"] = "2 occurrences",
-            ["Num Chunks"] = "2 occurrences",
             ["Num Normals"] = "1 occurrence",
-            ["Indices"] = "1 occurrence",
-            ["Num Indices"] = "1 occurrence",
-            ["Num Strips"] = "1 occurrence",
-            ["Num Welding Info"] = "1 occurrence",
-            ["Strips"] = "1 occurrence",
-            ["Welding Info"] = "1 occurrence",
             ["Extra Targets"] = "1 occurrence",
             ["Next Controller"] = "1 occurrence",
             ["Num Children"] = "1 occurrence",

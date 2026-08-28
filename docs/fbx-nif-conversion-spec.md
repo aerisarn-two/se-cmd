@@ -522,6 +522,27 @@ is now Havok's real index, clamped to the table.
 se-cmd sends one geometry per material, splitting the mesh by its per-polygon channel and
 renumbering each piece's vertices, since Havok welds and indexes per geometry.
 
+##### The chunk arrays are Havok's, and depend on how it is asked
+
+A chunk's vertices, indices, strip lengths and welding info are copied out of Havok
+verbatim — ck-cmd does exactly that (`FBXWrangler.cpp:4616–4643`) and so does se-cmd.
+They differ only because the *shape was built differently*, and the settings that decide
+it are three lines on the builder. HKXWrangler uses one stripper pass, welding on, and a
+0.001 tolerance (`HKXWrangler.cpp:3349`); mopper was on Havok's defaults, 5,000 passes
+with welding unset.
+
+Measured over the fixtures' chunked meshes:
+
+| Builder settings | Fields differing |
+| --- | --- |
+| 5,000 passes, no welding (mopper's own) | **12,600** |
+| 1 pass, no welding | 9,758 |
+| 1 pass, welding on, 0.001 tolerance (HKXWrangler's) | **25** |
+
+So both halves matter and the welding is the larger of the two. What remains is a
+millimetre on a chunk origin and one chunk's worth of strips — Havok run twice, not a
+field left uncarried. mopper now uses HKXWrangler's settings.
+
 ### 4.9 Rigid bodies
 
 `visit_rigid_body` (L2318–2400). Creates a node named `<targetName>_rb`.
