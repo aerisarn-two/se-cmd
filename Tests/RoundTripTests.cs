@@ -1355,6 +1355,40 @@ namespace SECmd.Tests
             });
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void AControllerDoesNotClaimAnInfiniteSpan(string name)
+        {
+            // nif.xml starts Start Time and Stop Time at FLT_MAX and -FLT_MAX, and
+            // nothing replaced them, so every controller a sequence drove came back
+            // claiming an inverted infinite span. That is the right value for the
+            // multi-target controller, which has no timeline of its own -- all 310 in a
+            // quarter of Skyrim's meshes hold exactly that -- and the wrong one for a
+            // controller that does have keys.
+            NifModel rebuilt = RoundTrip(Load(name));
+
+            foreach (NifItem c in rebuilt.Blocks.Where(b => rebuilt.BlockInherits(b, "NiTimeController")))
+            {
+                float start = rebuilt.FindItem(c, "Start Time")?.Value.ToFloat() ?? 0f;
+                float stop = rebuilt.FindItem(c, "Stop Time")?.Value.ToFloat() ?? 0f;
+
+                // The two structural controllers have no timeline of their own -- one
+                // is a fan-out to the nodes a sequence names, the other the root of the
+                // whole arrangement -- and Skyrim says so with an inverted infinite
+                // span. All 310 of each in a quarter of the meshes hold exactly this.
+                if (c.Name is "NiMultiTargetTransformController" or "NiControllerManager")
+                {
+                    Assert.Equal(float.MaxValue, start);
+                    Assert.Equal(float.MinValue, stop);
+                    continue;
+                }
+
+                Assert.True(
+                    start != float.MaxValue && stop != float.MinValue,
+                    $"{name}: {c.Name} came back with the schema's empty span, {start} to {stop}");
+            }
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

@@ -414,6 +414,18 @@ namespace SECmd.Conversion
             if (shape.Name is "bhkCapsuleShape" or "bhkCylinderShape")
                 WriteShapeAxis(holder, shape);
 
+            if (shape.Name == "bhkCompressedMeshShape"
+                && _model.FindItem(shape, "Unknown Float 1") is { } unknown)
+            {
+                // Not derivable and not constant: 1,541 distinct values across the 2,088
+                // compressed mesh shapes sampled, with zero accounting for only 115 of
+                // them. Nobody knows what it is, which is why nif.xml has no name for
+                // it, and that is a reason to carry it rather than a reason to drop it.
+                holder.Properties.SetUserString(
+                    CompressedMeshUnknownProperty,
+                    unknown.Value.ToFloat().ToString("R", CultureInfo.InvariantCulture));
+            }
+
             AddCollisionMaterial(scene, shape, holder, geometry);
         }
 
@@ -626,6 +638,9 @@ namespace SECmd.Conversion
 
             FbxMeshWriter.AddPerPolygonMaterialElement(geometry, [.. levels.Select(l => first + l)]);
         }
+
+        /// <summary>The property a compressed mesh shape's unnamed float travels in.</summary>
+        public const string CompressedMeshUnknownProperty = "nif_cms_unknown_float_1";
 
         /// <summary>The property a capsule's or cylinder's axis direction travels in.</summary>
         public const string ShapeAxisProperty = "nif_shape_axis";

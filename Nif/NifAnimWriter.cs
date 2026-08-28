@@ -174,6 +174,39 @@ namespace SECmd.Nif
         /// however many keys name it.
         /// </remarks>
         /// <summary>
+        /// Widens an attached controller's span to hold the keys it is being given.
+        /// </summary>
+        /// <remarks>
+        /// nif.xml starts `Start Time` and `Stop Time` at FLT_MAX and -FLT_MAX, and
+        /// nothing here replaced them, so every controller a sequence drove came back
+        /// claiming an inverted infinite span. That is the right value for the
+        /// multi-target controller, which has no timeline of its own, and the wrong one
+        /// for a controller that does.
+        ///
+        /// One controller serves every sequence that names it, so the span grows to
+        /// cover all of them rather than being set once.
+        /// </remarks>
+        private static void CoverSpan(
+            NifModel model, NifItem controller, AnimProperty property, bool created)
+        {
+            List<float> times = [.. property.Curves.SelectMany(c => c.Keys).Select(k => k.Time)];
+
+            if (times.Count == 0)
+                return;
+
+            float start = times.Min(), stop = times.Max();
+
+            if (!created)
+            {
+                start = MathF.Min(start, model.FindItem(controller, "Start Time")?.Value.ToFloat() ?? start);
+                stop = MathF.Max(stop, model.FindItem(controller, "Stop Time")?.Value.ToFloat() ?? stop);
+            }
+
+            model.FindItem(controller, "Start Time")?.Value.SetFloat(start);
+            model.FindItem(controller, "Stop Time")?.Value.SetFloat(stop);
+        }
+
+        /// <summary>
         /// The controller a sequence's entry drives, attached to its host.
         /// </summary>
         /// <remarks>
@@ -197,6 +230,8 @@ namespace SECmd.Nif
             NifItem host = HostFor(model, node, property.ControllerType);
             var key = (host, property.ControllerType, property.ControllerId);
 
+            bool created = !attached.ContainsKey(key);
+
             if (!attached.TryGetValue(key, out NifItem? controller))
             {
                 controller = model.InsertBlock(property.ControllerType);
@@ -217,6 +252,7 @@ namespace SECmd.Nif
             }
 
             BlendInto(model, controller, property);
+            CoverSpan(model, controller, property, created);
 
             return controller;
         }
@@ -739,8 +775,12 @@ namespace SECmd.Nif
             model.FindItem(controller, "Flags")?.Value.SetCount(TransformControllerFlags);
             model.FindItem(controller, "Frequency")?.Value.SetFloat(1f);
             model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
-            model.FindItem(controller, "Start Time")?.Value.SetFloat(0f);
-            model.FindItem(controller, "Stop Time")?.Value.SetFloat(0f);
+            // An inverted infinite span, which is what an unset one looks like: all 310
+            // multi-target controllers in a quarter of Skyrim's meshes hold exactly
+            // FLT_MAX and -FLT_MAX. The controller has no span of its own -- it is a
+            // fan-out to the nodes a sequence names, and the sequences carry the times.
+            model.FindItem(controller, "Start Time")?.Value.SetFloat(float.MaxValue);
+            model.FindItem(controller, "Stop Time")?.Value.SetFloat(float.MinValue);
 
             if (model.SetArraySize(controller, "Num Extra Targets", "Extra Targets", targets.Count)
                 is { } extra)

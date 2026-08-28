@@ -318,7 +318,19 @@ namespace SECmd.Nif
         {
             WriteTransform(model, data, "Skin Transform", skin.SkinTransform);
 
-            model.FindItem(data, "Has Vertex Weights")?.Value.SetCount(1);
+            // Says whether the bone list below actually holds weights, so it follows
+            // from what is about to be written rather than being asserted. Vanilla ties
+            // the two without exception: of 6,760 NiSkinData sampled, 6,724 have the
+            // flag set with a populated list and 36 have it clear with an empty one.
+            //
+            // No conversion reaches the false arm today -- a skin with no weighted bone
+            // is dropped before it gets here, by NifSkinAccess.ReadSkin and by the FBX
+            // reader alike -- so this is a correctness tidy rather than a fix, and there
+            // is deliberately no test claiming otherwise. It is here so the field cannot
+            // start lying if a skin with an empty bone list ever does reach this point.
+            bool anyWeights = bones.Any(b => b.Weights.Count > 0);
+
+            model.FindItem(data, "Has Vertex Weights")?.Value.SetCount(anyWeights ? 1u : 0u);
 
             if (model.SetArraySize(data, "Num Bones", "Bone List", bones.Count) is not { } boneList)
                 return;

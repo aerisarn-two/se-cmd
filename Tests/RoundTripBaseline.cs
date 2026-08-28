@@ -237,13 +237,6 @@ namespace SECmd.Tests
             // source. The body's own is now carried (see ABodyKeepsTheLayerItWasOn); the
             // ones under `Rigid Body Info` are not, and what they mean has not been
 
-            // A sequence is deliberately rebased to play from zero, and the source often
-            // carries the float sentinels here rather than real numbers. But the same two
-            // field names also appear on *controllers*, where the values are real and the
-            // rebasing has nothing to do with it, so this is not simply by design. Which
-            // of the two each occurrence is has not been separated.
-            ["Start Time"] = "sequence rebasing and controller spans, not yet told apart",
-            ["Stop Time"] = "sequence rebasing and controller spans, not yet told apart",
 
             // The vertex descriptor is computed from what the mesh turned out to hold
             // rather than carried from the file, so a shape whose vertices were 24 bytes
@@ -289,6 +282,25 @@ namespace SECmd.Tests
             // attachment hangs under, so there is always one to link. The source's null
             // is not reproduced.
             ["Entity B"] = "a constraint that named only one body comes back naming two",
+
+            // A controller shared by several sequences no longer claims nif.xml's
+            // inverted infinite span -- it now covers the keys it is given -- but which
+            // span Bethesda writes is still not known. The one shader controller in the
+            // fixtures holds 0.0333333 to 0.1, frames 1 to 3, where the union of every
+            // sequence that drives it is 0 to 3.333 and the last of them alone is 0 to
+            // 0.333. Neither rule produces a sub-range of both, so it is something
+            // narrower than either and this keeps the wider, defensible answer.
+            ["Start Time"] = "an attached controller's span covers its keys; Bethesda's is narrower",
+            ["Stop Time"] = "an attached controller's span covers its keys; Bethesda's is narrower",
+
+            // Now follows whether the bone list actually holds weights, which is exactly
+            // what vanilla does: of 6,760 NiSkinData sampled, 6,724 have the flag set
+            // with a populated list and 36 have it clear with an empty one. It still
+            // differs for a shape whose source kept the weights only in its vertex
+            // buffer and left NiSkinData empty on purpose: reading the buffer is the
+            // only way to get them, and writing them back fills the list this flag then
+            // has to report. Which copy a file keeps them in does not survive FBX.
+            ["Has Vertex Weights"] = "a shape that kept weights only in its buffer gets them in both",
 
             // Not our selection: the fixture's own two copies of the weights disagree,
             // and only one of them can be rebuilt from the other.
@@ -370,7 +382,14 @@ namespace SECmd.Tests
             // controller, the blend interpolators it makes to hold a sequence's output --
             // which have no source to read from and are written from constants. The AV
             // object flags differ separately, by a single bit in each case.
-            ["Build Type"] = "2 occurrences",
+            // mopper's own setting, not this writer's mistake. 0 is
+            // BUILT_WITH_CHUNK_SUBDIVISION, the PS3 layout, and 2,065 of the 2,088
+            // vanilla compressed-mesh trees hold 1 instead. But mopper's two paths
+            // disagree: mopperCollection sets m_enableChunkSubdivision false, the
+            // compressed mesh path sets it true (mopper.cpp:538 and :648), and the
+            // compressed mesh path is the one taken here. Writing 1 would make the file
+            // misdescribe a tree the engine walks. Fix belongs upstream (spec §5.6E).
+            ["Build Type"] = "mopper chunk-subdivides a compressed mesh; Bethesda's does not",
             ["Chunk Materials"] = "3 occurrences",
             ["Chunk Transforms"] = "3 occurrences",
             ["Integer Data"] = "3 occurrences",
@@ -382,7 +401,6 @@ namespace SECmd.Tests
             ["Num Chunks"] = "2 occurrences",
             ["Num Normals"] = "1 occurrence",
             ["Shader Flags 1"] = "1 occurrence",
-            ["Unknown Float 1"] = "2 occurrences",
             ["Indices"] = "1 occurrence",
             ["Material Index"] = "2 occurrences",
             ["Num Indices"] = "1 occurrence",
@@ -390,7 +408,6 @@ namespace SECmd.Tests
             ["Num Welding Info"] = "1 occurrence",
             ["Strips"] = "1 occurrence",
             ["Welding Info"] = "1 occurrence",
-            ["Has Vertex Weights"] = "2 occurrences",
             ["Extra Targets"] = "1 occurrence",
             ["Next Controller"] = "1 occurrence",
             ["Num Children"] = "1 occurrence",

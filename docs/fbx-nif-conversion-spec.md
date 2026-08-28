@@ -1468,6 +1468,26 @@ every bit of `BSXFlags` is a statement *about* the graph — whether it animates
 collides — so a carried one would describe the file the FBX came from. These are
 statements about intent, which the graph does not contain.
 
+### 5.6B.1 Controller spans
+
+`NiTimeController` starts `Start Time` at FLT_MAX and `Stop Time` at -FLT_MAX, and se-cmd
+replaced neither on a controller reached through a sequence, so every one came back
+claiming an inverted infinite span.
+
+For the two **structural** controllers that is the correct value and Skyrim confirms it:
+all **310** `NiControllerManager`s and all **310** `NiMultiTargetTransformController`s
+sampled hold exactly FLT_MAX and -FLT_MAX. Neither has a timeline of its own — one is the
+root of the arrangement, the other a fan-out to the nodes a sequence names — and the
+sequences carry the times. se-cmd was writing 0 and 0 for the multi-target one, and now
+writes the inverted span.
+
+For a controller that *does* hold keys the span now covers them. It does not match
+Bethesda's, and what Bethesda's rule is remains unknown: the one shader controller among
+the fixtures holds 0.0333333 to 0.1 — frames 1 to 3 — where the union of every sequence
+driving it is 0 to 3.333 and the last of those alone is 0 to 0.333. Its range is a
+sub-range of both, so it is neither rule; the open list keeps the wider, defensible
+answer and records the measurement.
+
 ### 5.6C Blend interpolators
 
 Every blend interpolator Skyrim ships is the same block: of the **3,593** in a third of
@@ -1488,6 +1508,26 @@ controller, and neither has this bit; se-cmd took both constants from it. Every
 structural controller it built therefore came back `0x40` short of the file it was
 rebuilt from, and short of what nif.xml says a controller starts life with. se-cmd now
 writes 76 and 108.
+
+### 5.6E MOPP build type: a mopper setting, not a writer bug
+
+`MOPP Code\Build Type` is `hkMoppCodeBuildType`: **0** is `BUILT_WITH_CHUNK_SUBDIVISION`
+(the PS3 layout) and **1** is `BUILT_WITHOUT_CHUNK_SUBDIVISION`, which nif.xml marks as
+the PC default. Skyrim agrees: **2,065** of the 2,088 compressed-mesh MOPP trees sampled
+hold 1, and the 23 that do not hold values outside the 0–2 enum entirely (205, 130, 46,
+24) and are uninitialised bytes.
+
+se-cmd writes 0, and that is honest about the data it has rather than a mistake in the
+writer: mopper's two paths disagree with each other. `mopperCollection` sets
+`m_enableChunkSubdivision = false`, with the comment "The PC build, as HKXWrangler sets
+it: chunk subdivision is for PS3"; `mopperCompressedMesh`, the path a compressed mesh
+takes, sets it **true** (`mopper/mopper.cpp:538` and `:648`).
+
+So se-cmd's MOPP code really is chunk-subdivided and the flag says so. Writing 1 to match
+vanilla would make the file misdescribe its own tree, which is worse than a mismatched
+field — the engine walks that tree. **The fix belongs in mopper**, setting the compressed
+mesh path to `false` as the collection path already does, after which this field can be
+written as 1. Until then it stays on the open list.
 
 ### 5.7 Collision
 

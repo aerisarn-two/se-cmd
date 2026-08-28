@@ -1471,6 +1471,13 @@ namespace SECmd.Conversion
             if (_sceneRoot is not null)
                 _model.SetRef(shape, "Target", _sceneRoot);
 
+            if (float.TryParse(
+                    node.Properties.GetString(NifToFbx.CompressedMeshUnknownProperty),
+                    NumberStyles.Float, CultureInfo.InvariantCulture, out float unknown))
+            {
+                SetFloat(shape, "Unknown Float 1", unknown);
+            }
+
             SetFloat(shape, "Radius", 0.005f);
             SetFloat(shape, "Radius Copy", 0.005f);
             _model.FindItem(shape, "Scale")?.Value.Set(new NifVector4(1f, 1f, 1f, 0f));
