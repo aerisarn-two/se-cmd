@@ -431,7 +431,13 @@ namespace SECmd.Tests
             ["Build Type"] = "mopper chunk-subdivides a compressed mesh; Bethesda's does not",
             ["Min"] = "3 occurrences",
             ["Offset"] = "2 occurrences",
-            ["Num Normals"] = "1 occurrence",
+            // The hull's own corners come back exactly -- 326 of 326 on the fixture that
+            // flags this -- and every one of its 165 face planes is reproduced. There are
+            // 172 of them rather than 165, the extras being a face the quickhull found
+            // twice and the coplanar tolerance did not merge. Loosening that further
+            // trades the extras for real faces: at 3e-3 the count reaches 166 and two of
+            // the file's own planes are gone.
+            ["Num Normals"] = "seven near-duplicate face planes the hull fit leaves behind",
             ["Next Controller"] = "1 occurrence",
             ["Num Children"] = "1 occurrence",
         };
