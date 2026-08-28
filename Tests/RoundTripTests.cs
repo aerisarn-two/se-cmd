@@ -1653,6 +1653,59 @@ namespace SECmd.Tests
             Assert.Equal(before, Bases(RoundTrip(source)));
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void AConvexHullKeepsItsShell(string name)
+        {
+            // nif.xml calls Radius "a shell that is added around the shape", and Havok
+            // means it: a vanilla hull's face planes sit exactly that far outside its own
+            // corners. Of the 852 hulls sampled from the game, 420 match the rule on
+            // every plane to within 1e-4 and 587 to within 1e-2.
+            //
+            // se-cmd wrote a flat 0.01 -- not even the commonest value, which is 0.05 --
+            // and offset nothing, so every rebuilt hull's planes sat a shell's width
+            // inside where the file put them.
+            NifModel source = Load(name);
+
+            static List<float> Radii(NifModel m) =>
+                [.. m.Blocks
+                    .Where(b => b.Name == "bhkConvexVerticesShape")
+                    .Select(b => m.FindItem(b, "Radius"))
+                    .Where(i => i is not null)
+                    .Select(i => i!.Value.ToFloat())];
+
+            List<float> before = Radii(source);
+
+            if (before.Count == 0)
+                return;
+
+            NifModel rebuilt = RoundTrip(source);
+
+            Assert.Equal(before, Radii(rebuilt));
+
+            // And the planes stand off the corners by it.
+            foreach (NifItem hull in rebuilt.Blocks.Where(b => b.Name == "bhkConvexVerticesShape"))
+            {
+                float radius = rebuilt.FindItem(hull, "Radius")!.Value.ToFloat();
+
+                List<NifVector4> corners =
+                    [.. (rebuilt.FindItem(hull, "Vertices")?.Children ?? []).Select(c => c.Value.Get<NifVector4>())];
+
+                if (corners.Count == 0)
+                    continue;
+
+                foreach (NifItem plane in rebuilt.FindItem(hull, "Normals")?.Children ?? [])
+                {
+                    NifVector4 p = plane.Value.Get<NifVector4>();
+                    float reach = corners.Max(v => p.X * v.X + p.Y * v.Y + p.Z * v.Z);
+
+                    Assert.True(
+                        MathF.Abs((-p.W - reach) - radius) < 1e-3f,
+                        $"{name}: a hull plane stands off its corners by {-p.W - reach}, not {radius}");
+                }
+            }
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

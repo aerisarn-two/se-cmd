@@ -414,6 +414,14 @@ namespace SECmd.Conversion
             if (shape.Name is "bhkCapsuleShape" or "bhkCylinderShape")
                 WriteShapeAxis(holder, shape);
 
+            if (shape.Name == "bhkConvexVerticesShape"
+                && _model.FindItem(shape, "Radius") is { } convexRadius)
+            {
+                holder.Properties.SetUserString(
+                    ConvexRadiusProperty,
+                    convexRadius.Value.ToFloat().ToString("R", CultureInfo.InvariantCulture));
+            }
+
             if (shape.Name == "bhkCompressedMeshShape"
                 && _model.FindItem(shape, "Unknown Float 1") is { } unknown)
             {
@@ -700,6 +708,16 @@ namespace SECmd.Conversion
 
             FbxMeshWriter.AddPerPolygonMaterialElement(geometry, [.. levels.Select(l => first + l)]);
         }
+
+        /// <summary>The property a convex hull's shell radius travels in.</summary>
+        /// <remarks>
+        /// nif.xml calls it "a shell that is added around the shape", and Havok means it
+        /// literally: a vanilla hull's face planes sit the radius further out than its
+        /// own corners reach. It is authored -- 0.05 is the commonest of many values
+        /// across the 852 hulls sampled, and 78 of them use zero -- and se-cmd wrote a
+        /// flat 0.01, which is not even the mode.
+        /// </remarks>
+        public const string ConvexRadiusProperty = "nif_convex_radius";
 
         /// <summary>The property a compressed mesh shape's unnamed float travels in.</summary>
         public const string CompressedMeshUnknownProperty = "nif_cms_unknown_float_1";

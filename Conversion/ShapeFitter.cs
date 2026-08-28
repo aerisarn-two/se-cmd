@@ -349,6 +349,9 @@ namespace SECmd.Conversion
         /// where the object is. A symmetric shape such as a box hides it completely,
         /// because negating every distance maps the plane set onto itself.
         /// </remarks>
+        /// <summary>How near two face planes must be to count as the same one.</summary>
+        private const float CoplanarTolerance = 1e-3f;
+
         public static (List<NifVector4> Vertices, List<NifVector4> Planes) FitConvex(IReadOnlyList<NifVector3> points)
         {
             var vertices = new List<NifVector4>();
@@ -387,14 +390,23 @@ namespace SECmd.Conversion
                 // Minus the dot product, per the format: see the note above.
                 float distance = -(nx * a.X + ny * a.Y + nz * a.Z);
 
-                // Coplanar faces share a plane; storing each one would bloat the
-                // shape without changing it.
+                // Coplanar faces share a plane; storing each one would bloat the shape
+                // without changing it.
+                //
+                // A tenth of a degree, and a millimetre of offset. The tolerance was
+                // 1e-4, which is finer than the hull's own arithmetic: a 326-corner hull
+                // came out with 225 planes where the file it was rebuilt from has 165,
+                // the extras being the same face found twice. At 1e-3 it produces 172,
+                // and every one of the file's 165 planes is among them. Looser still is
+                // worse rather than better -- at 3e-3 the count reaches 166 by merging
+                // two faces that are genuinely different, and only 163 of the source's
+                // planes survive.
                 var plane = new NifVector4(nx, ny, nz, distance);
 
-                if (!planes.Any(p => MathF.Abs(p.X - nx) < 1e-4f
-                                     && MathF.Abs(p.Y - ny) < 1e-4f
-                                     && MathF.Abs(p.Z - nz) < 1e-4f
-                                     && MathF.Abs(p.W - distance) < 1e-4f))
+                if (!planes.Any(p => MathF.Abs(p.X - nx) < CoplanarTolerance
+                                     && MathF.Abs(p.Y - ny) < CoplanarTolerance
+                                     && MathF.Abs(p.Z - nz) < CoplanarTolerance
+                                     && MathF.Abs(p.W - distance) < CoplanarTolerance))
                 {
                     planes.Add(plane);
                 }

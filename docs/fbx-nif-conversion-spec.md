@@ -452,6 +452,30 @@ whichever machine Bethesda exported on, flushed out with the rest of the struct.
 is nothing in them to reconstruct, so the round trip leaves the field at zero and says
 so on the baseline rather than pretending the gap is unfinished work.
 
+#### 4.8.1A A convex hull's shell
+
+`bhkConvexVerticesShape.Radius` is, in nif.xml's words, "a shell that is added around the
+shape", and Havok means it literally: a vanilla hull's **face planes sit the radius
+further out than its own corners reach**. Of the 852 hulls sampled, 420 satisfy that on
+every plane to within 1e-4 and 587 to within 1e-2.
+
+se-cmd wrote a flat `0.01` — not even the commonest value, which is 0.05 — and offset
+nothing, so every rebuilt hull's planes sat a shell's width inside where the file put
+them. On `TestNifFile_DeepGraph_SE`, **none** of the 225 planes came within 1e-2 of a
+source plane, though the normals agreed to five decimals: the whole difference was a
+constant 0.02816 in the distance, which is exactly that shape's radius.
+
+The radius now travels (`nif_convex_radius`) and the planes go out with it. 218 of the
+225 planes then matched, and with the coplanar tolerance corrected (below) all 165 of the
+file's own planes are reproduced.
+
+**Coplanar tolerance.** Merging faces that share a plane was done at 1e-4 per component,
+finer than the hull arithmetic that produces them, so the same face was often stored
+twice: 225 planes against the file's 165. At 1e-3 — a tenth of a degree, and a millimetre
+of offset — it produces 172, and every one of the file's planes is among them. Looser is
+worse: at 3e-3 the count reaches 166 by merging two genuinely different faces, and two of
+the file's planes disappear.
+
 #### 4.8.2 Capsules and cylinders: the axis is not in the cloud
 
 Both tessellate to a point cloud, and both are refitted from it on the way back. Two

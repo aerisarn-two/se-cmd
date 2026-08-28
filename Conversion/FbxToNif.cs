@@ -808,7 +808,7 @@ namespace SECmd.Conversion
                 else if (name.EndsWith("_cylinder", StringComparison.Ordinal))
                     built = BuildCylinder(points, child);
                 else if (name.EndsWith("_convex", StringComparison.Ordinal))
-                    built = BuildConvex(points);
+                    built = BuildConvex(points, child);
                 else if (name.EndsWith("_plane", StringComparison.Ordinal))
                     built = BuildPlane(points);
                 else if (name.EndsWith("_strips", StringComparison.Ordinal))
@@ -1731,12 +1731,37 @@ namespace SECmd.Conversion
                 array.Children[i].Value.SetCount(values[i]);
         }
 
-        private NifItem BuildConvex(IReadOnlyList<NifVector3> points)
+        /// <summary>The shell a hull gets when the scene carried none: Skyrim's commonest.</summary>
+        private const float DefaultConvexRadius = 0.05f;
+
+        private NifItem BuildConvex(IReadOnlyList<NifVector3> points, FbxObject node)
         {
             (List<NifVector4> vertices, List<NifVector4> planes) = ShapeFitter.FitConvex(points);
 
             NifItem shape = _model.InsertBlock("bhkConvexVerticesShape");
-            SetFloat(shape, "Radius", 0.01f);
+
+            // The shell Havok puts around the hull. nif.xml says as much -- "a shell
+            // that is added around the shape" -- and a vanilla hull's planes sit exactly
+            // that far outside its own corners: of the 852 hulls sampled, 420 match the
+            // rule on every plane to within 1e-4 and 587 to within 1e-2.
+            //
+            // Carried, because it is authored: 0.05 is the commonest of many values and
+            // 78 hulls use zero. se-cmd wrote a flat 0.01, which is neither.
+            float radius = float.TryParse(
+                node.Properties.GetString(NifToFbx.ConvexRadiusProperty),
+                NumberStyles.Float, CultureInfo.InvariantCulture, out float carried)
+                ? carried
+                : DefaultConvexRadius;
+
+            SetFloat(shape, "Radius", radius);
+
+            // And the planes go out with it, or the shell would be a shell around
+            // nothing: the face planes are what Havok collides against.
+            for (int i = 0; i < planes.Count; i++)
+            {
+                NifVector4 p = planes[i];
+                planes[i] = new NifVector4(p.X, p.Y, p.Z, p.W - radius);
+            }
 
             if (_model.SetArraySize(shape, "Num Vertices", "Vertices", vertices.Count) is { } vertexArray)
             {
