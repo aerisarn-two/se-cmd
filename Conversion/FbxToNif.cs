@@ -2503,10 +2503,53 @@ namespace SECmd.Conversion
             NifItem textureSet = BuildTextureSet(material);
             _model.SetRef(shader, "Texture Set", textureSet);
 
+            WriteShaderFlags(shader, properties);
+
             _model.SetRef(shape, "Shader Property", shader);
 
             BuildAlphaProperty(shape, properties);
         }
+
+        /// <summary>
+        /// Restores the two shader flag words, forcing the two bits about the mesh.
+        /// </summary>
+        /// <remarks>
+        /// Neither word was written at all, so every rebuilt shader took nif.xml's
+        /// defaults -- and those are worth little here: 225 distinct values of
+        /// `Shader Flags 1` across 20,576 vanilla shaders, with the commonest covering
+        /// 33%.
+        ///
+        /// Carried whole and not adjusted, though two bits do describe the mesh rather
+        /// than its lighting: `Skinned` (flags 1, bit 1) and `Vertex_Colors` (flags 2,
+        /// bit 5). Vanilla ties both to the content -- of 20,576 shapes not one skinned
+        /// shape lacks the skinned bit -- so forcing them on was tried.
+        ///
+        /// Forcing `Skinned` changes nothing: it is already right everywhere. Forcing
+        /// `Vertex_Colors` sets the bit on 53 shapes across the fixtures whose source
+        /// shader has it clear, because the rebuilt shape really does carry colours the
+        /// source shape did not. That is a difference in the geometry, and writing it
+        /// into the shader word would hide where it comes from rather than fix it. So
+        /// neither is forced, and the words go back exactly as they came.
+        /// </remarks>
+        private void WriteShaderFlags(NifItem shader, FbxProperties properties)
+        {
+            Carry("Shader Flags 1", FbxMaterialWriter.ShaderFlags1Property);
+            Carry("Shader Flags 2", FbxMaterialWriter.ShaderFlags2Property);
+
+            void Carry(string field, string property)
+            {
+                if (_model.FindItem(shader, field) is not { } item)
+                    return;
+
+                if (uint.TryParse(
+                        properties.GetString(property), NumberStyles.Integer,
+                        CultureInfo.InvariantCulture, out uint carried))
+                {
+                    item.Value.SetCount(carried);
+                }
+            }
+        }
+
 
         /// <summary>
         /// Recovers the shader's UV offset and scale from the material's textures.

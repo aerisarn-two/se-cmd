@@ -1315,7 +1315,9 @@ namespace SECmd.Conversion
                 EmissiveMultiple = FloatOf(shader, "Base Color Scale", 1f),
                 UvOffset = Vector2Of(shader, "UV Offset", new NifVector2(0f, 0f)),
                 UvScale = Vector2Of(shader, "UV Scale", new NifVector2(1f, 1f)),
-                TextureClampMode = _model.GetUInt(shader, "Texture Clamp Mode")
+                TextureClampMode = _model.GetUInt(shader, "Texture Clamp Mode"),
+                ShaderFlags1 = _model.FindItem(shader, "Shader Flags 1")?.Value.ToUInt(),
+                ShaderFlags2 = _model.FindItem(shader, "Shader Flags 2")?.Value.ToUInt()
             };
 
             // Same as a lighting shader's: the alpha property is the shape's, not the
@@ -1373,7 +1375,9 @@ namespace SECmd.Conversion
                 RefractionStrength = FloatOf(shader, "Refraction Strength"),
                 UvOffset = Vector2Of(shader, "UV Offset", new NifVector2(0f, 0f)),
                 UvScale = Vector2Of(shader, "UV Scale", new NifVector2(1f, 1f)),
-                TextureClampMode = _model.GetUInt(shader, "Texture Clamp Mode")
+                TextureClampMode = _model.GetUInt(shader, "Texture Clamp Mode"),
+                ShaderFlags1 = _model.FindItem(shader, "Shader Flags 1")?.Value.ToUInt(),
+                ShaderFlags2 = _model.FindItem(shader, "Shader Flags 2")?.Value.ToUInt()
             };
 
             // The shader path is stored on the NiObjectNET level, guarded by an

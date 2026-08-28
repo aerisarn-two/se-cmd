@@ -85,7 +85,6 @@ namespace SECmd.Tests
             ["Force Collided Onto PPU"] = "uninitialised in the source file (0xCD)",
 
             ["Consistency Flags"] = "not carried",
-            ["Shader Flags 2"] = "one flag differs; the shader flag words are not carried verbatim",
             ["Bounding Sphere"] = "recomputed from the vertices",
             ["Center"] = "recomputed from the vertices",
 
@@ -400,7 +399,6 @@ namespace SECmd.Tests
             ["Chunks"] = "2 occurrences",
             ["Num Chunks"] = "2 occurrences",
             ["Num Normals"] = "1 occurrence",
-            ["Shader Flags 1"] = "1 occurrence",
             ["Indices"] = "1 occurrence",
             ["Material Index"] = "2 occurrences",
             ["Num Indices"] = "1 occurrence",

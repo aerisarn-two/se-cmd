@@ -1428,6 +1428,50 @@ namespace SECmd.Tests
                 Assert.Contains(nodes, b => rebuilt.GetUInt(b, "Flags") != FbxNodeType.DefaultFlags);
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void AShaderKeepsBothOfItsFlagWords(string name)
+        {
+            // Nothing wrote either word, so every rebuilt shader took nif.xml's
+            // defaults. Those are poor defaults: across 20,576 shader properties in a
+            // quarter of Skyrim's meshes, Shader Flags 1 holds 225 distinct values and
+            // Shader Flags 2 holds 111, and the commonest covers 33% and 43.7%.
+            NifModel source = Load(name);
+
+            // Matched by shape name, not by walking every shader block: a file can hold
+            // shader properties this rebuilds nothing for, and those are somebody else's
+            // entry on the open list.
+            static Dictionary<string, (uint One, uint Two)> Words(NifModel m)
+            {
+                var words = new Dictionary<string, (uint, uint)>(StringComparer.Ordinal);
+
+                foreach (NifItem shape in m.Blocks.Where(b => m.BlockInherits(b, "NiAVObject")))
+                {
+                    if (m.GetName(shape) is not { Length: > 0 } name) continue;
+                    if (m.GetRef(shape, "Shader Property") is not { } shader) continue;
+                    if (m.FindItem(shader, "Shader Flags 1") is not { } one) continue;
+                    if (m.FindItem(shader, "Shader Flags 2") is not { } two) continue;
+
+                    words[name] = (one.Value.ToUInt(), two.Value.ToUInt());
+                }
+
+                return words;
+            }
+
+            Dictionary<string, (uint One, uint Two)> before = Words(source);
+
+            if (before.Count == 0)
+                return;
+
+            Dictionary<string, (uint One, uint Two)> after = Words(RoundTrip(source));
+
+            foreach ((string shape, var expected) in before)
+            {
+                if (after.TryGetValue(shape, out var actual))
+                    Assert.Equal(expected, actual);
+            }
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

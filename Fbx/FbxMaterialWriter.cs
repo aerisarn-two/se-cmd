@@ -23,6 +23,12 @@ namespace SECmd.Fbx
     public static class FbxMaterialWriter
     {
         /// <summary>Names the source block a material's texture set came from.</summary>
+        /// <summary>The properties the two shader flag words travel in.</summary>
+        public const string ShaderFlags1Property = "nif_shader_flags_1";
+
+        /// <inheritdoc cref="ShaderFlags1Property"/>
+        public const string ShaderFlags2Property = "nif_shader_flags_2";
+
         public const string TextureSetIdProperty = "nif_texture_set";
 
         /// <summary>Names the source block a material's alpha property came from.</summary>
@@ -95,6 +101,12 @@ namespace SECmd.Fbx
 
             properties.Set("refraction_strength", "Number", "", FbxProperties.UserFlags,
                 (double)material.RefractionStrength);
+
+            if (material.ShaderFlags1 is { } flags1)
+                properties.SetUserString(ShaderFlags1Property, flags1.ToString(CultureInfo.InvariantCulture));
+
+            if (material.ShaderFlags2 is { } flags2)
+                properties.SetUserString(ShaderFlags2Property, flags2.ToString(CultureInfo.InvariantCulture));
 
             if (material.AlphaProperty is { } alpha)
                 WriteAlphaSettings(properties, alpha);

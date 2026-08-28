@@ -1049,6 +1049,31 @@ rebuilt `NiSkinData` came back holding the right weights on the right vertices i
 order that is nobody's. The surviving influences and the scale are now worked out first
 and applied to each bone's existing list in place, which keeps the order the file had.
 
+#### 5.3.1A The two shader flag words
+
+Nothing read or wrote `Shader Flags 1` and `Shader Flags 2`, so every rebuilt shader took
+nif.xml's defaults. Those are poor defaults: across **20,576** shader properties in a
+quarter of Skyrim's meshes, `Shader Flags 1` holds **225** distinct values and
+`Shader Flags 2` holds **111**. The commonest covers 33% and 43.7% respectively — and
+nif.xml's default for flags 1 *is* that commonest value, which is why the gap looked
+small and was not.
+
+Both words now travel whole, on `nif_shader_flags_1` and `nif_shader_flags_2`.
+
+Two of the bits describe the mesh rather than its lighting — `Skinned` (flags 1, bit 1)
+and `Vertex_Colors` (flags 2, bit 5) — and vanilla ties both to the content: of those
+20,576 shapes, not one skinned shape lacks the skinned bit and not one coloured shape
+lacks the colours bit. Forcing them from the rebuilt geometry was therefore tried:
+
+- Forcing `Skinned` changes nothing. It is already right everywhere.
+- Forcing `Vertex_Colors` sets the bit on **53** shapes across the fixtures whose source
+  shader has it clear — because the rebuilt shape really does carry vertex colours the
+  source shape did not.
+
+That second one is a difference in the *geometry*. Writing it into the shader word would
+make the flags agree with a mesh that still differs, hiding where the difference comes
+from. So neither bit is forced and the words go back exactly as they came.
+
 #### 5.3.2 Effect shaders
 
 The two shader classes share almost no fields: an effect shader has its own source and

@@ -233,6 +233,28 @@ namespace SECmd.Conversion
         /// <inheritdoc cref="LightingEffect1"/>
         public float RefractionStrength { get; set; }
 
+        /// <summary>
+        /// The two shader flag words, carried whole.
+        /// </summary>
+        /// <remarks>
+        /// Nothing derived these and nothing wrote them, so every rebuilt shader took
+        /// nif.xml's defaults. They are not defaults worth taking: across 20,576 shader
+        /// properties in a quarter of Skyrim's meshes, `Shader Flags 1` holds **225**
+        /// distinct values and `Shader Flags 2` **111**, and the commonest covers 33%
+        /// and 43.7% respectively.
+        ///
+        /// Two bits are about the mesh rather than about how it is lit, and are forced
+        /// on import rather than trusted: `Skinned` (flags 1, bit 1) and `Vertex_Colors`
+        /// (flags 2, bit 5). Forced *on* only. Vanilla never leaves either clear when
+        /// the content is there -- of 20,576 shapes, not one skinned shape lacks the
+        /// skinned bit -- but two do carry it with no skin at all, and clearing it would
+        /// edit a file this is meant to reproduce.
+        /// </remarks>
+        public uint? ShaderFlags1 { get; set; }
+
+        /// <inheritdoc cref="ShaderFlags1"/>
+        public uint? ShaderFlags2 { get; set; }
+
         public NifVector2 UvOffset { get; set; } = new(0f, 0f);
 
         public NifVector2 UvScale { get; set; } = new(1f, 1f);
