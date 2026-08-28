@@ -1455,7 +1455,12 @@ namespace SECmd.Conversion
             List<string> materials = CollisionMaterialsOf(node);
             List<MoppGeometry> pieces = SplitByMaterial(geometry!, mesh, vertices, materials.Count);
 
-            CompressedMeshResult? built = generator.GenerateCompressedMesh(pieces, materials.Count);
+            // At least one, matching the table written below. A node with no material at
+            // all would otherwise ask Havok for an empty table while every triangle
+            // claims material 0, which is a contradiction to hand a physics engine even
+            // where it happens to survive it.
+            CompressedMeshResult? built = generator.GenerateCompressedMesh(
+                pieces, Math.Max(materials.Count, 1));
 
             if (built is null)
             {
