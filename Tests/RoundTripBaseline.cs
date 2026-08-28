@@ -426,20 +426,6 @@ namespace SECmd.Tests
             // Triangles, so it is a consequence of those rather than a fault of its own:
             // it will come right when the geometry does, and not before.
 
-            // What is left of the controller flags, and it is not one thing. The
-            // controllers a *file* carried now bring their own; these are the ones this
-            // port synthesises -- the controller manager, the multi-target transform
-            // controller, the blend interpolators it makes to hold a sequence's output --
-            // which have no source to read from and are written from constants. The AV
-            // object flags differ separately, by a single bit in each case.
-            // mopper's own setting, not this writer's mistake. 0 is
-            // BUILT_WITH_CHUNK_SUBDIVISION, the PS3 layout, and 2,065 of the 2,088
-            // vanilla compressed-mesh trees hold 1 instead. But mopper's two paths
-            // disagree: mopperCollection sets m_enableChunkSubdivision false, the
-            // compressed mesh path sets it true (mopper.cpp:538 and :648), and the
-            // compressed mesh path is the one taken here. Writing 1 would make the file
-            // misdescribe a tree the engine walks. Fix belongs upstream (spec §5.6E).
-            ["Build Type"] = "mopper chunk-subdivides a compressed mesh; Bethesda's does not",
             ["Min"] = "3 occurrences",
             ["Offset"] = "2 occurrences",
             // The hull's own corners come back exactly -- 326 of 326 on the fixture that

@@ -1706,6 +1706,28 @@ namespace SECmd.Tests
             }
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void AMoppTreeSaysHowItWasBuilt(string name)
+        {
+            // 0 is BUILT_WITH_CHUNK_SUBDIVISION, the PS3 layout; 1 is the PC one, which
+            // nif.xml marks as the default and which 2,065 of the 2,088 compressed mesh
+            // trees Skyrim ships hold. The other 23 hold values outside the 0..2 the
+            // enum defines, so they are uninitialised bytes rather than a third answer.
+            //
+            // se-cmd used to write 0, honestly: mopper asked its MOPP compiler for chunk
+            // subdivision. It now asks for the PC layout, as HKXWrangler does, so the
+            // field and the tree agree with each other and with the game.
+            NifModel rebuilt = RoundTrip(Load(name));
+
+            List<NifItem> trees = [.. rebuilt.Blocks.Where(b => b.Name == "bhkMoppBvTreeShape")];
+
+            if (trees.Count == 0)
+                return;
+
+            Assert.All(trees, t => Assert.Equal(1u, rebuilt.GetUInt(t, @"MOPP Code\Build Type")));
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

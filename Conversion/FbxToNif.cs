@@ -1525,8 +1525,13 @@ namespace SECmd.Conversion
             _model.FindItem(mopp, @"MOPP Code\Offset")?.Value.Set(
                 new NifVector4(result.Origin.X, result.Origin.Y, result.Origin.Z, result.Scale));
 
-            // mopper builds with chunk subdivision enabled.
-            SetEnum(mopp, @"MOPP Code\Build Type", "hkMoppCodeBuildType", "BUILT_WITH_CHUNK_SUBDIVISION");
+            // Chunk subdivision is the PS3 layout. mopper's compressed mesh path used to
+            // ask for it and now asks for the PC one, as HKXWrangler does
+            // (HKXWrangler.cpp:3268), so the tree this describes really is built without
+            // it -- and 2,065 of the 2,088 compressed mesh trees Skyrim ships say the
+            // same. The other 23 hold values outside the 0..2 the enum defines, 205 and
+            // 130 and the like, which are uninitialised bytes rather than a third kind.
+            SetEnum(mopp, @"MOPP Code\Build Type", "hkMoppCodeBuildType", "BUILT_WITHOUT_CHUNK_SUBDIVISION");
 
             if (_model.SetArraySize(mopp, @"MOPP Code\Data Size", @"MOPP Code\Data", result.Code.Length)
                 is { Children.Count: > 0 } blob)
