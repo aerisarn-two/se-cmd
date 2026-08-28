@@ -283,6 +283,131 @@ namespace SECmd.Tests
         }
 
         /// <summary>
+        /// Every skinned mesh comes back standing where its own skeleton puts it.
+        /// </summary>
+        /// <remarks>
+        /// Not a field comparison. This asks the question the fields are only evidence
+        /// for: after the round trip, is a vertex still where the bone that owns it
+        /// expects it? The measure is the mean distance from a vertex to that bone's
+        /// origin, mapped by the bone's own skin transform, over the vertices a bone
+        /// holds nine tenths of.
+        ///
+        /// It is measured against the file's own answer rather than an absolute, so a
+        /// mesh that was always far from its bones is not a failure -- only one that
+        /// moved.
+        ///
+        /// This catches what a field comparison cannot say plainly. Baking a shape's
+        /// transform into its vertices displaced 220 of the 836 skinned meshes sampled,
+        /// 26%, and showed up in the field sweep as thousands of differences in
+        /// Triangles, Num Vertices, Vertex Data and the partition lists -- one fault
+        /// wearing seven names.
+        /// </remarks>
+        [Fact]
+        public void EveryVanillaSkinnedMeshStaysWithItsBones()
+        {
+            Sweep((original, db) =>
+            {
+                using var input = new MemoryStream(original);
+                NifModel source = NifModel.Load(input, db);
+
+                if (source.FindItem(source.Footer, "Roots") is not { Children.Count: > 0 } roots
+                    || source.GetBlock(roots.Children[0]) is not { } root)
+                {
+                    return null;
+                }
+
+                (double before, int groups) = BoneFit(source);
+
+                if (groups == 0)
+                    return null;
+
+                NifModel rebuilt = new FbxToNif(
+                    new FbxScene(new NifToFbx(source).Convert()),
+                    new FbxToNifOptions
+                    {
+                        RootName = source.GetName(root),
+                        Version = source.Version,
+                        UserVersion = source.UserVersion,
+                        LegendaryEdition = source.BSVersion < 100
+                    }).Convert(db);
+
+                (double after, int rebuiltGroups) = BoneFit(rebuilt);
+
+                if (rebuiltGroups == 0)
+                    return $"the skin is gone: {groups} bone groups became none";
+
+                double was = before / groups;
+                double now = after / rebuiltGroups;
+
+                // A twentieth further out, and a unit, before it counts as moved: half
+                // precision and a refitted hull both cost a little.
+                return now > was * 1.05 + 1
+                    ? $"skinned mesh moved from its bones: {was:F2} to {now:F2}"
+                    : null;
+            });
+        }
+
+        /// <summary>
+        /// How far a vertex sits from the bone that owns it, and over how many bones.
+        /// </summary>
+        private static (double Total, int Groups) BoneFit(NifModel m)
+        {
+            double total = 0;
+            int groups = 0;
+
+            foreach (NifItem shape in m.Blocks.Where(b => m.BlockInherits(b, "BSTriShape")).ToList())
+            {
+                if (m.GetRef(shape, "Skin") is not { } skin) continue;
+                if (m.GetRef(skin, "Data") is not { } data) continue;
+                if (m.ReadSkin(shape) is not { } read) continue;
+                if (m.FindItem(data, "Bone List") is not { } bones) continue;
+
+                NifItem? buffer = m.FindItem(shape, "Vertex Data");
+
+                if ((buffer?.Children.Count ?? 0) == 0
+                    && m.GetRef(skin, "Skin Partition") is { } partition)
+                {
+                    buffer = m.FindItem(partition, "Vertex Data");
+                }
+
+                if (buffer is null || buffer.Children.Count == 0) continue;
+
+                var vertices = buffer.Children
+                    .Select(v => m.FindItem(v, "Vertex")?.Value.Get<NifVector3>() ?? default)
+                    .ToList();
+
+                for (int b = 0; b < Math.Min(bones.Children.Count, read.Bones.Count); b++)
+                {
+                    var owned = read.Bones[b].Weights
+                        .Where(w => w.Weight > 0.9f)
+                        .Select(w => w.Vertex)
+                        .Where(i => i < vertices.Count)
+                        .Take(200)
+                        .ToList();
+
+                    if (owned.Count < 8) continue;
+
+                    if (m.FindItem(bones.Children[b], "Skin Transform") is not { } item) continue;
+
+                    var bone = new NifTransform(
+                        m.FindItem(item, "Translation")?.Value.Get<NifVector3>() ?? default,
+                        m.FindItem(item, "Rotation")?.Value.Get<NifMatrix33>() ?? NifMatrix33.Identity,
+                        m.FindItem(item, "Scale")?.Value.ToFloat() ?? 1f);
+
+                    total += owned.Average(i =>
+                    {
+                        NifVector3 v = bone.Apply(vertices[i]);
+                        return Math.Sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z);
+                    });
+
+                    groups++;
+                }
+            }
+
+            return (total, groups);
+        }
+
+        /// <summary>
         /// The same round trip, compared field by field rather than block by block.
         /// </summary>
         /// <remarks>

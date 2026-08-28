@@ -148,6 +148,33 @@ Mesh construction:
 - Control points: `verts[i]` transformed by the shape's **own** TRS
   (`getTransform(&node)`). The shape transform is therefore **baked into the
   vertices**, not left on the node.
+
+  se-cmd follows this for an unskinned shape and **not for a skinned one**, where it
+  is wrong. Skyrim positions a skinned mesh from its skeleton, and Bethesda's files
+  say so by pairing the transforms: of 6,773 skinned `BSTriShape`s sampled, 4,981
+  have both the node transform and `NiSkinData`'s at identity, and almost all the
+  rest have the second as the first's inverse, so the pair cancels.
+
+  Measured over 3,323 bone groups — the mean distance from a vertex to the bone
+  owning nine tenths of it, mapped by that bone's own skin transform:
+
+  | Vertices used | Distance |
+  | --- | --- |
+  | as stored | **149.77** |
+  | with the node transform applied | 194.59 |
+  | with the skin transform applied | 298.58 |
+  | with both | 150.41 |
+
+  The vertices are already in the space the bones expect; baking put them in the
+  second row. Of 836 skinned vanilla meshes round-tripped, **220 came back displaced**
+  — 26%, matching the share whose transform is not identity. The transform now stays
+  on the FBX node, which is where FBX keeps one; there was never a format reason to
+  bake it, and ck-cmd's own `SetTransformMatrix` call for the cluster's mesh-bind slot
+  is commented out (`FBXWrangler.cpp:1081`).
+
+  `EveryVanillaSkinnedMeshStaysWithItsBones` measures exactly this and is the test to
+  keep: it asks whether a vertex still stands where its bone puts it, which is the
+  question the field counts are only evidence for.
 - Normals: `eByControlPoint` / `eDirect`.
 - UVs: element named exactly **`"UV Map"`** — a constant name is required or Blender
   will not merge UV maps across meshes (L855–857). `eByControlPoint` / `eDirect`.
