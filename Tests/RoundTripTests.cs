@@ -1523,6 +1523,38 @@ namespace SECmd.Tests
             Assert.True(checked_ > 0 || !source.Blocks.Any(b => b.Name == "BSLightingShaderProperty"));
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void BsxFlagsComeBackAgreeingWithTheGraph(string name)
+        {
+            // Where a rebuilt BSXFlags differs from the source's, it is because the
+            // source disagrees with its own contents: these are fixtures for a
+            // flag-fixing operation, plus one whose body is MO_QUAL_MOVING while its
+            // flags deny having a dynamic body. The value written is always the one the
+            // graph implies, which is the whole point of calculating it.
+            NifModel source = Load(name);
+
+            static uint? Stored(NifModel m) =>
+                m.Blocks.Where(b => b.Name == "BSXFlags")
+                    .Select(b => (uint?)m.GetUInt(b, "Integer Data"))
+                    .FirstOrDefault();
+
+            if (Stored(source) is not { } storedInSource)
+                return;
+
+            NifModel rebuilt = RoundTrip(source);
+
+            if (Stored(rebuilt) is not { } storedInRebuilt)
+                return;
+
+            // Whatever it holds, it holds what its own graph says it should.
+            Assert.Equal(rebuilt.Calculate(), storedInRebuilt);
+
+            // And where the two files differ, the source is the one out of step.
+            if (storedInSource != storedInRebuilt)
+                Assert.NotEqual(source.Calculate(), storedInSource);
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

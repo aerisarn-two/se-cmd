@@ -162,6 +162,24 @@ namespace SECmd.Tests
             // like. Writing LINEAR_KEY for it is normalisation, not loss.
             ["Interpolation"] = "0 is not a KeyType; an unset one becomes LINEAR_KEY",
 
+            // BSXFlags is calculated from the finished graph, never carried, because
+            // every bit is a statement about that graph (see `docs/bsxflags-spec.md`).
+            // So a file whose own flags disagree with its own contents comes back
+            // corrected, and all three fixtures that differ here are exactly that:
+            //
+            // - FixBSXFlags_AddExtEmit holds 1 while carrying a shader with external
+            //   emittance, so the calculated 512 sets the bit the file is missing.
+            // - FixBSXFlags_RemoveExtEmit holds 513 with no such shader anywhere, so
+            //   the calculated 0 clears a bit the file should not have. Both are
+            //   fixtures *for* a flag-fixing operation, and hold the unfixed value on
+            //   purpose.
+            // - Furniture_Col_SE holds 138 while its rigid body is MO_QUAL_MOVING,
+            //   which is what bit 6 asks about, so the calculated 202 sets it.
+            //
+            // Listed as a divergence rather than removed because the field does differ;
+            // it is on the by-design list because this is the design working.
+            ["Integer Data"] = "BSXFlags is calculated, and these files disagree with themselves",
+
             // Not a number about the mesh. Every vanilla value is 16-byte aligned and
             // they cluster in tight runs -- 0x1078Axxx and neighbours, spread across
             // 0x4DA140 to 0x171ECE60 -- which is a heap address from whatever machine
@@ -391,7 +409,6 @@ namespace SECmd.Tests
             ["Build Type"] = "mopper chunk-subdivides a compressed mesh; Bethesda's does not",
             ["Chunk Materials"] = "3 occurrences",
             ["Chunk Transforms"] = "3 occurrences",
-            ["Integer Data"] = "3 occurrences",
             ["Min"] = "3 occurrences",
             ["Num Materials"] = "3 occurrences",
             ["Num Transforms"] = "3 occurrences",
@@ -425,6 +442,12 @@ namespace SECmd.Tests
 
         private static bool Excused(NifDifference difference) =>
             Matches(ByDesign, difference) || Matches(Open, difference);
+
+        /// <summary>Whether one entry key covers a difference, by the rule above.</summary>
+        public static bool Covers(string key, NifDifference difference) =>
+            key.Contains('/', StringComparison.Ordinal)
+                ? difference.Path.Contains(key, StringComparison.Ordinal)
+                : key == difference.Field;
 
         private static bool Matches(Dictionary<string, string> entries, NifDifference difference)
         {
