@@ -23,11 +23,26 @@ namespace SECmd.Fbx
     public static class FbxMaterialWriter
     {
         /// <summary>Names the source block a material's texture set came from.</summary>
-        /// <summary>The properties the two shader flag words travel in.</summary>
-        public const string ShaderFlags1Property = "nif_shader_flags_1";
+        /// <summary>
+        /// The properties the two shader flag words travel in.
+        /// </summary>
+        /// <remarks>
+        /// ck-cmd's names and ck-cmd's encoding, so a scene passes between the two
+        /// tools: it writes them as `shader_flags_1` and `shader_flags_2` of FBX type
+        /// `int` (`FBXWrangler.cpp:714`) and reads them back the same way
+        /// (`FBXWrangler.cpp:3626`). The rest of this material already follows its
+        /// spelling -- `shader_type`, `environment_map_scale`, `refraction_strength` --
+        /// and a private name here would have made these two the exception.
+        ///
+        /// The words are unsigned and the property is signed, so anything with the top
+        /// bit set goes out negative: 0x82400301 travels as -2109734143. That is what
+        /// ck-cmd does too, casting through `FbxInt` and back, and two's complement
+        /// makes the round trip exact.
+        /// </remarks>
+        public const string ShaderFlags1Property = "shader_flags_1";
 
         /// <inheritdoc cref="ShaderFlags1Property"/>
-        public const string ShaderFlags2Property = "nif_shader_flags_2";
+        public const string ShaderFlags2Property = "shader_flags_2";
 
         public const string TextureSetIdProperty = "nif_texture_set";
 
@@ -103,10 +118,10 @@ namespace SECmd.Fbx
                 (double)material.RefractionStrength);
 
             if (material.ShaderFlags1 is { } flags1)
-                properties.SetUserString(ShaderFlags1Property, flags1.ToString(CultureInfo.InvariantCulture));
+                properties.Set(ShaderFlags1Property, "int", "Integer", FbxProperties.UserFlags, unchecked((int)flags1));
 
             if (material.ShaderFlags2 is { } flags2)
-                properties.SetUserString(ShaderFlags2Property, flags2.ToString(CultureInfo.InvariantCulture));
+                properties.Set(ShaderFlags2Property, "int", "Integer", FbxProperties.UserFlags, unchecked((int)flags2));
 
             if (material.AlphaProperty is { } alpha)
                 WriteAlphaSettings(properties, alpha);

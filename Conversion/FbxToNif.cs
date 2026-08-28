@@ -2503,7 +2503,7 @@ namespace SECmd.Conversion
             NifItem textureSet = BuildTextureSet(material);
             _model.SetRef(shader, "Texture Set", textureSet);
 
-            WriteShaderFlags(shader, properties);
+            WriteShaderFlags(shader, shape, holder, properties);
 
             _model.SetRef(shape, "Shader Property", shader);
 
@@ -2531,24 +2531,110 @@ namespace SECmd.Conversion
         /// into the shader word would hide where it comes from rather than fix it. So
         /// neither is forced, and the words go back exactly as they came.
         /// </remarks>
-        private void WriteShaderFlags(NifItem shader, FbxProperties properties)
+        private void WriteShaderFlags(
+            NifItem shader, NifItem shape, FbxObject holder, FbxProperties properties)
         {
+            bool carried = properties.Has(FbxMaterialWriter.ShaderFlags1Property)
+                           || properties.Has(FbxMaterialWriter.ShaderFlags2Property);
+
             Carry("Shader Flags 1", FbxMaterialWriter.ShaderFlags1Property);
             Carry("Shader Flags 2", FbxMaterialWriter.ShaderFlags2Property);
 
             void Carry(string field, string property)
             {
+                if (_model.FindItem(shader, field) is not { } item || !properties.Has(property))
+                    return;
+
+                // Signed on the way through, as ck-cmd stores it; two's complement puts
+                // the top bit back where it belongs.
+                item.Value.SetCount(unchecked((uint)properties.GetInt(property)));
+            }
+
+            if (carried)
+                return;
+
+            // Nothing travelled, so this is a material authored in a DCC tool. ck-cmd
+            // derives four bits for that case and se-cmd follows it, since a scene may
+            // pass through either tool (FBXWrangler.cpp:3445-3451 and :3576).
+            //
+            // Only reached when the words are absent: when they are present ck-cmd
+            // overwrites both wholesale at :3626, discarding everything it derived, and
+            // so does this.
+            (bool colours, bool translucent) = VertexColoursOf(shape);
+
+            Derive("Shader Flags 2", VertexColorsFlag, colours);
+            Derive("Shader Flags 1", VertexAlphaFlag, colours && translucent);
+            Derive("Shader Flags 1", SkinnedFlag, HasSkinDeformer(holder));
+            Derive("Shader Flags 1", SpecularFlag, properties.GetDouble("SpecularFactor") > 0.0);
+
+            void Derive(string field, uint bit, bool set)
+            {
                 if (_model.FindItem(shader, field) is not { } item)
                     return;
 
-                if (uint.TryParse(
-                        properties.GetString(property), NumberStyles.Integer,
-                        CultureInfo.InvariantCulture, out uint carried))
-                {
-                    item.Value.SetCount(carried);
-                }
+                uint value = item.Value.ToUInt();
+
+                item.Value.SetCount(set ? value | bit : value & ~bit);
             }
         }
+
+        /// <summary>nif.xml: "Required For Skinned Meshes".</summary>
+        private const uint SkinnedFlag = 1u << 1;
+
+        /// <summary>nif.xml: "Enables using alpha component of vertex colors".</summary>
+        private const uint VertexAlphaFlag = 1u << 3;
+
+        /// <summary>nif.xml: "Has Vertex Colors".</summary>
+        private const uint VertexColorsFlag = 1u << 5;
+
+        /// <summary>The specular bit, which ck-cmd ties to the material's factor.</summary>
+        private const uint SpecularFlag = 1u << 0;
+
+        /// <summary>
+        /// Whether the shape just built carries vertex colours, and whether any of them
+        /// is less than opaque.
+        /// </summary>
+        /// <remarks>
+        /// Asked of the shape's own vertex descriptor, which `BuildGeometry` has already
+        /// written by the time a material is built. The obvious-looking alternative --
+        /// whether a vertex has a `Vertex Colors` field -- is always true: the field is
+        /// conditional on this very flag, and it is present in the tree either way.
+        ///
+        /// ck-cmd asks the same of the data it has just built, `data->GetHasVertexColors()`
+        /// (`FBXWrangler.cpp:3445`), and takes the alpha bit from any colour under full
+        /// opacity (`:3315`).
+        /// </remarks>
+        private (bool Any, bool Translucent) VertexColoursOf(NifItem shape)
+        {
+            if (_model.FindItem(shape, "Vertex Data") is { Children.Count: > 0 } buffer)
+            {
+                var descriptor = new BSVertexDesc(
+                    _model.FindItem(shape, "Vertex Desc")?.Value.ToUInt64() ?? 0);
+
+                if (!descriptor.HasFlag(VertexFlags.Colors))
+                    return (false, false);
+
+                return (true, buffer.Children.Any(
+                    v => _model.FindItem(v, "Vertex Colors") is { } c
+                         && c.Value.Get<NifColor4>().A < 1f));
+            }
+
+            if (_model.GetRef(shape, "Data") is not { } data
+                || _model.GetUInt(data, "Has Vertex Colors") == 0)
+            {
+                return (false, false);
+            }
+
+            return (true, _model.FindItem(data, "Vertex Colors") is { } colours
+                          && colours.Children.Any(c => c.Value.Get<NifColor4>().A < 1f));
+        }
+
+        /// <summary>Whether the geometry under a holder is skinned, as ck-cmd asks it.</summary>
+        private bool HasSkinDeformer(FbxObject holder) =>
+            _scene.ChildrenOf(holder.Id)
+                .Where(o => o.Class == "Geometry")
+                .Any(g => _scene.ChildrenOf(g.Id)
+                    .Any(o => o.Class == "Deformer" && o.SubClass == "Skin"));
 
 
         /// <summary>

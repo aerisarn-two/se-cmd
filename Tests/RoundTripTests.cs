@@ -1472,6 +1472,57 @@ namespace SECmd.Tests
             }
         }
 
+        [Theory]
+        [MemberData(nameof(EveryFixture))]
+        public void AMaterialAuthoredWithoutFlagsGetsCkCmdsDerivedBits(string name)
+        {
+            // A material modelled in a DCC tool carries no flag words, and nif.xml's
+            // default claims vertex colours (bit 5 of 0x8021) whether the mesh has any
+            // or not. ck-cmd derives four bits for that case -- vertex colours, vertex
+            // alpha, skinned and specular (FBXWrangler.cpp:3445-3451 and :3576) -- and
+            // se-cmd follows it, since a scene may pass through either tool.
+            NifModel source = Load(name);
+            var scene = new FbxScene(new NifToFbx(source).Convert());
+
+            foreach (FbxObject material in scene.Objects.Where(o => o.Class == "Material"))
+            {
+                material.Properties.Remove(FbxMaterialWriter.ShaderFlags1Property);
+                material.Properties.Remove(FbxMaterialWriter.ShaderFlags2Property);
+            }
+
+            NifItem sourceRoot = source.GetBlock(source.FindItem(source.Footer, "Roots")!.Children[0])!;
+
+            NifModel rebuilt = new FbxToNif(scene, new FbxToNifOptions
+            {
+                RootName = source.GetName(sourceRoot),
+                Version = source.Version,
+                UserVersion = source.UserVersion,
+                LegendaryEdition = source.BSVersion < 100
+            }).Convert(Db);
+
+            int checked_ = 0;
+
+            foreach (NifItem shape in rebuilt.Blocks.Where(b => rebuilt.BlockInherits(b, "NiAVObject")))
+            {
+                if (rebuilt.GetRef(shape, "Shader Property") is not { } shader) continue;
+                if (rebuilt.FindItem(shader, "Shader Flags 2") is not { } two) continue;
+
+                // The descriptor's own flag, not the presence of the conditional field:
+                // `Vertex Colors` is conditional on this very flag and sits in the tree
+                // either way, so asking whether it exists always answers yes.
+                bool colours = rebuilt.FindItem(shape, "Vertex Desc") is { } desc
+                    ? new BSVertexDesc(desc.Value.ToUInt64()).HasFlag(VertexFlags.Colors)
+                    : rebuilt.GetRef(shape, "Data") is { } data
+                      && rebuilt.GetUInt(data, "Has Vertex Colors") != 0;
+
+                checked_++;
+
+                Assert.Equal(colours, (two.Value.ToUInt() & (1u << 5)) != 0);
+            }
+
+            Assert.True(checked_ > 0 || !source.Blocks.Any(b => b.Name == "BSLightingShaderProperty"));
+        }
+
         [Fact]
         public void EveryCollisionShapeSurvives()
         {

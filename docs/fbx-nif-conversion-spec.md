@@ -1074,6 +1074,30 @@ That second one is a difference in the *geometry*. Writing it into the shader wo
 make the flags agree with a mesh that still differs, hiding where the difference comes
 from. So neither bit is forced and the words go back exactly as they came.
 
+**ck-cmd agrees, and settled the design.** It carries both words too, as
+`shader_flags_1` and `shader_flags_2` of FBX type `int` (`FBXWrangler.cpp:714`), and
+reads them back at `:3626`. Crucially it derives four bits on a fresh shader first —
+clearing `Vertex_Colors` when the mesh has none, setting `Vertex_Alpha` when a colour is
+under full opacity, setting `Skinned` for a skinned mesh (`:3445–3451`), and setting or
+clearing `Specular` from the material's specular factor (`:3576`) — and then, if the
+material carries the words at all, **overwrites both wholesale**, discarding everything
+it derived. Carried beats derived in both tools.
+
+se-cmd therefore uses ck-cmd's property names and ck-cmd's encoding, so a scene passes
+between the two. The words are unsigned and the property is signed, so anything with the
+top bit set travels negative — `0x82400301` goes out as `-2109734143` — which is what
+ck-cmd does, casting through `FbxInt` and back; two's complement makes it exact.
+
+And se-cmd now applies ck-cmd's four derived bits in the case they are actually for: a
+material that carries no words, which is one authored in a DCC tool. That matters most
+for `Vertex_Colors`, since nif.xml's default for flags 2 is `0x8021` and bit 5 of it
+claims vertex colours whether the mesh has any or not.
+
+The flag is read from the shape's own **vertex descriptor**, which `BuildGeometry` has
+already written by the time a material is built. Asking instead whether a vertex has a
+`Vertex Colors` field always answers yes: that field is conditional on this very flag and
+sits in the tree either way.
+
 #### 5.3.2 Effect shaders
 
 The two shader classes share almost no fields: an effect shader has its own source and
