@@ -300,7 +300,14 @@ namespace SECmd.Tests
             ["Min"] = "Havok quantises the mesh it was given, not the one Bethesda had",
             ["Offset"] = "the MOPP origin's margin is not constant in vanilla either",
 
-            ["Entity B"] = "a constraint that named only one body comes back naming two",
+            // A constraint joins two bodies and se-cmd names both, which is what 650 of
+            // the 652 vanilla constraints sampled do. The two that do not are ragdoll
+            // constraints with a null Entity B, and the fixture here is a third such
+            // case -- a breakable constraint naming one body, where all three breakable
+            // constraints in the sample name two. Reproducing the one-sided form would
+            // mean carrying "this constraint names only one body" across a scene to
+            // rebuild a reference the format says should be there.
+            ["Entity B"] = "a one-sided constraint, which 650 of 652 vanilla ones are not",
 
             // Bethesda over-allocates this array and leaves the rest empty. Every one of
             // the 419 multi-target controllers sampled from the game has null slots, and
