@@ -1756,8 +1756,10 @@ namespace SECmd.Conversion
             // the mesh is the union of them all. Converting only the first drops
             // whole sections of anything split across several, which real armour
             // routinely is.
-            foreach ((NifItem source, List<ushort>? vertexMap) in triangleSources)
+            for (int p = 0; p < triangleSources.Count; p++)
             {
+                (NifItem source, List<ushort>? vertexMap) = triangleSources[p];
+
                 if (_model.FindItem(source, "Triangles") is not { } triangles)
                     continue;
 
@@ -1785,8 +1787,15 @@ namespace SECmd.Conversion
                     // was a mesh with 219 vertices no triangle used, which is what sent
                     // this the wrong way for a while: the vertices were never the
                     // problem, the triangles that named them had been thrown away.
-                    if (t.V1 < mesh.Vertices.Count && t.V2 < mesh.Vertices.Count && t.V3 < mesh.Vertices.Count)
-                        mesh.Triangles.Add(t);
+                    if (t.V1 >= mesh.Vertices.Count || t.V2 >= mesh.Vertices.Count || t.V3 >= mesh.Vertices.Count)
+                        continue;
+
+                    mesh.Triangles.Add(t);
+
+                    // Which partition drew it. Only worth saying when there is more
+                    // than one; a shape with a single partition has one answer.
+                    if (triangleSources.Count > 1)
+                        mesh.TrianglePartitions.Add(p);
                 }
             }
 

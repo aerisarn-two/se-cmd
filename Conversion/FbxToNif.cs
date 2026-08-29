@@ -2078,7 +2078,11 @@ namespace SECmd.Conversion
             // been converted yet, so skins are wired up once the whole tree is
             // built.
             if (skin is not null)
-                _pendingSkins.Add((shape, skin, mesh.Vertices.Count, mesh.Triangles, geometry));
+            {
+                _pendingSkins.Add((
+                    shape, skin, mesh.Vertices.Count,
+                    mesh.Triangles, mesh.TrianglePartitions, geometry));
+            }
 
             return shape;
         }
@@ -2199,7 +2203,7 @@ namespace SECmd.Conversion
         /// them, remapped to the vertices that partition lists.
         /// </remarks>
         private readonly List<(NifItem Shape, SkinData Skin, int VertexCount,
-            List<NifTriangle> Triangles, FbxObject Geometry)>
+            List<NifTriangle> Triangles, List<int> TrianglePartitions, FbxObject Geometry)>
             _pendingSkins = [];
 
         /// <summary>
@@ -2257,10 +2261,23 @@ namespace SECmd.Conversion
             var triangles = order.Select(i => mesh.Triangles[i]).ToList();
             var polygons = order.Select(i => mesh.TrianglePolygons[i]).ToList();
 
+            // The partition each triangle is drawn by moves with it. Left in place it
+            // would still be a list of the right length, describing the triangles that
+            // used to be at those indices.
+            var partitions = mesh.TrianglePartitions.Count == mesh.Triangles.Count
+                ? order.Select(i => mesh.TrianglePartitions[i]).ToList()
+                : null;
+
             mesh.Triangles.Clear();
             mesh.Triangles.AddRange(triangles);
             mesh.TrianglePolygons.Clear();
             mesh.TrianglePolygons.AddRange(polygons);
+
+            if (partitions is not null)
+            {
+                mesh.TrianglePartitions.Clear();
+                mesh.TrianglePartitions.AddRange(partitions);
+            }
 
             return sizes;
 
@@ -2288,11 +2305,12 @@ namespace SECmd.Conversion
             // on which block it was rather than on what is in it (§5.2.1).
             var shared = new Dictionary<int, (NifItem Data, NifItem Partition)>();
 
-            foreach ((NifItem shape, SkinData skin, int vertexCount, var triangles, FbxObject geometry) in _pendingSkins)
+            foreach ((NifItem shape, SkinData skin, int vertexCount, var triangles,
+                      var trianglePartitions, FbxObject geometry) in _pendingSkins)
             {
                 var missing = _model.WriteSkin(
                     shape, skin, _nodesByName, root, vertexCount, triangles,
-                    _options.SkinInstanceType, shared);
+                    _options.SkinInstanceType, shared, trianglePartitions);
 
                 foreach (string bone in missing)
                     Warnings.Add($"{_model.GetName(shape)}: no node named \"{bone}\", its influence is dropped");

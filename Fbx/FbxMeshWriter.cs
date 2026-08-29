@@ -179,6 +179,15 @@ namespace SECmd.Fbx
                 layerElements.Add("LayerElementColor");
             }
 
+            // Which partition draws each face, when the shape is split. FBX's own
+            // per-face channel, so nothing is invented to carry it.
+            if (mesh.TrianglePartitions.Count == mesh.Triangles.Count
+                && mesh.TrianglePartitions.Count > 0)
+            {
+                AddPolygonGroupElement(geometry, mesh.TrianglePartitions);
+                layerElements.Add("LayerElementPolygonGroup");
+            }
+
             node.Nodes.Add(BuildLayer(layerElements));
 
             return geometry;
@@ -200,6 +209,31 @@ namespace SECmd.Fbx
         /// </remarks>
         /// <summary>The name of the UV set carrying the two unchannelled vertex words.</summary>
         public const string VertexExtraElementName = "nif_vertex_extra";
+
+        /// <summary>
+        /// Adds the polygon-group element saying which partition draws each face.
+        /// </summary>
+        /// <remarks>
+        /// `LayerElementPolygonGroup` is FBX's own per-face integer channel, and "which
+        /// group is this face in" is what it means, so a skin partition needs no
+        /// invented channel here either.
+        /// </remarks>
+        public static void AddPolygonGroupElement(FbxObject geometry, IReadOnlyList<int> perPolygon)
+        {
+            var groups = new int[perPolygon.Count];
+
+            for (int i = 0; i < perPolygon.Count; i++)
+                groups[i] = perPolygon[i];
+
+            var element = new FbxNode("LayerElementPolygonGroup", 0);
+            element.Nodes.Add(new FbxNode("Version", LayerElementVersion));
+            element.Nodes.Add(new FbxNode("Name", string.Empty));
+            element.Nodes.Add(new FbxNode("MappingInformationType", "ByPolygon"));
+            element.Nodes.Add(new FbxNode("ReferenceInformationType", "Direct"));
+            element.Nodes.Add(new FbxNode("PolygonGroup", groups));
+
+            geometry.Node.Nodes.Add(element);
+        }
 
         public static void AddPerPolygonMaterialElement(FbxObject geometry, IReadOnlyList<int> perPolygon)
         {

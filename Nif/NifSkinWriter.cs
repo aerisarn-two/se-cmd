@@ -50,7 +50,8 @@ namespace SECmd.Nif
             int vertexCount,
             IReadOnlyList<NifTriangle> triangles,
             string fallbackInstanceType = "BSDismemberSkinInstance",
-            Dictionary<int, (NifItem Data, NifItem Partition)>? shared = null)
+            Dictionary<int, (NifItem Data, NifItem Partition)>? shared = null,
+            IReadOnlyList<int>? trianglePartitions = null)
         {
             var missing = new List<string>();
 
@@ -120,7 +121,8 @@ namespace SECmd.Nif
                     boneRefs.Children[i].Value.SetLink(model.IndexOf(nodes[i]));
             }
 
-            var groups = SplitIntoPartitions(skin, bones.Count, vertexCount, triangles);
+            var groups = SplitIntoPartitions(
+                skin, bones.Count, vertexCount, triangles, trianglePartitions);
 
             // A reused block is already filled, by the shape that got there first.
             // Writing it again would be writing the same thing twice, and the second
@@ -134,7 +136,7 @@ namespace SECmd.Nif
             // One body-part entry per partition. The slots are what make this a
             // dismember instance rather than a plain skin, so they are written here,
             // once the partitions they describe are known.
-            WriteBodySlots(model, instance, skin, groups.Count);
+            WriteBodySlots(model, instance, skin, groups);
 
             // BSTriShape names the field Skin, NiGeometry names it Skin Instance.
             if (model.FindItem(shape, "Skin Instance") is not null)
@@ -156,6 +158,188 @@ namespace SECmd.Nif
 
             /// <summary>Triangles in global vertex indices; remapped when written.</summary>
             public List<NifTriangle> Triangles { get; } = [];
+
+            /// <summary>
+            /// Which carried partition this came from, or -1 when it was derived here.
+            /// </summary>
+            /// <remarks>
+            /// A body slot describes a body part, not a draw call. When a partition has
+            /// to be split again to fit sixty bones, both halves are still the same
+            /// body part and must carry the same slot -- otherwise the second half
+            /// silently becomes whatever slot happens to sit at its index, and a
+            /// cuirass stops hiding the torso it covers.
+            /// </remarks>
+            public int SourceSlot { get; set; } = -1;
+        }
+
+        /// <summary>
+        /// The split the scene carried, or null when it carried none.
+        /// </summary>
+        /// <remarks>
+        /// Triangles are assigned from the polygon groups rather than worked out from
+        /// which partition holds their vertices. Deriving it from the vertices is what
+        /// ck-cmd does (`FBXWrangler.cpp:2845`) and it cannot answer for a triangle on
+        /// a seam, whose three vertices are all in both partitions -- and a seam is
+        /// exactly where a body part ends, so the ambiguous triangles are the ones that
+        /// decide where a limb comes off.
+        ///
+        /// The bones follow from the triangles: a partition draws with whatever moves
+        /// the vertices it has. Taking the carried bone list instead would trust two
+        /// things to agree that nothing has checked.
+        /// </remarks>
+        private static List<PartitionGroup>? CarriedPartitions(
+            SkinData skin,
+            IReadOnlyList<NifTriangle> triangles,
+            IReadOnlyList<int>? trianglePartitions,
+            Dictionary<ushort, List<(int Bone, float Weight)>> byVertex)
+        {
+            if (skin.Partitions.Count < 2
+                || trianglePartitions is null
+                || trianglePartitions.Count != triangles.Count)
+            {
+                return null;
+            }
+
+            var groups = new List<PartitionGroup>(skin.Partitions.Count);
+
+            for (int p = 0; p < skin.Partitions.Count; p++)
+                groups.Add(new PartitionGroup { SourceSlot = p });
+
+            for (int i = 0; i < triangles.Count; i++)
+            {
+                int at = trianglePartitions[i];
+
+                // A group index the scene invented past the end of its own partition
+                // list is not a partition, and dropping the triangle would lose
+                // geometry. It goes in the first, which is where an unsplit shape's
+                // triangles all are anyway.
+                if (at < 0 || at >= groups.Count)
+                    at = 0;
+
+                groups[at].Triangles.Add(triangles[i]);
+            }
+
+            // A partition no triangle landed in draws nothing. Keeping it would write
+            // an empty slice and a body slot describing no geometry.
+            groups.RemoveAll(g => g.Triangles.Count == 0);
+
+            if (groups.Count == 0)
+                return null;
+
+            foreach (PartitionGroup group in groups)
+                FillFromTriangles(group, byVertex);
+
+            return groups;
+        }
+
+        /// <summary>The vertices and bones a group's triangles imply.</summary>
+        private static void FillFromTriangles(
+            PartitionGroup group, Dictionary<ushort, List<(int Bone, float Weight)>> byVertex)
+        {
+            var used = new SortedSet<ushort>();
+            var bones = new SortedSet<int>();
+
+            foreach (NifTriangle triangle in group.Triangles)
+            {
+                foreach (ushort vertex in new[] { triangle.V1, triangle.V2, triangle.V3 })
+                {
+                    used.Add(vertex);
+
+                    if (byVertex.TryGetValue(vertex, out var influences))
+                    {
+                        foreach ((int bone, float _) in influences)
+                            bones.Add(bone);
+                    }
+                }
+            }
+
+            group.Vertices.Clear();
+            group.Vertices.AddRange(used);
+            group.Bones.Clear();
+            group.Bones.AddRange(bones);
+        }
+
+        /// <summary>
+        /// Splits any partition drawing with more bones than the palette holds.
+        /// </summary>
+        /// <remarks>
+        /// The limit is the renderer's: a partition is drawn in one pass against a
+        /// palette of <see cref="MaxBonesPerPartition"/> matrices, and a partition
+        /// naming more than that is a partition the game cannot draw. An FBX authored
+        /// anywhere else has no reason to have respected it.
+        ///
+        /// Splitting rather than dropping, so nothing is lost: the triangles are dealt
+        /// into as many slices as it takes, each within the palette, and every slice
+        /// keeps the body slot of the partition it came from -- both halves of a split
+        /// torso are still the torso.
+        /// </remarks>
+        private static List<PartitionGroup> EnforceBoneLimit(
+            List<PartitionGroup> groups, Dictionary<ushort, List<(int Bone, float Weight)>> byVertex)
+        {
+            if (groups.All(g => g.Bones.Count <= MaxBonesPerPartition))
+                return groups;
+
+            var result = new List<PartitionGroup>(groups.Count);
+
+            foreach (PartitionGroup group in groups)
+            {
+                if (group.Bones.Count <= MaxBonesPerPartition)
+                {
+                    result.Add(group);
+                    continue;
+                }
+
+                var pieces = new List<PartitionGroup>();
+                var boneSets = new List<HashSet<int>>();
+
+                foreach (NifTriangle triangle in group.Triangles)
+                {
+                    var needed = new HashSet<int>();
+
+                    foreach (ushort vertex in new[] { triangle.V1, triangle.V2, triangle.V3 })
+                    {
+                        if (byVertex.TryGetValue(vertex, out var influences))
+                        {
+                            foreach ((int bone, float _) in influences)
+                                needed.Add(bone);
+                        }
+                    }
+
+                    int at = -1;
+
+                    for (int i = 0; i < pieces.Count; i++)
+                    {
+                        // The union, counted before anything is added, so a triangle
+                        // that would overflow does not corrupt the set it was tested
+                        // against.
+                        int union = boneSets[i].Count + needed.Count(b => !boneSets[i].Contains(b));
+
+                        if (union <= MaxBonesPerPartition)
+                        {
+                            at = i;
+                            break;
+                        }
+                    }
+
+                    if (at < 0)
+                    {
+                        pieces.Add(new PartitionGroup { SourceSlot = group.SourceSlot });
+                        boneSets.Add([]);
+                        at = pieces.Count - 1;
+                    }
+
+                    pieces[at].Triangles.Add(triangle);
+                    boneSets[at].UnionWith(needed);
+                }
+
+                foreach (PartitionGroup piece in pieces)
+                {
+                    FillFromTriangles(piece, byVertex);
+                    result.Add(piece);
+                }
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -174,9 +358,20 @@ namespace SECmd.Nif
         /// what it was before splitting existed.
         /// </remarks>
         private static List<PartitionGroup> SplitIntoPartitions(
-            SkinData skin, int boneCount, int vertexCount, IReadOnlyList<NifTriangle> triangles)
+            SkinData skin,
+            int boneCount,
+            int vertexCount,
+            IReadOnlyList<NifTriangle> triangles,
+            IReadOnlyList<int>? trianglePartitions)
         {
             var byVertex = skin.ByVertex();
+
+            // What the scene said, when it said anything. A shape that arrived split
+            // is written back split the same way: the division is authored -- on a
+            // dismembered shape it is the body parts -- and re-deriving it throws away
+            // a fact the file was carrying and the packing below cannot reconstruct.
+            if (CarriedPartitions(skin, triangles, trianglePartitions, byVertex) is { } carried)
+                return EnforceBoneLimit(carried, byVertex);
 
             // The common case: everything fits, so the partition is the whole mesh
             // and the vertex map is the identity.
@@ -272,15 +467,16 @@ namespace SECmd.Nif
         /// is parsed as a number, so a slot from a skeleton this build does not know
         /// still survives.
         /// </remarks>
-        private static void WriteBodySlots(NifModel model, NifItem instance, SkinData skin, int partitions)
+        private static void WriteBodySlots(
+            NifModel model, NifItem instance, SkinData skin, List<PartitionGroup> groups)
         {
-            if (skin.BodySlots.Count == 0 || partitions == 0)
+            if (skin.BodySlots.Count == 0 || groups.Count == 0)
                 return;
 
             // One entry per partition, not per carried slot: the two agree when the
             // file came from a NIF whose partitions were rebuilt the same way, and
             // when they do not, the array has to match the partitions it describes.
-            if (model.SetArraySize(instance, "Num Partitions", "Partitions", partitions)
+            if (model.SetArraySize(instance, "Num Partitions", "Partitions", groups.Count)
                 is not { } slots)
             {
                 return;
@@ -293,9 +489,18 @@ namespace SECmd.Nif
 
             for (int i = 0; i < slots.Children.Count; i++)
             {
-                // A partition past the end of the carried list takes the last slot,
-                // which is better than the torso every one of them used to get.
-                (string name, uint flags) = skin.BodySlots[Math.Min(i, skin.BodySlots.Count - 1)];
+                // The slot of the partition this group came from, when it came from
+                // one. A partition split in two to fit the bone palette is still one
+                // body part, and both halves say so; taking the slot at the group's own
+                // index instead would give the second half whatever slot happened to
+                // sit there, and a cuirass would stop hiding the torso it covers.
+                //
+                // A group with no source -- the packing derived it -- falls back to its
+                // index, and past the end of the carried list to the last slot, which
+                // is better than the torso every one of them used to get.
+                int from = groups[i].SourceSlot >= 0 ? groups[i].SourceSlot : i;
+
+                (string name, uint flags) = skin.BodySlots[Math.Min(from, skin.BodySlots.Count - 1)];
 
                 uint part =
                     model.Database.TryGetEnumOptionValue("BSDismemberBodyPartType", name, out uint value)

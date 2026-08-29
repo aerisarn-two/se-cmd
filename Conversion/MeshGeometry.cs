@@ -59,6 +59,22 @@ namespace SECmd.Conversion
         public List<int> TriangleMaterials { get; } = [];
 
         /// <summary>
+        /// Which skin partition draws each triangle, when the shape is split.
+        /// </summary>
+        /// <remarks>
+        /// The half of the split a deformer cannot carry. A deformer says which
+        /// vertices a partition covers, and a triangle whose three vertices are all in
+        /// one partition usually belongs to it -- but a triangle on the seam has all
+        /// three in *both*, and asking the vertices which partition draws it has no
+        /// answer. ck-cmd derives it that way and inherits the ambiguity
+        /// (`FBXWrangler.cpp:2845`).
+        ///
+        /// So it travels as a polygon group, which is FBX's own per-face integer
+        /// channel and means exactly this. Empty when the shape was never split.
+        /// </remarks>
+        public List<int> TrianglePartitions { get; } = [];
+
+        /// <summary>
         /// The fourth word of an SSE vertex, where the shape has no tangents.
         /// </summary>
         /// <remarks>

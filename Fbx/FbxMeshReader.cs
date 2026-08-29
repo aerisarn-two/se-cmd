@@ -197,6 +197,12 @@ namespace SECmd.Fbx
 
             var colors = LayerElement.Find(geometry, "LayerElementColor", "Colors");
 
+            // Which partition draws each face, when the scene says the skin is split.
+            var polygonGroups = geometry.Node.Nodes
+                .FirstOrDefault(n => n.Name == "LayerElementPolygonGroup")
+                ?.Nodes.FirstOrDefault(n => n.Name == "PolygonGroup")
+                ?.Properties.FirstOrDefault() as int[];
+
             var mesh = new MeshGeometry();
             var seen = new Dictionary<VertexKey, ushort>();
             bool overflowed = false;
@@ -255,6 +261,11 @@ namespace SECmd.Fbx
 
                     mesh.Triangles.Add(new NifTriangle(a, b, c));
                     mesh.TrianglePolygons.Add(polygon);
+
+                    // Every triangle a fanned polygon becomes is drawn by the partition
+                    // the polygon was in.
+                    if (polygonGroups is not null && polygon < polygonGroups.Length)
+                        mesh.TrianglePartitions.Add(polygonGroups[polygon]);
                 }
 
                 polygonCorners.Clear();
