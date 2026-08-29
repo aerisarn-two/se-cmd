@@ -186,38 +186,8 @@ namespace SECmd.Havok
                 if (Attempt(() => ParseCompressedMeshOutput(
                         Run("-ccmm", BuildCompressedMeshInput(geometries, materials)))) is { } carried)
                 {
-                    // It worked, so this binary has the option. Nothing that happens
-                    // to a later mesh can unsay that.
-                    _materialsProven = true;
                     return carried;
                 }
-
-                // Only when it declined, never when it merely failed.
-                //
-                // This latch is process-wide and one-way: it exists to ask a binary
-                // once whether it has -ccmm, since probing per mesh made an older
-                // mopper pay nine failed runs for every shape. But it was flipped by
-                // any failure at all, and three timeouts under load are a failure. One
-                // congested mesh early in a run therefore turned -ccmm off for
-                // everything after it, and every later multi-material collision was
-                // refused outright -- 1,564 of the 1,876 compressed-mesh shapes in a
-                // whole-corpus sweep lost their collision that way, all but five of
-                // them without mopper having been run at all.
-                //
-                // A missing option is deterministic: the process starts and exits
-                // non-zero, every time. A timeout or a broken pipe is not, and says
-                // nothing about what this binary supports.
-                //
-                // Nor does anything, once -ccmm has been seen to work. That is the
-                // fault this latch actually had: a shape Havok will not index fails
-                // -ccmm exactly as a mopper without -ccmm does, so the first
-                // unbuildable mesh in a run was read as a binary that cannot carry
-                // materials, and every multi-material collision after it was refused
-                // without mopper being asked. Over the whole corpus that turned some
-                // eighty meshes Havok genuinely rejects into 1,572 that lost their
-                // collision.
-                if (!Transient && !_materialsProven)
-                    _supportsMaterials = false;
             }
 
             // Falling back with several materials would silently merge them into one
@@ -650,18 +620,67 @@ namespace SECmd.Havok
         /// way through a sweep of the corpus -- so the same input did not produce the
         /// same file twice, which is worse than a shape that is always missing.
         /// </remarks>
-        /// <summary>Whether the resolved mopper understands <c>-ccmm</c>.</summary>
-        /// <remarks>
-        /// Assumed until one run says otherwise, then remembered. The flag is this
+        /// <summary>
+        /// Whether the resolved mopper understands <c>-ccmm</c>. The flag is this
         /// fork's; a stock niftools mopper has only <c>-ccm</c>.
+        /// </summary>
+        /// <remarks>
+        /// Asked of the binary, by building a MOPP for one triangle carrying one
+        /// material, once per process. It used to be inferred instead -- assumed until
+        /// a run failed, then remembered -- and that reads two different questions as
+        /// one. A shape Havok will not index fails <c>-ccmm</c> in exactly the way a
+        /// mopper without <c>-ccmm</c> does, so the first unbuildable mesh disabled
+        /// materials for every mesh after it, and 1,572 of the corpus's 1,876
+        /// compressed-mesh shapes lost their collision to some eighty that Havok
+        /// genuinely rejects.
+        ///
+        /// A triangle Havok is certain to accept separates them. If it builds, the
+        /// option is there and every later failure belongs to its own mesh; if it does
+        /// not, no mesh will fare better and the fallback is right for all of them.
+        /// Either way the answer comes before any real geometry, so it cannot depend on
+        /// what is being converted -- which is the property the old scheme lacked.
+        ///
+        /// One run, against the nine the old scheme wasted on the first shape of a
+        /// sweep whenever the binary had no <c>-ccmm</c>.
         /// </remarks>
-        private static bool SupportsMaterials => _supportsMaterials;
+        private static bool SupportsMaterials => MaterialProbe.Value;
 
+        private static readonly Lazy<bool> MaterialProbe = new(ProbeMaterials, isThreadSafe: true);
 
-        private static volatile bool _supportsMaterials = true;
+        /// <summary>Builds a one-triangle MOPP with a material table, and says whether it worked.</summary>
+        private static bool ProbeMaterials()
+        {
+            // A right triangle a metre on a side: big enough that welding cannot
+            // collapse it, small enough to build instantly.
+            var geometry = new MoppGeometry(
+                [new NifVector3(0f, 0f, 0f), new NifVector3(1f, 0f, 0f), new NifVector3(0f, 1f, 0f)],
+                [new NifTriangle(0, 1, 2)]);
 
-        /// <summary>Whether a -ccmm run has ever succeeded in this process.</summary>
-        private static volatile bool _materialsProven;
+            // Its own instance, so the probe's diagnostics do not stand in for a
+            // real conversion's.
+            var probe = new MopperProcessGenerator();
+
+            if (!probe.IsAvailable)
+                return false;
+
+            try
+            {
+                return ParseCompressedMeshOutput(
+                    probe.Run("-ccmm", BuildCompressedMeshInput([geometry], 1))) is not null;
+            }
+            catch (MoppBackendException)
+            {
+                return false;
+            }
+            catch (TimeoutException)
+            {
+                return false;
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+        }
 
         /// <summary>
         /// Whether the last <see cref="Attempt"/> failed for a reason that might not
