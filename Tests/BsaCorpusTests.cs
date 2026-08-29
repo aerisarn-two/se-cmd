@@ -331,13 +331,13 @@ namespace SECmd.Tests
                         LegendaryEdition = source.BSVersion < 100
                     }).Convert(db);
 
-                (double after, int rebuiltGroups) = BoneFit(rebuilt);
+                (double after, int rebuiltMeasured) = BoneFit(rebuilt);
 
-                if (rebuiltGroups == 0)
-                    return $"the skin is gone: {groups} bone groups became none";
+                if (rebuiltMeasured == 0)
+                    return $"the skin is gone: {groups} owned vertices became none";
 
                 double was = before / groups;
-                double now = after / rebuiltGroups;
+                double now = after / rebuiltMeasured;
 
                 // A twentieth further out, and a unit, before it counts as moved: half
                 // precision and a refitted hull both cost a little.
@@ -348,12 +348,12 @@ namespace SECmd.Tests
         }
 
         /// <summary>
-        /// How far a vertex sits from the bone that owns it, and over how many bones.
+        /// How far a vertex sits from the bone that owns it, over how many vertices.
         /// </summary>
-        private static (double Total, int Groups) BoneFit(NifModel m)
+        private static (double Total, int Vertices) BoneFit(NifModel m)
         {
             double total = 0;
-            int groups = 0;
+            int measured = 0;
 
             foreach (NifItem shape in m.Blocks.Where(b => m.BlockInherits(b, "BSTriShape")).ToList())
             {
@@ -382,10 +382,20 @@ namespace SECmd.Tests
                         .Where(w => w.Weight > 0.9f)
                         .Select(w => w.Vertex)
                         .Where(i => i < vertices.Count)
-                        .Take(200)
                         .ToList();
 
-                    if (owned.Count < 8) continue;
+                    // No floor on how many vertices a bone must own.
+                    //
+                    // There was one, of eight, to keep a tiny group's average from
+                    // swinging a mean of means. Measuring per vertex makes it
+                    // unnecessary -- a bone owning one vertex now contributes one
+                    // vertex -- and leaves it actively wrong, because whether a group
+                    // clears the floor depends on how the bone list is arranged.
+                    // `winteraspen06` has TrunkBone twice on one shape, owning 24
+                    // vertices and 5, with the same pose and the same weights either
+                    // way; merged, the 5 cross the floor and join the measurement, and
+                    // a rebuild that moved nothing read as a mesh off its bones.
+                    if (owned.Count == 0) continue;
 
                     if (m.FindItem(bones.Children[b], "Skin Transform") is not { } item) continue;
 
@@ -394,17 +404,27 @@ namespace SECmd.Tests
                         m.FindItem(item, "Rotation")?.Value.Get<NifMatrix33>() ?? NifMatrix33.Identity,
                         m.FindItem(item, "Scale")?.Value.ToFloat() ?? 1f);
 
-                    total += owned.Average(i =>
+                    // Summed per vertex, not averaged per bone, so the answer is a
+                    // mean over vertices rather than a mean of means.
+                    //
+                    // Averaging per bone made the measure depend on how the bone list
+                    // happened to be arranged. Skyrim's conifers list one bone once per
+                    // partition -- `winteraspen06` gives TrunkBone two entries with the
+                    // same pose and disjoint vertices -- and a rebuild that merges those
+                    // into one entry moves no vertex at all, yet changed both the terms
+                    // and the divisor of a mean of means, and reported a mesh off its
+                    // bones. What is being asked is whether a vertex sits where the bone
+                    // owning it puts it, which is a question about vertices.
+                    foreach (int i in owned)
                     {
                         NifVector3 v = bone.Apply(vertices[i]);
-                        return Math.Sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z);
-                    });
-
-                    groups++;
+                        total += Math.Sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z);
+                        measured++;
+                    }
                 }
             }
 
-            return (total, groups);
+            return (total, measured);
         }
 
         /// <summary>
