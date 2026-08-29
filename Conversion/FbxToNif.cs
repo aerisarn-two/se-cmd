@@ -1794,63 +1794,108 @@ namespace SECmd.Conversion
         /// What each control point's skinning looks like, for telling vertices apart.
         /// </summary>
         /// <remarks>
-        /// Only identity matters, not the format: two control points moved by the same
-        /// bones with the same weights must come out equal, and any difference must
-        /// come out different. Sorted so the order the clusters happened to be read in
-        /// cannot make two identical vertices look different.
+        /// Four pairs of a bone and a weight, heaviest first, and not the raw cluster
+        /// list that produced them. A NIF vertex holds exactly four influences, so four
+        /// pairs are the whole of what the file will remember about how this point
+        /// moves, and the key has to be a statement about that rather than about what
+        /// the scene happened to arrive carrying.
         ///
-        /// Each influence is a bone *name* and a weight, not a bone index and a weight,
-        /// because an index is a fact about a list and not about the binding. A skin can
-        /// hold one bone twice -- 51 of the 5,872 skinned shapes in a 4,000-mesh sample
-        /// do, `dlc01/landscape/trees/winteraspen02.nif` among them -- and then one
-        /// binding is spelled two ways, and two control points moved identically are
-        /// held apart by which entry happened to record them.
+        /// The trim happens later -- `NifSkinWriter.LimitInfluences`, after the reader
+        /// has already decided what the vertices are -- so keyed on the raw list, two
+        /// control points identical in their four heaviest influences are split apart
+        /// by a fifth that is about to be discarded, and come out as two vertices
+        /// holding the same four weights: a difference invented on the way through and
+        /// then thrown away. The weights are renormalised here for the same reason,
+        /// since that is what the vertex will hold, and two points whose kept four
+        /// scale to the same numbers are the same vertex whatever they summed to
+        /// before.
         ///
-        /// On the game's own files this changes nothing: rebuilt against list positions
-        /// and against names, the same 6,000 meshes give the same 34,959 vertices across
-        /// the same 70 shapes. The duplicate entries vanilla ships do not happen to
-        /// carry the pair of control points it would take. It is kept because the
-        /// invariant is worth having rather than because the corpus needed it -- a scene
-        /// merged from two exports, or any authoring tool that emits a bone twice, gets
-        /// there without vanilla's help, and the failure is silent when it does.
+        /// A NIF cannot reach that case, because four influences is all one stores, so
+        /// a scene converted from one never presents a fifth: rebuilt both ways, 2,500
+        /// meshes give the same 5,118,725 vertices across the same 13,255 skinned
+        /// shapes. This is for FBX that came from somewhere else, where eight or more
+        /// influences on a vertex is ordinary and the fifth is exactly what a DCC tool
+        /// hands over.
         ///
-        /// A bone with no name falls back to its list position. Two unnamed bones must
-        /// not collide: merging control points that move differently drops one set of
-        /// weights, which is the one direction of error this key exists to prevent.
+        /// Selection mirrors `SkinData.ByVertex` and `LimitInfluences` exactly --
+        /// weight descending, four taken, rescaled when one was dropped or the total
+        /// was never one -- since a key that picks a different four than the writer
+        /// keeps is answering a question nobody asked. Ties break on the name, which
+        /// `List.Sort` leaves to chance; two points bound the same way must key the
+        /// same, and equal weights are the one case where the writer's own choice is
+        /// arbitrary.
+        ///
+        /// Each influence names its bone rather than its place in the bone list,
+        /// because the place is a fact about the list and not about the binding. A skin
+        /// can hold one bone twice -- 51 of the 5,872 skinned shapes in a 4,000-mesh
+        /// sample do, `dlc01/landscape/trees/winteraspen02.nif` among them -- and then
+        /// one binding is spelled two ways, and two control points moved identically
+        /// are held apart by which entry happened to record them. A bone with no name
+        /// falls back to its list position, since two unnamed bones sharing a signature
+        /// would merge control points that move differently and drop one of the two
+        /// sets of weights, which is the one direction of error this key exists to
+        /// prevent.
         /// </remarks>
         private static Dictionary<int, string>? InfluenceSignatures(SkinData? skin)
         {
             if (skin is null || skin.Bones.Count == 0)
                 return null;
 
-            var byPoint = new Dictionary<int, List<string>>();
+            var byPoint = new Dictionary<int, List<(string Bone, float Weight)>>();
 
             for (int b = 0; b < skin.Bones.Count; b++)
             {
+                string bone = skin.Bones[b].Name is { Length: > 0 } named
+                    ? named
+                    : b.ToString(CultureInfo.InvariantCulture);
+
                 foreach ((ushort point, float weight) in skin.Bones[b].Weights)
                 {
-                    if (!byPoint.TryGetValue(point, out List<string>? list))
+                    // Weightless entries are dropped by ByVertex before the trim ever
+                    // sees them, so counting them here would make a point look like it
+                    // has influences the vertex will not hold.
+                    if (weight <= 0f)
+                        continue;
+
+                    if (!byPoint.TryGetValue(point, out List<(string, float)>? list))
                         byPoint[point] = list = [];
 
-                    // The list position stands in for a bone with no name. Two
-                    // different unnamed bones must not share a signature: the whole
-                    // point of the key is that a control point moved differently is a
-                    // different vertex, and merging two that are not drops one of the
-                    // two sets of weights where nothing downstream can see it.
-                    string bone = skin.Bones[b].Name is { Length: > 0 } named
-                        ? named
-                        : b.ToString(CultureInfo.InvariantCulture);
-
-                    list.Add($"{bone}:{weight:R}");
+                    list.Add((bone, weight));
                 }
             }
 
             var signatures = new Dictionary<int, string>(byPoint.Count);
 
-            foreach ((int point, List<string> list) in byPoint)
+            foreach ((int point, List<(string Bone, float Weight)> list) in byPoint)
             {
-                list.Sort(StringComparer.Ordinal);
-                signatures[point] = string.Join(",", list);
+                list.Sort((a, b) =>
+                {
+                    int byWeight = b.Weight.CompareTo(a.Weight);
+
+                    return byWeight != 0 ? byWeight : string.CompareOrdinal(a.Bone, b.Bone);
+                });
+
+                int take = Math.Min(NifSkinWriter.MaxInfluences, list.Count);
+                float total = 0f;
+
+                for (int i = 0; i < take; i++)
+                    total += list[i].Weight;
+
+                bool renormalise =
+                    list.Count > NifSkinWriter.MaxInfluences || !SkinData.IsNormalised(total);
+
+                float scale = renormalise && total > 0f ? 1f / total : 1f;
+
+                var text = new System.Text.StringBuilder();
+
+                for (int i = 0; i < take; i++)
+                {
+                    text.Append(list[i].Bone).Append(':')
+                        .Append((list[i].Weight * scale).ToString("R", CultureInfo.InvariantCulture))
+                        .Append(',');
+                }
+
+                signatures[point] = text.ToString();
             }
 
             return signatures;
