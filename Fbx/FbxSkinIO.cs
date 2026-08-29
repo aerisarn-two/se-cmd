@@ -342,7 +342,15 @@ namespace SECmd.Fbx
             // A bone that several partitions draw with is one bone here: the weights
             // are a fact about the vertex, and the split is a fact about the draw.
             //
-            var boneAt = new Dictionary<string, int>(StringComparer.Ordinal);
+            // Keyed on the bind pose as well as the name, because a name is not enough
+            // to say two clusters are the same bone. Skyrim's conifers list one bone
+            // several times with a different bind transform each: `treepineforest02`
+            // gives TrunkBone three entries, two at (601.158, -4.757, -7.342) and one
+            // at the origin, each moving a different third of the trunk. Keyed on the
+            // name alone those collapse into one entry, and two thirds of the vertices
+            // are then bound against a pose that was never theirs -- which is a mesh
+            // visibly off its skeleton, not a rounding difference.
+            var boneAt = new Dictionary<(string Name, string Pose), int>();
             var seen = new HashSet<(int Bone, ushort Vertex)>();
 
             for (int p = 0; p < skinObjects.Count; p++)
@@ -364,6 +372,25 @@ namespace SECmd.Fbx
             return skin.IsEmpty ? null : skin;
         }
 
+        /// <summary>
+        /// A bind pose as text, for telling two entries of one bone apart.
+        /// </summary>
+        /// <remarks>
+        /// Rounded, because the pose makes the round trip through a matrix and back and
+        /// need only be recognised, not reproduced. Six decimals is far finer than the
+        /// hundreds of units that separate the poses this exists to distinguish, and
+        /// far coarser than the drift decomposition introduces.
+        /// </remarks>
+        private static string Pose(NifTransform t)
+        {
+            System.Numerics.Matrix4x4 m = t.ToMatrix();
+
+            return string.Create(
+                System.Globalization.CultureInfo.InvariantCulture,
+                $"{m.M11:F6},{m.M12:F6},{m.M13:F6},{m.M21:F6},{m.M22:F6},{m.M23:F6},"
+                + $"{m.M31:F6},{m.M32:F6},{m.M33:F6},{m.M41:F6},{m.M42:F6},{m.M43:F6}");
+        }
+
         /// <summary>The partition a skin deformer stands for, or its scene order.</summary>
         private static int PartitionIndexOf(FbxObject skinObject) =>
             int.TryParse(
@@ -379,7 +406,7 @@ namespace SECmd.Fbx
             FbxScene scene,
             FbxObject skinObject,
             SkinData skin,
-            Dictionary<string, int> boneAt,
+            Dictionary<(string Name, string Pose), int> boneAt,
             HashSet<(int Bone, ushort Vertex)> seen,
             SkinPartitionInfo info,
             SortedSet<ushort> covered)
@@ -405,11 +432,13 @@ namespace SECmd.Fbx
                     SkinTransform = FromMatrixArray(cluster.Child("TransformLink"))
                 };
 
-                // The same bone in two partitions is one entry, found by name.
-                if (!boneAt.TryGetValue(bone.Name, out int at))
+                // The same bone, in the same pose, in two partitions is one entry.
+                var key = (bone.Name, Pose(bone.SkinTransform));
+
+                if (!boneAt.TryGetValue(key, out int at))
                 {
                     at = skin.Bones.Count;
-                    boneAt[bone.Name] = at;
+                    boneAt[key] = at;
                     skin.Bones.Add(bone);
                 }
 
