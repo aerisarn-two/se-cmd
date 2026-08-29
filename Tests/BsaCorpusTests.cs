@@ -493,13 +493,24 @@ namespace SECmd.Tests
         /// because naming the meshes would be longer than the code and would say less:
         /// what matters is that the number falls and never rises.
         ///
-        /// The fields behind it, most first: skin weights and the bone lists that hold
-        /// them, vertex counts inside `NiSkinData`, `Data Size` and the vertex
-        /// descriptor. They are the shape of one problem rather than fifty, and none of
-        /// them is reachable from the two dozen fixtures the baseline was written
-        /// against.
+        /// The fields behind it, most first: triangles and the vertex maps that index
+        /// them, vertex counts and `Data Size`, skin weights and the per-partition bone
+        /// lists that hold them. They are the shape of one problem rather than fifty,
+        /// and none of them is reachable from the two dozen fixtures the baseline was
+        /// written against.
+        ///
+        /// Set from the whole corpus -- 15,634 of 22,047 -- and not from a sample. It
+        /// was 0.67 against a sampled 65%, and the sample was flattering: `Sample`
+        /// takes an equal count from each archive where the archives are neither the
+        /// same size nor equally divergent, so 6,000 files answered 65% where all
+        /// 22,047 answer 70.9%. Run the sweep sampled and it passes a ceiling the full
+        /// run breaks, which is a ratchet measuring its own sampling.
+        ///
+        /// The two were checked against each other before this moved: at this commit
+        /// and at the one that set 0.67, the same sample gives the same 3,914 files, so
+        /// nothing about the conversion changed -- only what is being counted.
         /// </remarks>
-        private const double KnownFieldDivergence = 0.67;
+        private const double KnownFieldDivergence = 0.72;
 
         /// <summary>
         /// How the two files' blocks differ, ignoring the differences that are meant
