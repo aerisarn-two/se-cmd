@@ -579,6 +579,22 @@ namespace SECmd.Tests
         private static string? ProgressFile() => Environment.GetEnvironmentVariable("SECMD_PROGRESS");
 
         /// <summary>How many meshes are checked between progress reports.</summary>
+        /// <summary>
+        /// How many meshes to convert at once.
+        /// </summary>
+        /// <remarks>
+        /// Unbounded by default, as `Parallel.ForEach` is, which takes every core the
+        /// machine has for the better part of an hour. That is right for a sweep run on
+        /// its own and wrong for one run beside anything else, so `SECMD_THREADS` caps
+        /// it -- a sweep is a background check, and a background check that makes the
+        /// machine unusable gets stopped before it finishes, which is the same as not
+        /// running it.
+        /// </remarks>
+        private static int Threads() =>
+            int.TryParse(Environment.GetEnvironmentVariable("SECMD_THREADS"), out int n) && n > 0
+                ? n
+                : -1;
+
         private static int BatchSize() =>
             int.TryParse(Environment.GetEnvironmentVariable("SECMD_BATCH"), out int size) && size > 0
                 ? size
@@ -731,7 +747,7 @@ namespace SECmd.Tests
         {
             int done = 0;
 
-            Parallel.ForEach(files, file =>
+            Parallel.ForEach(files, new ParallelOptions { MaxDegreeOfParallelism = Threads() }, file =>
                 {
                     Interlocked.Increment(ref done);
                     Trace(">", file.Path);
