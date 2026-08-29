@@ -98,18 +98,25 @@ namespace SECmd.Fbx
         /// FBXWrangler keys on eighteen numbers (`FBXWrangler.cpp:3254`, filled at
         /// `:3329`): position, normal, tangent, bitangent, UV and colour. This keys on
         /// those plus three -- the skin, `Unused W` and `Eye Data` -- and only one of
-        /// the three earns its place. Measured one at a time over the 19,867 shapes in
-        /// a 3,000-mesh sample of the game, against the 141,275 vertices the eighteen
-        /// merge:
+        /// the three earns its place. Measured one at a time over all 81,188 shapes the
+        /// game ships, against the 458,920 vertices of 36,106,394 that the eighteen
+        /// merge, on 11,947 shapes:
         ///
-        /// - `Unused W` saves 1,280 vertices across 98 shapes. Only 798 shapes carry
-        ///   the field at all, so it is distinguishing on an eighth of the shapes that
-        ///   have it -- which stands to reason, since it is a position's fourth word
-        ///   and not padding.
-        /// - The skin saves 6 vertices across 2 shapes, out of 4,478 shapes carrying
+        /// - `Unused W` saves 5,632 vertices across 545 shapes. Only 2,862 shapes carry
+        ///   the field at all, so it is distinguishing on nearly a fifth of the shapes
+        ///   that have it -- which stands to reason, since it is a position's fourth
+        ///   word and not padding.
+        /// - The skin saves 981 vertices, but on 9 shapes out of the 26,940 carrying
         ///   bone weights. Two vertices that already agree on position, normal,
-        ///   tangent, bitangent, UV and colour almost never disagree on their bones.
-        /// - `Eye Data` saves nothing at all, on any of the 518 shapes that carry it.
+        ///   tangent, bitangent, UV and colour almost never disagree on their bones;
+        ///   where they do, they do it in bulk.
+        /// - `Eye Data` saves nothing at all, on any of the 3,233 shapes carrying it.
+        ///
+        /// Compared on the exact values. An earlier pass compared them as `NifValue`
+        /// prints them, which is `G6` -- six significant digits -- and called two
+        /// vertices identical when they agreed to six digits and differed in the
+        /// seventh. That inflated the duplicate count by two fifths, and the numbers
+        /// above replace it.
         ///
         /// The last two stay because a key is a claim about what makes a vertex itself,
         /// and a field that could differ belongs in it whether or not the shipped game
