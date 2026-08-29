@@ -100,8 +100,20 @@ namespace SECmd.Fbx
             // which is what every unpartitioned skin already was.
             int count = Math.Max(1, skin.Partitions.Count);
 
+            // Every vertex some partition names. A vertex map lists what its partition
+            // *draws*, and a weighted vertex no triangle of any partition reaches is in
+            // none of them -- 62 of the 322 in the Ebony Mail's first-person cuirass,
+            // carrying 136 weights. Restricting each cluster to its own map therefore
+            // dropped those weights entirely and the mesh came away from its bones.
+            // They go to the first deformer, so that everything the skin holds is
+            // written exactly once.
+            var mapped = new HashSet<ushort>();
+
+            foreach (SkinPartitionInfo part in skin.Partitions)
+                mapped.UnionWith(part.Vertices);
+
             for (int p = 0; p < count; p++)
-                AddOnePartition(scene, geometry, skin, bones, meshTransform, p, count, problems);
+                AddOnePartition(scene, geometry, skin, bones, meshTransform, p, count, mapped, problems);
 
             return problems;
         }
@@ -115,14 +127,29 @@ namespace SECmd.Fbx
             NifTransform meshTransform,
             int index,
             int count,
+            HashSet<ushort> mapped,
             List<string> problems)
         {
             SkinPartitionInfo? part = index < skin.Partitions.Count ? skin.Partitions[index] : null;
 
-            // Which vertices this partition draws. Null when the shape was never
-            // partitioned, meaning every weight belongs to the one deformer.
-            HashSet<ushort>? covered =
-                part is { Vertices.Count: > 0 } ? [.. part.Vertices] : null;
+            // Which vertices this deformer carries the weights for. Null when the shape
+            // was never partitioned, meaning every weight belongs to the one deformer.
+            // Otherwise its own map, and -- for the first -- every weighted vertex no
+            // map names at all, so that no weight goes unwritten.
+            HashSet<ushort>? covered = null;
+
+            if (part is { Vertices.Count: > 0 })
+            {
+                covered = [.. part.Vertices];
+
+                if (index == 0)
+                {
+                    foreach (SkinBone bone in skin.Bones)
+                        foreach ((ushort vertex, float _) in bone.Weights)
+                            if (!mapped.Contains(vertex))
+                                covered.Add(vertex);
+                }
+            }
 
             string suffix = count > 1
                 ? "_skin" + index.ToString(System.Globalization.CultureInfo.InvariantCulture)
@@ -201,11 +228,12 @@ namespace SECmd.Fbx
             {
                 SkinBone bone = skin.Bones[b];
 
-                // Only the bones this partition draws with. A partition names its own
-                // sixty at most, and giving every deformer every bone would say the
-                // shape was never split.
-                if (part is { Bones.Count: > 0 } && !part.Bones.Contains(b))
-                    continue;
+                // Which bones this deformer gets is decided by whether it has any of
+                // their weights to write, checked below, and not by the partition's own
+                // bone list. The two agree in the game's files, and where they do not it
+                // is the weights that are the fact: a bone moving a vertex this
+                // partition covers has to have a cluster here, or the weight is written
+                // nowhere and the mesh comes away from its bones.
 
                 if (!bones.TryGetValue(bone.Name, out FbxObject? boneModel))
                 {
@@ -313,6 +341,7 @@ namespace SECmd.Fbx
             // One bone list for the whole skin, with each partition naming its share.
             // A bone that several partitions draw with is one bone here: the weights
             // are a fact about the vertex, and the split is a fact about the draw.
+            //
             var boneAt = new Dictionary<string, int>(StringComparer.Ordinal);
             var seen = new HashSet<(int Bone, ushort Vertex)>();
 
