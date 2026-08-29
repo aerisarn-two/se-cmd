@@ -61,6 +61,18 @@ namespace SECmd.Fbx
             /// not. Null for an unskinned mesh, where there is nothing to tell apart.
             /// </remarks>
             public IReadOnlyDictionary<int, string>? Influences { get; set; }
+
+            /// <summary>
+            /// Which skin partitions draw each control point, when the mesh is split.
+            /// </summary>
+            /// <remarks>
+            /// A set per point rather than a number, because a vertex on the seam
+            /// between two body parts is drawn by both and vanilla is full of them.
+            /// Only the identity of the string matters, as with
+            /// <see cref="Influences"/>. Null when the scene carried a single
+            /// undivided skin, where there is nothing to tell apart.
+            /// </remarks>
+            public IReadOnlyDictionary<int, string>? Partitions { get; set; }
         }
 
         /// <summary>
@@ -75,9 +87,13 @@ namespace SECmd.Fbx
         /// Twenty-three factors: FBXWrangler's eighteen, four bone-and-weight pairs
         /// carried in `Skin`, `Unused W`, `Eye Data`, and the set of skin partitions
         /// the vertex belongs to. The last is a set rather than a partition number
-        /// because vanilla shares vertices between partitions -- see
-        /// `MeshGeometry.PartitionMask` -- so a single number would have to choose one
-        /// for a seam vertex and would split what the file holds once.
+        /// because vanilla shares vertices between partitions, so a single number would
+        /// have to choose one for a seam vertex and would split what the file holds
+        /// once -- see `FbxToNif.PartitionSignatures`.
+        ///
+        /// Nineteen through twenty-three come off the skin rather than out of a layer
+        /// element, because that is where FBX keeps them: a cluster per bone for the
+        /// influences, and a deformer per partition for the split.
         ///
         /// FBXWrangler keys on eighteen numbers (`FBXWrangler.cpp:3254`, filled at
         /// `:3329`): position, normal, tangent, bitangent, UV and colour. This keys on
@@ -118,7 +134,7 @@ namespace SECmd.Fbx
             double R, double G, double B, double A,
             string Skin,
             double UnusedW, double EyeData,
-            double Partition);
+            string Partition);
 
         /// <summary>Reads a geometry object, or null when it holds no mesh.</summary>
         /// <summary>
@@ -179,10 +195,6 @@ namespace SECmd.Fbx
             var extra = LayerElement.FindNamed(
                 geometry, "LayerElementUV", "UV", FbxMeshWriter.VertexExtraElementName);
 
-            // The third UV set: which skin partitions the vertex belongs to, as a bit
-            // per partition in U. Only written for a shape that had more than one.
-            var partitions = LayerElement.FindNamed(
-                geometry, "LayerElementUV", "UV", FbxMeshWriter.VertexPartitionElementName);
             var colors = LayerElement.Find(geometry, "LayerElementColor", "Colors");
 
             var mesh = new MeshGeometry();
@@ -291,7 +303,13 @@ namespace SECmd.Fbx
                 NifVector2 uv = uvs.ReadVector2(at.ControlPoint, polygon, at.Corner);
                 NifColor4 color = colors.ReadColor4(at.ControlPoint, polygon, at.Corner);
                 NifVector2 spare = extra.ReadVector2(at.ControlPoint, polygon, at.Corner);
-                NifVector2 member = partitions.ReadVector2(at.ControlPoint, polygon, at.Corner);
+                // Which partitions draw this point. Not a layer element: FBX says this
+                // with the skin deformers themselves, one per partition, so membership
+                // is read off them rather than carried alongside.
+                string member = options.Partitions is not null
+                                && options.Partitions.TryGetValue(at.ControlPoint, out string? m)
+                    ? m
+                    : string.Empty;
 
                 // What a vertex *is* includes which bones move it. That is not in any
                 // layer element — FBX keeps it on the skin deformer, indexed by control
@@ -312,7 +330,7 @@ namespace SECmd.Fbx
                     color.R, color.G, color.B, color.A,
                     skin,
                     spare.X, spare.Y,
-                    member.X);
+                    member);
 
                 if (seen.TryGetValue(key, out ushort existing))
                 {
@@ -349,8 +367,6 @@ namespace SECmd.Fbx
                     mesh.EyeData.Add(spare.Y);
                 }
 
-                if (partitions.Exists)
-                    mesh.PartitionMask.Add((uint)Math.Round(member.X));
 
                 if (normals.Exists)
                     mesh.Normals.Add(normal);
@@ -424,9 +440,7 @@ namespace SECmd.Fbx
 
             private static bool IsReserved(FbxNode element) =>
                 element.Nodes.FirstOrDefault(c => c.Name == "Name")?.Properties.FirstOrDefault()
-                    is string name
-                && (name == FbxMeshWriter.VertexExtraElementName
-                    || name == FbxMeshWriter.VertexPartitionElementName);
+                    as string == FbxMeshWriter.VertexExtraElementName;
 
             /// <summary>The element of a kind carrying a particular layer name.</summary>
             public static LayerElement FindNamed(

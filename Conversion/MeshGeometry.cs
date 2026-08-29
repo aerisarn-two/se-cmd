@@ -82,30 +82,6 @@ namespace SECmd.Conversion
         public List<float> EyeData { get; } = [];
 
         /// <summary>
-        /// Which skin partitions each vertex belongs to, as a bit per partition.
-        /// </summary>
-        /// <remarks>
-        /// A set and not an index, because partition membership is not a function of
-        /// the vertex. A `NiSkinPartition` splits a skinned shape for the renderer --
-        /// by body part on a dismembered one -- and the partitions share a single
-        /// vertex array, each naming the slice it uses through its own `Vertex Map`. A
-        /// vertex on the seam between two body parts is named by both, and in Skyrim
-        /// most of them are: of 1,908 multi-partition shapes in a 1,200-mesh sample,
-        /// 1,645 share at least one vertex, 39,644 slots in all.
-        ///
-        /// So the thing that tells two vertices apart is the whole set they belong to,
-        /// which a mask holds exactly. Storing a single partition number instead would
-        /// have to pick one of the two for a seam vertex, and the pick would split
-        /// vertices vanilla shares.
-        ///
-        /// Empty unless the shape had more than one partition, since a mesh whose
-        /// partitions are all one set has nothing to tell apart, and empty when a shape
-        /// somehow carries more than 32: a mask that wrapped would say partition 32 and
-        /// partition 0 are the same set, which is worse than not knowing.
-        /// </remarks>
-        public List<uint> PartitionMask { get; } = [];
-
-        /// <summary>
         /// Which vertex each FBX control point became, when the mesh was read from FBX.
         /// </summary>
         /// <remarks>
@@ -132,8 +108,6 @@ namespace SECmd.Conversion
         /// <summary>Whether the eye marker travelled with it.</summary>
         public bool HasEyeData => EyeData.Count > 0;
 
-        /// <summary>Whether the skin partition membership travelled with it.</summary>
-        public bool HasPartitionMask => PartitionMask.Count > 0;
 
         public bool HasTangents => Tangents.Count > 0 && Bitangents.Count > 0;
 

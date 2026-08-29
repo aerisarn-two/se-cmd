@@ -26,6 +26,26 @@ namespace SECmd.Conversion
     }
 
     /// <summary>
+    /// One slice of a skin: the bones it draws with and the vertices it covers.
+    /// </summary>
+    /// <remarks>
+    /// Both are indices into the skin they belong to -- <see cref="Bones"/> into
+    /// <see cref="SkinData.Bones"/>, <see cref="Vertices"/> into the shape's vertex
+    /// array -- because a partition is a view of one shared set of data rather than a
+    /// copy of part of it. A vertex on the seam between two body parts appears in both
+    /// partitions' lists, which is ordinary: of 1,908 multi-partition shapes in a
+    /// 1,200-mesh sample, 1,645 share at least one vertex.
+    /// </remarks>
+    public sealed class SkinPartitionInfo
+    {
+        /// <summary>Indices into the skin's bone list.</summary>
+        public List<int> Bones { get; } = [];
+
+        /// <summary>Indices into the shape's vertex array.</summary>
+        public List<ushort> Vertices { get; } = [];
+    }
+
+    /// <summary>
     /// A mesh's skinning: the bones that move it and how strongly.
     /// </summary>
     public sealed class SkinData
@@ -86,6 +106,22 @@ namespace SECmd.Conversion
         public NifTransform SkinTransform { get; set; } = NifTransform.Identity;
 
         public List<SkinBone> Bones { get; } = [];
+
+        /// <summary>
+        /// How the skin was split for the renderer, one entry per partition.
+        /// </summary>
+        /// <remarks>
+        /// A `NiSkinPartition` divides a skinned shape into slices the hardware can
+        /// draw in one pass -- at most sixty bones each -- and on a dismembered shape
+        /// those slices are the body parts, which is what lets a cuirass hide the torso
+        /// under it and a limb come off. The partitions share one vertex array, each
+        /// naming the slice it uses.
+        ///
+        /// Empty when the shape had no partition to read, or when the scene it came
+        /// from did not say how it was split. A skin with no partitions here is split
+        /// again from scratch on the way in, by packing bones until they fit.
+        /// </remarks>
+        public List<SkinPartitionInfo> Partitions { get; } = [];
 
         public bool IsEmpty => Bones.Count == 0;
 

@@ -155,25 +155,6 @@ namespace SECmd.Fbx
                 node.Nodes.Add(element);
             }
 
-            if (mesh.HasPartitionMask)
-            {
-                // The mask in U, nothing in V. A double carries a 32-bit mask exactly,
-                // so it comes back the integer it went out as.
-                var membership = new double[mesh.PartitionMask.Count * 2];
-
-                for (int i = 0; i < mesh.PartitionMask.Count; i++)
-                    membership[i * 2] = mesh.PartitionMask[i];
-
-                var element = new FbxNode("LayerElementUV", 2);
-                element.Nodes.Add(new FbxNode("Version", LayerElementVersion));
-                element.Nodes.Add(new FbxNode("Name", VertexPartitionElementName));
-                element.Nodes.Add(new FbxNode("MappingInformationType", "ByControlPoint"));
-                element.Nodes.Add(new FbxNode("ReferenceInformationType", "Direct"));
-                element.Nodes.Add(new FbxNode("UV", membership));
-
-                node.Nodes.Add(element);
-            }
-
             if (mesh.HasColors)
             {
                 var colors = new double[mesh.Colors.Count * 4];
@@ -219,15 +200,6 @@ namespace SECmd.Fbx
         /// </remarks>
         /// <summary>The name of the UV set carrying the two unchannelled vertex words.</summary>
         public const string VertexExtraElementName = "nif_vertex_extra";
-
-        /// <summary>The name of the UV set carrying skin partition membership.</summary>
-        /// <remarks>
-        /// Its own set rather than another lane of the extra one, because the two are
-        /// live under different conditions: the extra words belong to a shape without
-        /// tangents or with eyes, and this belongs to a shape with several partitions,
-        /// and a shape can be either without being both.
-        /// </remarks>
-        public const string VertexPartitionElementName = "nif_vertex_partition";
 
         public static void AddPerPolygonMaterialElement(FbxObject geometry, IReadOnlyList<int> perPolygon)
         {

@@ -1791,6 +1791,54 @@ namespace SECmd.Conversion
         }
 
         /// <summary>
+        /// Which partitions draw each control point, for telling vertices apart.
+        /// </summary>
+        /// <remarks>
+        /// The twenty-third factor of the vertex key, and the one that needed no
+        /// channel of its own: FBX expresses a split skin as several skin deformers on
+        /// one mesh, so which partitions a point belongs to is already in the scene and
+        /// this only reads it back off.
+        ///
+        /// A set rather than a partition number. The partitions share one vertex array
+        /// and a point on the seam between two body parts is drawn by both -- of 1,908
+        /// multi-partition shapes in a 1,200-mesh sample, 1,645 share at least one
+        /// vertex, 39,644 slots in all. Naming one of the two would split a vertex the
+        /// file holds once.
+        ///
+        /// Null unless the scene said the skin was split, since a single partition
+        /// gives every point the same answer and an answer everything shares tells
+        /// nothing apart.
+        /// </remarks>
+        private static Dictionary<int, string>? PartitionSignatures(SkinData? skin)
+        {
+            if (skin is null || skin.Partitions.Count < 2)
+                return null;
+
+            var byPoint = new Dictionary<int, List<int>>();
+
+            for (int p = 0; p < skin.Partitions.Count; p++)
+            {
+                foreach (ushort point in skin.Partitions[p].Vertices)
+                {
+                    if (!byPoint.TryGetValue(point, out List<int>? list))
+                        byPoint[point] = list = [];
+
+                    list.Add(p);
+                }
+            }
+
+            var signatures = new Dictionary<int, string>(byPoint.Count);
+
+            foreach ((int point, List<int> list) in byPoint)
+            {
+                list.Sort();
+                signatures[point] = string.Join(",", list);
+            }
+
+            return signatures;
+        }
+
+        /// <summary>
         /// What each control point's skinning looks like, for telling vertices apart.
         /// </summary>
         /// <remarks>
@@ -1966,6 +2014,7 @@ namespace SECmd.Conversion
             SkinData? skin = FbxSkinIO.ReadSkin(_scene, geometry);
 
             readerOptions.Influences = InfluenceSignatures(skin);
+            readerOptions.Partitions = PartitionSignatures(skin);
 
             MeshGeometry? mesh = FbxMeshReader.Read(geometry, readerOptions);
 

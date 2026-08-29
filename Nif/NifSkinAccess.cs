@@ -89,7 +89,59 @@ namespace SECmd.Nif
             if (!ReadWeightsFromBoneList(model, data, result))
                 ReadWeightsFromPartition(model, skin, result);
 
+            ReadPartitions(model, skin, result);
+
             return result.Bones.Any(b => b.Weights.Count > 0) ? result : null;
+        }
+
+        /// <summary>
+        /// How the skin was split, one entry per partition.
+        /// </summary>
+        /// <remarks>
+        /// Read even though the weights have already been taken from the bone list,
+        /// because this is a different fact about the same skin: not who moves a vertex
+        /// but which slice draws it. On a dismembered shape the slices are the body
+        /// parts, and a shape rebuilt without them is one that cannot lose a limb.
+        ///
+        /// A partition's bone list is its own, holding indices into the skin's, so it
+        /// is mapped through on the way out. Its vertex map is in the shape's own
+        /// numbering already.
+        /// </remarks>
+        private static void ReadPartitions(NifModel model, NifItem skin, SkinData result)
+        {
+            NifItem? partition = model.GetRef(skin, "Skin Partition");
+
+            if (partition is null && model.GetRef(skin, "Data") is { } data)
+                partition = model.GetRef(data, "Skin Partition");
+
+            if (partition is null || model.FindItem(partition, "Partitions") is not { } blocks)
+                return;
+
+            foreach (NifItem block in blocks.Children)
+            {
+                var info = new SkinPartitionInfo();
+
+                if (model.FindItem(block, "Bones") is { } bones)
+                {
+                    foreach (NifItem bone in bones.Children)
+                    {
+                        var index = (int)bone.Value.ToUInt();
+
+                        // A partition names bones by index into the skin's list, and a
+                        // file that names one past the end is naming nothing.
+                        if (index >= 0 && index < result.Bones.Count)
+                            info.Bones.Add(index);
+                    }
+                }
+
+                if (model.FindItem(block, "Vertex Map") is { } map)
+                {
+                    foreach (NifItem vertex in map.Children)
+                        info.Vertices.Add((ushort)vertex.Value.ToUInt());
+                }
+
+                result.Partitions.Add(info);
+            }
         }
 
         /// <summary>Weights as <c>NiSkinData</c> stores them, per bone.</summary>

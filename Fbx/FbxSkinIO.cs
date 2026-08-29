@@ -63,6 +63,9 @@ namespace SECmd.Fbx
         /// </remarks>
         public const string DataIdProperty = "nif_skin_data";
 
+        /// <summary>Which partition a skin deformer stands for, in the file's order.</summary>
+        public const string PartitionProperty = "nif_skin_partition";
+
         private const int SkinVersion = 101;
         private const int ClusterVersion = 100;
 
@@ -86,7 +89,62 @@ namespace SECmd.Fbx
             if (skin.IsEmpty)
                 return problems;
 
-            FbxObject skinObject = scene.AddObject("Deformer", geometry.Name + "_skin", "Skin");
+            // One skin deformer per partition, which is how FBX says this and how
+            // ck-cmd says it too: it counts a mesh's skin deformers to get the
+            // partition count (`FBXWrangler.cpp:2826`) and creates one per partition
+            // block on the way out (`:1046`). A partition is a set of bones and the
+            // vertices they draw, and a deformer with its clusters is exactly that, so
+            // nothing has to be invented to carry it.
+            //
+            // A shape with no partitions gets a single deformer holding everything,
+            // which is what every unpartitioned skin already was.
+            int count = Math.Max(1, skin.Partitions.Count);
+
+            for (int p = 0; p < count; p++)
+                AddOnePartition(scene, geometry, skin, bones, meshTransform, p, count, problems);
+
+            return problems;
+        }
+
+        /// <summary>Writes one partition as a skin deformer and its clusters.</summary>
+        private static void AddOnePartition(
+            FbxScene scene,
+            FbxObject geometry,
+            SkinData skin,
+            IReadOnlyDictionary<string, FbxObject> bones,
+            NifTransform meshTransform,
+            int index,
+            int count,
+            List<string> problems)
+        {
+            SkinPartitionInfo? part = index < skin.Partitions.Count ? skin.Partitions[index] : null;
+
+            // Which vertices this partition draws. Null when the shape was never
+            // partitioned, meaning every weight belongs to the one deformer.
+            HashSet<ushort>? covered =
+                part is { Vertices.Count: > 0 } ? [.. part.Vertices] : null;
+
+            string suffix = count > 1
+                ? "_skin" + index.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                : "_skin";
+
+            FbxObject skinObject = scene.AddObject("Deformer", geometry.Name + suffix, "Skin");
+
+            scene.Connect(skinObject, geometry);
+
+            // Which partition this is, so the reader keeps the order the file had
+            // rather than the order the objects happen to come back in.
+            skinObject.Properties.SetUserString(
+                PartitionProperty, index.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+            // The whole-skin facts go on the first deformer only. They describe the
+            // skin, not the slice, and repeating them on every partition would invite
+            // a reader to wonder which copy is authoritative.
+            if (index > 0)
+            {
+                WriteClusters(scene, skin, bones, meshTransform, part, covered, index, skinObject, problems);
+                return;
+            }
 
             // The class the shape had, when the scene came from a NIF at all.
             if (skin.InstanceType.Length > 0)
@@ -118,23 +176,55 @@ namespace SECmd.Fbx
                 }
             }
 
+            WriteClusters(scene, skin, bones, meshTransform, part, covered, index, skinObject, problems);
+        }
+
+        /// <summary>Writes one deformer's clusters: its bones and their weights.</summary>
+        private static void WriteClusters(
+            FbxScene scene,
+            SkinData skin,
+            IReadOnlyDictionary<string, FbxObject> bones,
+            NifTransform meshTransform,
+            SkinPartitionInfo? part,
+            HashSet<ushort>? covered,
+            int index,
+            FbxObject skinObject,
+            List<string> problems)
+        {
             FbxNode node = skinObject.Node;
 
             node.Nodes.Add(new FbxNode("Version", SkinVersion));
             node.Nodes.Add(new FbxNode("Link_DeformAcuracy", 50.0));
             node.Nodes.Add(new FbxNode("SkinningType", "Linear"));
 
-            scene.Connect(skinObject, geometry);
-
-            foreach (SkinBone bone in skin.Bones)
+            for (int b = 0; b < skin.Bones.Count; b++)
             {
+                SkinBone bone = skin.Bones[b];
+
+                // Only the bones this partition draws with. A partition names its own
+                // sixty at most, and giving every deformer every bone would say the
+                // shape was never split.
+                if (part is { Bones.Count: > 0 } && !part.Bones.Contains(b))
+                    continue;
+
                 if (!bones.TryGetValue(bone.Name, out FbxObject? boneModel))
                 {
-                    problems.Add($"{bone.Name}: no node for this bone, its influence is dropped");
+                    // Reported once, not once per partition: the bone is missing from
+                    // the scene, which is one fault however many slices name it.
+                    if (index == 0)
+                        problems.Add($"{bone.Name}: no node for this bone, its influence is dropped");
+
                     continue;
                 }
 
                 if (bone.Weights.Count == 0)
+                    continue;
+
+                List<(ushort Vertex, float Weight)> weightList = covered is null
+                    ? bone.Weights
+                    : [.. bone.Weights.Where(w => covered.Contains(w.Vertex))];
+
+                if (weightList.Count == 0)
                     continue;
 
                 FbxObject cluster = scene.AddObject("Deformer", bone.Name + "_cluster", "Cluster");
@@ -143,13 +233,13 @@ namespace SECmd.Fbx
                 clusterNode.Nodes.Add(new FbxNode("Version", ClusterVersion));
                 clusterNode.Nodes.Add(new FbxNode("UserData", string.Empty, string.Empty));
 
-                var indices = new int[bone.Weights.Count];
-                var weights = new double[bone.Weights.Count];
+                var indices = new int[weightList.Count];
+                var weights = new double[weightList.Count];
 
-                for (int i = 0; i < bone.Weights.Count; i++)
+                for (int i = 0; i < weightList.Count; i++)
                 {
-                    indices[i] = bone.Weights[i].Vertex;
-                    weights[i] = bone.Weights[i].Weight;
+                    indices[i] = weightList[i].Vertex;
+                    weights[i] = weightList[i].Weight;
                 }
 
                 clusterNode.Nodes.Add(new FbxNode("Indexes", indices));
@@ -162,8 +252,6 @@ namespace SECmd.Fbx
                 scene.Connect(cluster, skinObject);
                 scene.Connect(boneModel, cluster);
             }
-
-            return problems;
         }
 
         /// <summary>
@@ -171,11 +259,21 @@ namespace SECmd.Fbx
         /// </summary>
         public static SkinData? ReadSkin(FbxScene scene, FbxObject geometry)
         {
-            FbxObject? skinObject = scene.ChildrenOf(geometry.Id)
-                .FirstOrDefault(o => o.Class == "Deformer" && o.SubClass == "Skin");
+            // Every skin deformer on the geometry, not the first. FBX allows a mesh
+            // several, and one per partition is how both this exporter and ck-cmd say
+            // a skin was split -- taking only the first read a dismembered shape as a
+            // single undivided one and lost the body parts with it.
+            List<FbxObject> skinObjects = scene.ChildrenOf(geometry.Id)
+                .Where(o => o.Class == "Deformer" && o.SubClass == "Skin")
+                .OrderBy(o => PartitionIndexOf(o))
+                .ToList();
 
-            if (skinObject is null)
+            if (skinObjects.Count == 0)
                 return null;
+
+            // The whole-skin facts live on the first, which is the one that carries
+            // them out.
+            FbxObject skinObject = skinObjects[0];
 
             var skin = new SkinData
             {
@@ -212,6 +310,51 @@ namespace SECmd.Fbx
                 }
             }
 
+            // One bone list for the whole skin, with each partition naming its share.
+            // A bone that several partitions draw with is one bone here: the weights
+            // are a fact about the vertex, and the split is a fact about the draw.
+            var boneAt = new Dictionary<string, int>(StringComparer.Ordinal);
+            var seen = new HashSet<(int Bone, ushort Vertex)>();
+
+            for (int p = 0; p < skinObjects.Count; p++)
+            {
+                var info = new SkinPartitionInfo();
+                var covered = new SortedSet<ushort>();
+
+                ReadOnePartition(scene, skinObjects[p], skin, boneAt, seen, info, covered);
+
+                info.Vertices.AddRange(covered);
+
+                // Only when the scene actually said it was split. One deformer is what
+                // an unpartitioned skin has always looked like, and calling that a
+                // partition would put the shape's own split where there was none.
+                if (skinObjects.Count > 1)
+                    skin.Partitions.Add(info);
+            }
+
+            return skin.IsEmpty ? null : skin;
+        }
+
+        /// <summary>The partition a skin deformer stands for, or its scene order.</summary>
+        private static int PartitionIndexOf(FbxObject skinObject) =>
+            int.TryParse(
+                skinObject.Properties.GetString(PartitionProperty),
+                System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out int index)
+                ? index
+                : int.MaxValue;
+
+        /// <summary>Reads one deformer's clusters into the shared bone list.</summary>
+        private static void ReadOnePartition(
+            FbxScene scene,
+            FbxObject skinObject,
+            SkinData skin,
+            Dictionary<string, int> boneAt,
+            HashSet<(int Bone, ushort Vertex)> seen,
+            SkinPartitionInfo info,
+            SortedSet<ushort> covered)
+        {
             foreach (FbxObject cluster in scene.ChildrenOf(skinObject.Id)
                          .Where(o => o.Class == "Deformer" && o.SubClass == "Cluster"))
             {
@@ -233,24 +376,40 @@ namespace SECmd.Fbx
                     SkinTransform = FromMatrixArray(cluster.Child("TransformLink"))
                 };
 
+                // The same bone in two partitions is one entry, found by name.
+                if (!boneAt.TryGetValue(bone.Name, out int at))
+                {
+                    at = skin.Bones.Count;
+                    boneAt[bone.Name] = at;
+                    skin.Bones.Add(bone);
+                }
+
+                if (!info.Bones.Contains(at))
+                    info.Bones.Add(at);
+
                 var indices = cluster.Child("Indexes")?.Properties.FirstOrDefault() as int[];
                 var weights = cluster.Child("Weights")?.Properties.FirstOrDefault() as double[];
 
-                if (indices is not null && weights is not null)
+                if (indices is null || weights is null)
+                    continue;
+
+                int count = Math.Min(indices.Length, weights.Length);
+
+                for (int i = 0; i < count; i++)
                 {
-                    int count = Math.Min(indices.Length, weights.Length);
+                    if (weights[i] <= 0)
+                        continue;
 
-                    for (int i = 0; i < count; i++)
-                    {
-                        if (weights[i] > 0)
-                            bone.Weights.Add(((ushort)indices[i], (float)weights[i]));
-                    }
+                    var vertex = (ushort)indices[i];
+                    covered.Add(vertex);
+
+                    // A seam vertex is drawn by both partitions, so the same weight
+                    // arrives twice. Added twice it would be counted twice, and the
+                    // vertex would come back over-weighted towards that bone.
+                    if (seen.Add((at, vertex)))
+                        skin.Bones[at].Weights.Add((vertex, (float)weights[i]));
                 }
-
-                skin.Bones.Add(bone);
             }
-
-            return skin.IsEmpty ? null : skin;
         }
 
         /// <summary>A transform as the row-major sixteen doubles FBX stores.</summary>
