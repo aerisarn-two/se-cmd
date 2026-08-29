@@ -964,8 +964,15 @@ check; a name the schema does not know is parsed as a number, so a slot from a s
 this build has never seen still survives.
 
 The array is sized to the *partition* count rather than the carried count, because it
-describes those partitions and they are rebuilt rather than carried. A partition past
-the end of the list takes the last slot.
+describes those partitions. They are now carried rather than rebuilt (§5.2.3A), so the
+two normally agree; where they do not, each partition takes the slot of the partition it
+came from, and one derived here rather than carried falls back to its own index, and
+past the end of the list to the last slot.
+
+A slot describes a body part, not a draw call. When a partition has to be split again to
+fit the bone palette, both halves are still the same body part and carry the same slot —
+taking the slot at each half's own index would hand the second half whichever slot
+happened to sit there, and a cuirass would stop hiding the torso it covers.
 
 A scene that never was a NIF has no slots to carry, and
 `FbxToNifOptions.SkinInstanceType` decides — the dismember form by default, since new
@@ -975,6 +982,49 @@ ck-cmd carries none of this. Its export never mentions body parts at all, and it
 sets every partition to `SBP_32_BODY` with `PF_EDITOR_VISIBLE | PF_START_NET_BONESET`
 (L3100) in the branch that cannot run. This port wrote every slot as zero — the torso —
 until the slots were carried.
+
+#### 5.2.3A How the split itself travels
+
+The slots say what each partition *is*. The split — which triangles and which bones each
+partition holds — travels in FBX's own structures, with nothing invented:
+
+| What | FBX structure |
+| --- | --- |
+| Which bones a partition draws with, and their weights | One `Deformer`/`Skin` per partition, with a `Deformer`/`Cluster` per bone under it |
+| Which triangles a partition draws | `LayerElementPolygonGroup`, `ByPolygon` |
+
+The deformer half is ck-cmd's own representation: it creates one `FbxSkin` per partition
+block on the way out (`FBXWrangler.cpp:1046`) and reads the partition count straight off
+the deformer count on the way back (`:2826`). A mesh may carry several skin deformers,
+and a partition is a set of bones with the vertices they move, which is what a deformer
+and its clusters are.
+
+The polygon group is the half ck-cmd does not have. It works the triangles out from which
+partition holds their vertices (`:2845`), and that has **no answer for a triangle on a
+seam**, whose three vertices are in both partitions — and a seam is where a body part
+ends, so the ambiguous triangles are precisely the ones deciding where a limb comes off.
+`LayerElementPolygonGroup` is FBX's per-face integer channel and says it outright.
+
+Two facts about a partition are read back rather than trusted:
+
+- Its bones follow from its triangles, since a partition draws with whatever moves the
+  vertices it has. Taking the carried bone list as well would trust two things to agree
+  that nothing checks.
+- A vertex on a seam reaches two deformers, so the same weight arrives twice. The second
+  is dropped rather than added, or the vertex comes back pulled towards that bone.
+
+Both of the game's limits are enforced on the way in, since an FBX authored anywhere else
+has no reason to have respected either:
+
+| Limit | What it is | How it is met |
+| --- | --- | --- |
+| 60 bones per partition | The matrix palette a partition is drawn against in one pass | The partition is split until each piece fits. Nothing is dropped, and each piece keeps its source's body slot |
+| 4 influences per vertex | All a NIF vertex stores | The lightest influences go and the rest are renormalised — the one limit that cannot be met without loss |
+
+Measured over 6,439 skinned shapes in a 1,500-mesh sample: every one comes back with the
+partition count and the body slots it went out with, where 2,675 of them lost both when
+the partitions were rebuilt from the weights instead. No partition comes back naming more
+than sixty bones and no vertex more than four influences.
 
 #### 5.2.4 Which geometry class
 
@@ -2779,10 +2829,14 @@ mass of a static. Typing them would be typing something the import overwrites (�
 | `body_slot_<i>` | mesh geometry | The body part of partition *i*, from nif.xml's `BSDismemberBodyPartType` |
 | `body_slot_<i>_flags` | mesh geometry | That partition's editor flags |
 
-Bones are ordinary FBX skin clusters and need no properties: the deformer names the
-bones, and the partitions are computed from the weights. Body slots are the one thing a
-skin cluster cannot say, which is why they are here — a character's skin needs them and
-a door hinge does not.
+Bones are ordinary FBX skin clusters and need no properties: the deformer names them.
+Nor does the split need any — a skin deformer per partition and a polygon group per face
+say it in FBX's own terms (§5.2.3A). Body slots are the one thing neither can say, which
+is why they are here: a character's skin needs them and a door hinge does not.
+
+A mesh with one skin deformer is an unsplit skin, which is what every unpartitioned skin
+has always looked like. Several deformers mean several partitions, in the order the
+`nif_skin_partition` property gives.
 
 ### 5D.4 Level of detail
 
@@ -2908,7 +2962,7 @@ scene that lacks them is not thought to be missing anything.
 | A rigid body's inertia tensor | The shape and the mass (§5.7.2) |
 | A static body's mass | Always zero, whatever `nif_rb_mass` says |
 | A collision shape's radius | The fitted shape |
-| Skin partitions | The bone weights |
+| Skin partitions | The scene's own split, when it has one (§5.2.3A); the bone weights when it does not |
 | `Vertex Desc`, and every offset in it | Which attributes the mesh has (§5.3.0) |
 | Block order | The reference rules (§5B) |
 | A convex hull's plane equations | The hull's own faces (§5.7.1) |
@@ -2972,7 +3026,7 @@ the thing most likely to be stale.
 | Convex hull planes | §5.7.1, from the hull |
 | Collision shape size | §4.8; refitted from the tessellated geometry, so a DCC edit wins |
 | Bounding spheres | recomputed from the vertices |
-| `NiSkinPartition` | rebuilt from the weights |
+| `NiSkinPartition` | carried (§5.2.3A), and rebuilt from the weights only for a scene that did not say how it was split. Its vertex maps hold the right vertices in an order of this port's own — see §7.3 |
 | MOPP data | regenerated; see §8 |
 | `NiDefaultAVObjectPalette`, `NiTextKeyExtraData` | rebuilt with the controller manager |
 
@@ -2995,6 +3049,7 @@ Real gaps, each with its reason recorded where it bites.
 | Corners of a convex hull over near-degenerate points | The hull returns every corner for 99.0% of the game's convex shapes and 99.9% of all corners; the rest lose one or two near-coplanar corners each, 78 in 94,219. A corner within a thousand-millionth of the shape of a face it does not form is treated as lying on it | §5.7.0B |
 | Shared key data behind same-named controllers | *Closed.* Two interpolators sharing one data block stay shared when the track's encoded name picks out one controller, which it now does for shader controllers: they carry the variable they drive, so a node's several controllers of one class are no longer all called the same thing. Only 3 of the game's 22,047 meshes share a `NiFloatData` at all | §5A.6 |
 | Array order within a rebuilt convex hull | The vertices and planes agree, but arrive in the fit's order rather than Havok's, which nif.xml says is lexicographic | §5.7.1 |
+| Order within a skin partition's `Vertex Map` | *Accepted.* The **set** is always right — 860 of 860 partitions in a 600-mesh sample come back holding exactly the vertices they held — and only the sequence differs, along with the `Vertex Weights`, `Bone Indices` and partition-local `Triangles` that are indexed by it. The order follows no rule that can be re-derived: of those 860 maps, 317 are ascending, 229 are first appearance in the partition's own triangle list, and 314 are neither. Nor can it be recovered from the deformers, since a cluster lists only the vertices its own bone moves and no cluster holds the whole map. Reproducing it would mean carrying the sequence explicitly in a channel invented for it, which is the thing §5.2.3A exists to avoid, for an ordering the renderer does not read — it walks the map, and a map is as good in one order as another. So this is a byte-fidelity gap and not a behavioural one, and it is left open deliberately | §5.2.3A |
 | The second and later materials of a multi-material render mesh | A NIF shape has one material, and the import keeps the first rather than splitting the mesh into one shape per material. Authoring means splitting it in the DCC tool | §5.3.4 |
 
 ---
