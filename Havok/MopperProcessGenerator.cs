@@ -186,10 +186,38 @@ namespace SECmd.Havok
                 if (Attempt(() => ParseCompressedMeshOutput(
                         Run("-ccmm", BuildCompressedMeshInput(geometries, materials)))) is { } carried)
                 {
+                    // It worked, so this binary has the option. Nothing that happens
+                    // to a later mesh can unsay that.
+                    _materialsProven = true;
                     return carried;
                 }
 
-                _supportsMaterials = false;
+                // Only when it declined, never when it merely failed.
+                //
+                // This latch is process-wide and one-way: it exists to ask a binary
+                // once whether it has -ccmm, since probing per mesh made an older
+                // mopper pay nine failed runs for every shape. But it was flipped by
+                // any failure at all, and three timeouts under load are a failure. One
+                // congested mesh early in a run therefore turned -ccmm off for
+                // everything after it, and every later multi-material collision was
+                // refused outright -- 1,564 of the 1,876 compressed-mesh shapes in a
+                // whole-corpus sweep lost their collision that way, all but five of
+                // them without mopper having been run at all.
+                //
+                // A missing option is deterministic: the process starts and exits
+                // non-zero, every time. A timeout or a broken pipe is not, and says
+                // nothing about what this binary supports.
+                //
+                // Nor does anything, once -ccmm has been seen to work. That is the
+                // fault this latch actually had: a shape Havok will not index fails
+                // -ccmm exactly as a mopper without -ccmm does, so the first
+                // unbuildable mesh in a run was read as a binary that cannot carry
+                // materials, and every multi-material collision after it was refused
+                // without mopper being asked. Over the whole corpus that turned some
+                // eighty meshes Havok genuinely rejects into 1,572 that lost their
+                // collision.
+                if (!Transient && !_materialsProven)
+                    _supportsMaterials = false;
             }
 
             // Falling back with several materials would silently merge them into one
@@ -551,6 +579,7 @@ namespace SECmd.Havok
             where T : class
         {
             Failures = [];
+            Transient = false;
 
             for (int attempt = 0; attempt < Attempts; attempt++)
             {
@@ -569,12 +598,14 @@ namespace SECmd.Havok
                 catch (TimeoutException e)
                 {
                     // Try again: the usual cause is contention, not this geometry.
+                    Transient = true;
                     Note(attempt, e.Message);
                 }
                 catch (IOException e)
                 {
                     // As above -- a pipe that broke rather than a shape that cannot
                     // be built.
+                    Transient = true;
                     Note(attempt, e.Message);
                 }
 
@@ -626,7 +657,22 @@ namespace SECmd.Havok
         /// </remarks>
         private static bool SupportsMaterials => _supportsMaterials;
 
+
         private static volatile bool _supportsMaterials = true;
+
+        /// <summary>Whether a -ccmm run has ever succeeded in this process.</summary>
+        private static volatile bool _materialsProven;
+
+        /// <summary>
+        /// Whether the last <see cref="Attempt"/> failed for a reason that might not
+        /// happen again -- a timeout or a broken pipe rather than a refusal.
+        /// </summary>
+        /// <remarks>
+        /// A caller that means to conclude something lasting from a failure has to know
+        /// this. A backend that timed out says nothing about what the backend can do.
+        /// </remarks>
+        [ThreadStatic]
+        private static bool Transient;
 
         private const int Attempts = 3;
 
