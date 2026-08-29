@@ -1798,6 +1798,25 @@ namespace SECmd.Conversion
         /// bones with the same weights must come out equal, and any difference must
         /// come out different. Sorted so the order the clusters happened to be read in
         /// cannot make two identical vertices look different.
+        ///
+        /// Each influence is a bone *name* and a weight, not a bone index and a weight,
+        /// because an index is a fact about a list and not about the binding. A skin can
+        /// hold one bone twice -- 51 of the 5,872 skinned shapes in a 4,000-mesh sample
+        /// do, `dlc01/landscape/trees/winteraspen02.nif` among them -- and then one
+        /// binding is spelled two ways, and two control points moved identically are
+        /// held apart by which entry happened to record them.
+        ///
+        /// On the game's own files this changes nothing: rebuilt against list positions
+        /// and against names, the same 6,000 meshes give the same 34,959 vertices across
+        /// the same 70 shapes. The duplicate entries vanilla ships do not happen to
+        /// carry the pair of control points it would take. It is kept because the
+        /// invariant is worth having rather than because the corpus needed it -- a scene
+        /// merged from two exports, or any authoring tool that emits a bone twice, gets
+        /// there without vanilla's help, and the failure is silent when it does.
+        ///
+        /// A bone with no name falls back to its list position. Two unnamed bones must
+        /// not collide: merging control points that move differently drops one set of
+        /// weights, which is the one direction of error this key exists to prevent.
         /// </remarks>
         private static Dictionary<int, string>? InfluenceSignatures(SkinData? skin)
         {
@@ -1813,7 +1832,16 @@ namespace SECmd.Conversion
                     if (!byPoint.TryGetValue(point, out List<string>? list))
                         byPoint[point] = list = [];
 
-                    list.Add($"{b}:{weight:R}");
+                    // The list position stands in for a bone with no name. Two
+                    // different unnamed bones must not share a signature: the whole
+                    // point of the key is that a control point moved differently is a
+                    // different vertex, and merging two that are not drops one of the
+                    // two sets of weights where nothing downstream can see it.
+                    string bone = skin.Bones[b].Name is { Length: > 0 } named
+                        ? named
+                        : b.ToString(CultureInfo.InvariantCulture);
+
+                    list.Add($"{bone}:{weight:R}");
                 }
             }
 
