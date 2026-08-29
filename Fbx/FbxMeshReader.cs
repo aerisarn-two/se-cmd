@@ -72,6 +72,13 @@ namespace SECmd.Fbx
         /// comparison merges what should merge; a tolerance would risk welding a
         /// genuine seam shut.
         ///
+        /// Twenty-three factors: FBXWrangler's eighteen, four bone-and-weight pairs
+        /// carried in `Skin`, `Unused W`, `Eye Data`, and the set of skin partitions
+        /// the vertex belongs to. The last is a set rather than a partition number
+        /// because vanilla shares vertices between partitions -- see
+        /// `MeshGeometry.PartitionMask` -- so a single number would have to choose one
+        /// for a seam vertex and would split what the file holds once.
+        ///
         /// FBXWrangler keys on eighteen numbers (`FBXWrangler.cpp:3254`, filled at
         /// `:3329`): position, normal, tangent, bitangent, UV and colour. This keys on
         /// those plus three -- the skin, `Unused W` and `Eye Data` -- and only one of
@@ -110,7 +117,8 @@ namespace SECmd.Fbx
             double U, double V,
             double R, double G, double B, double A,
             string Skin,
-            double UnusedW, double EyeData);
+            double UnusedW, double EyeData,
+            double Partition);
 
         /// <summary>Reads a geometry object, or null when it holds no mesh.</summary>
         /// <summary>
@@ -170,6 +178,11 @@ namespace SECmd.Fbx
             // element of a kind and that is the real UVs.
             var extra = LayerElement.FindNamed(
                 geometry, "LayerElementUV", "UV", FbxMeshWriter.VertexExtraElementName);
+
+            // The third UV set: which skin partitions the vertex belongs to, as a bit
+            // per partition in U. Only written for a shape that had more than one.
+            var partitions = LayerElement.FindNamed(
+                geometry, "LayerElementUV", "UV", FbxMeshWriter.VertexPartitionElementName);
             var colors = LayerElement.Find(geometry, "LayerElementColor", "Colors");
 
             var mesh = new MeshGeometry();
@@ -278,6 +291,7 @@ namespace SECmd.Fbx
                 NifVector2 uv = uvs.ReadVector2(at.ControlPoint, polygon, at.Corner);
                 NifColor4 color = colors.ReadColor4(at.ControlPoint, polygon, at.Corner);
                 NifVector2 spare = extra.ReadVector2(at.ControlPoint, polygon, at.Corner);
+                NifVector2 member = partitions.ReadVector2(at.ControlPoint, polygon, at.Corner);
 
                 // What a vertex *is* includes which bones move it. That is not in any
                 // layer element — FBX keeps it on the skin deformer, indexed by control
@@ -297,7 +311,8 @@ namespace SECmd.Fbx
                     uv.X, uv.Y,
                     color.R, color.G, color.B, color.A,
                     skin,
-                    spare.X, spare.Y);
+                    spare.X, spare.Y,
+                    member.X);
 
                 if (seen.TryGetValue(key, out ushort existing))
                 {
@@ -333,6 +348,9 @@ namespace SECmd.Fbx
                     mesh.UnusedW.Add((uint)Math.Round(spare.X));
                     mesh.EyeData.Add(spare.Y);
                 }
+
+                if (partitions.Exists)
+                    mesh.PartitionMask.Add((uint)Math.Round(member.X));
 
                 if (normals.Exists)
                     mesh.Normals.Add(normal);
@@ -406,7 +424,9 @@ namespace SECmd.Fbx
 
             private static bool IsReserved(FbxNode element) =>
                 element.Nodes.FirstOrDefault(c => c.Name == "Name")?.Properties.FirstOrDefault()
-                    as string == FbxMeshWriter.VertexExtraElementName;
+                    is string name
+                && (name == FbxMeshWriter.VertexExtraElementName
+                    || name == FbxMeshWriter.VertexPartitionElementName);
 
             /// <summary>The element of a kind carrying a particular layer name.</summary>
             public static LayerElement FindNamed(

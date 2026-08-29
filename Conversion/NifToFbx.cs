@@ -1631,6 +1631,44 @@ namespace SECmd.Conversion
             return positions;
         }
 
+        /// <summary>
+        /// Which partitions each vertex belongs to, as a bit per partition.
+        /// </summary>
+        /// <remarks>
+        /// The partitions share one vertex array and each names its slice of it through
+        /// a `Vertex Map`, so this is simply those maps turned inside out. A vertex on
+        /// the seam between two body parts appears in both maps and gets both bits,
+        /// which is the case the mask exists for: a single partition number would have
+        /// to choose, and choosing splits a vertex the file holds once.
+        ///
+        /// Null when there is nothing to say. One partition means every vertex has the
+        /// same answer; a partition with no map cannot be placed at all; and past 32 a
+        /// bit per partition stops fitting, where wrapping would quietly claim two
+        /// different partitions are one.
+        /// </remarks>
+        private static uint[]? PartitionMembership(
+            IReadOnlyList<(NifItem Source, List<ushort>? VertexMap)> sources, int vertexCount)
+        {
+            if (sources.Count < 2 || sources.Count > 32)
+                return null;
+
+            var mask = new uint[vertexCount];
+
+            for (int p = 0; p < sources.Count; p++)
+            {
+                if (sources[p].VertexMap is not { } map)
+                    return null;
+
+                foreach (ushort vertex in map)
+                {
+                    if (vertex < mask.Length)
+                        mask[vertex] |= 1u << p;
+                }
+            }
+
+            return mask;
+        }
+
         private MeshGeometry? ReadBsTriShapeGeometry(NifItem shape)
         {
             NifItem? vertexData = _model.FindItem(shape, "Vertex Data");
@@ -1704,6 +1742,8 @@ namespace SECmd.Conversion
             // the file looks wrong.
             List<NifVector3>? dynamic = DynamicPositions(shape, vertexData.Children.Count);
 
+            uint[]? partitionOf = PartitionMembership(triangleSources, vertexData.Children.Count);
+
             for (int i = 0; i < vertexData.Children.Count; i++)
             {
                 NifItem vertex = vertexData.Children[i];
@@ -1749,6 +1789,9 @@ namespace SECmd.Conversion
 
                 if (hasEyeData)
                     mesh.EyeData.Add(_model.FindItem(vertex, "Eye Data")?.Value.ToFloat() ?? 0f);
+
+                if (partitionOf is not null)
+                    mesh.PartitionMask.Add(partitionOf[i]);
             }
 
             // Every partition contributes triangles over the shared vertex array, so
