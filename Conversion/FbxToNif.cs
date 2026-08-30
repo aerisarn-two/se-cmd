@@ -1243,6 +1243,28 @@ namespace SECmd.Conversion
             return shape;
         }
 
+        /// <summary>Four comma-separated floats, or null when there are not four.</summary>
+        private static NifVector4? ParseVector4(string text)
+        {
+            if (text.Length == 0)
+                return null;
+
+            string[] parts = text.Split(',');
+
+            if (parts.Length != 4)
+                return null;
+
+            var values = new float[4];
+
+            for (int i = 0; i < 4; i++)
+            {
+                if (!float.TryParse(parts[i], NumberStyles.Float, CultureInfo.InvariantCulture, out values[i]))
+                    return null;
+            }
+
+            return new NifVector4(values[0], values[1], values[2], values[3]);
+        }
+
         /// <summary>
         /// Rebuilds a <c>bhkNiTriStripsShape</c>, the LE-era mesh collision.
         /// </summary>
@@ -1266,8 +1288,22 @@ namespace SECmd.Conversion
 
             NifItem shape = _model.InsertBlock("bhkNiTriStripsShape");
 
-            SetFloat(shape, "Radius", 0.1f);
-            _model.FindItem(shape, "Scale")?.Value.Set(new NifVector4(1f, 1f, 1f, 0f));
+            // Both carried rather than assumed. nif.xml's defaults -- 0.1 and
+            // (1,1,1,0) -- are what these mean when a file says nothing, and writing
+            // them over what a file did say is how a shape came back a different size
+            // from the one it went out as.
+            SetFloat(
+                shape,
+                "Radius",
+                float.TryParse(
+                    node.Properties.GetString(NifToFbx.StripsRadiusProperty),
+                    NumberStyles.Float, CultureInfo.InvariantCulture, out float radius)
+                    ? radius
+                    : 0.1f);
+
+            _model.FindItem(shape, "Scale")?.Value.Set(
+                ParseVector4(node.Properties.GetString(NifToFbx.StripsScaleProperty))
+                ?? new NifVector4(1f, 1f, 1f, 0f));
 
             // One shape can hold several data blocks, and FBX has one mesh per node,
             // so the seams travel as properties and the merged mesh is cut back along

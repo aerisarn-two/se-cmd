@@ -409,7 +409,27 @@ namespace SECmd.Conversion
             scene.Connect(geometry, holder);
 
             if (shape.Name == "bhkNiTriStripsShape")
+            {
                 FbxStripsParts.Write(holder, _stripsParts);
+
+                if (_model.FindItem(shape, "Scale") is { } stripsScale)
+                {
+                    NifVector4 v = stripsScale.Value.Get<NifVector4>();
+
+                    holder.Properties.SetUserString(
+                        StripsScaleProperty,
+                        string.Create(
+                            CultureInfo.InvariantCulture,
+                            $"{v.X:R},{v.Y:R},{v.Z:R},{v.W:R}"));
+                }
+
+                if (_model.FindItem(shape, "Radius") is { } stripsRadius)
+                {
+                    holder.Properties.SetUserString(
+                        StripsRadiusProperty,
+                        stripsRadius.Value.ToFloat().ToString("R", CultureInfo.InvariantCulture));
+                }
+            }
 
             if (shape.Name is "bhkCapsuleShape" or "bhkCylinderShape")
                 WriteShapeAxis(holder, shape);
@@ -721,6 +741,19 @@ namespace SECmd.Conversion
 
         /// <summary>The property a compressed mesh shape's unnamed float travels in.</summary>
         public const string CompressedMeshUnknownProperty = "nif_cms_unknown_float_1";
+
+        /// <summary>The property a strips shape's scale travels in.</summary>
+        /// <remarks>
+        /// A `bhkNiTriStripsShape` carries a `Vector4` scale and a radius of its own,
+        /// and both were being written as constants on the way back -- (1,1,1,0) and
+        /// 0.1, which are nif.xml's defaults rather than what any given file holds.
+        /// A default is what a field means when nobody said; it is not what a field
+        /// means when somebody did.
+        /// </remarks>
+        public const string StripsScaleProperty = "nif_strips_scale";
+
+        /// <summary>The property a strips shape's radius travels in.</summary>
+        public const string StripsRadiusProperty = "nif_strips_radius";
 
         /// <summary>The property a capsule's or cylinder's axis direction travels in.</summary>
         public const string ShapeAxisProperty = "nif_shape_axis";

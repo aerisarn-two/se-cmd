@@ -421,8 +421,6 @@ namespace SECmd.Tests
             // held real numbers.
             //
 
-            // A strips shape's scale comes back as 1 where the source held 0.
-            ["bhkNiTriStripsShape/Scale"] = "a strips shape's scale is reset to 1",
 
             // The chunks of a compressed mesh come back in a different order, so every
             // per-chunk field reads as changed.

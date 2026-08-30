@@ -2771,6 +2771,11 @@ namespace SECmd.Tests
             model.SetArraySize(shape, "Num Filters", "Filters", 2);
             model.SetRef(body, "Shape", shape);
 
+            // Neither of these is nif.xml's default, so a rebuild that writes the
+            // default rather than what the file holds is visible here.
+            model.FindItem(shape, "Scale")!.Value.Set(new NifVector4(2f, 3f, 4f, 5f));
+            model.FindItem(shape, "Radius")!.Value.SetFloat(0.25f);
+
             NifModel rebuilt = RoundTrip(model);
 
             Assert.Single(rebuilt.Blocks, b => b.Name == "bhkNiTriStripsShape");
@@ -2785,6 +2790,11 @@ namespace SECmd.Tests
             // And each holds its own four corners, with indices local to it.
             foreach (NifItem data in rebuilt.GetRefArray(after, "Strips Data"))
                 Assert.Equal(4u, rebuilt.GetUInt(data, "Num Vertices"));
+
+            // The shape's own size, which was being written as nif.xml's default
+            // whatever the file said.
+            Assert.Equal(new NifVector4(2f, 3f, 4f, 5f), rebuilt.FindItem(after, "Scale")!.Value.Get<NifVector4>());
+            Assert.Equal(0.25f, rebuilt.FindItem(after, "Radius")!.Value.ToFloat(), 5);
         }
 
         [Fact]
