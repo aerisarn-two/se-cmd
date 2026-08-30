@@ -428,6 +428,261 @@ namespace SECmd.Tests
         }
 
         /// <summary>
+        /// Every collision mesh comes back the same shape, if not the same bytes.
+        /// </summary>
+        /// <remarks>
+        /// A compressed mesh shape is not stored as geometry. It is stored as chunks,
+        /// each a quantised cloud of millimetre offsets from an origin Havok chose, and
+        /// Havok chooses again on the way back. So `Chunks`, `Num Chunks`, `Min` and
+        /// `Offset` all differ on a mesh that is otherwise perfectly intact, and the
+        /// field sweep can only report that they do -- it has no way to say whether the
+        /// *shape* survived, which is the only thing the physics engine reads.
+        ///
+        /// This asks that instead, of the decoded triangles rather than the encoding:
+        ///
+        /// - total surface area within 1%, so nothing of substance is added or lost;
+        /// - the bounding box within half a game unit at every corner, so the thing
+        ///   still occupies the space it did;
+        /// - and no vertex of the *rebuilt* mesh further than two game units from the
+        ///   nearest vertex of the source, so nothing is invented away from the surface
+        ///   the file described.
+        ///
+        /// The tolerances come from the quantisation rather than from taste. A chunk
+        /// stores millimetres and a game unit is about 14mm, so re-chunking against a
+        /// different origin moves a vertex by a millimetre or so. Over 529 shapes the
+        /// median vertex moves 0.12 units, the ninety-ninth percentile 0.85, and the
+        /// worst 1.52.
+        ///
+        /// Two things this deliberately does not ask, having asked them and found them
+        /// measuring the encoding rather than the shape.
+        ///
+        /// Not the triangle count. Havok welds at a millimetre, and welding takes the
+        /// slivers with it: `hhmainhallfgate01` comes back with 105 triangles where it
+        /// had 107, and the two it lost have areas of 4.35 and 7.25 against a mesh
+        /// totalling 837,117 -- the surface changes by 0.009%. Thirty-six meshes lose a
+        /// triangle or two that way, all of them slivers, none of them anything a
+        /// physics engine could collide with.
+        ///
+        /// And not the source-to-rebuilt direction of the Hausdorff. A vertex used only
+        /// by a sliver that has been welded away has no counterpart at all, so that
+        /// direction reports the distance to the next real vertex -- tens of
+        /// millimetres, which reads as a shape that moved when it is a shape that lost
+        /// a sliver. The other direction still says what matters, that nothing appears
+        /// where the file had nothing, and the area test is what bounds how much may
+        /// quietly go missing.
+        /// </remarks>
+        [Fact]
+        public void EveryVanillaCollisionMeshKeepsItsShape()
+        {
+            Sweep((original, db) =>
+            {
+                using var input = new MemoryStream(original);
+                NifModel source = NifModel.Load(input, db);
+
+                if (!source.Blocks.Any(b => b.Name == "bhkCompressedMeshShape"))
+                    return null;
+
+                if (source.FindItem(source.Footer, "Roots") is not { Children.Count: > 0 } roots
+                    || source.GetBlock(roots.Children[0]) is not { } root)
+                {
+                    return null;
+                }
+
+                List<MeshGeometry> was = CollisionMeshes(source);
+
+                if (was.Count == 0)
+                    return null;
+
+                NifModel rebuilt = new FbxToNif(
+                    new FbxScene(new NifToFbx(source).Convert()),
+                    new FbxToNifOptions
+                    {
+                        RootName = source.GetName(root),
+                        Version = source.Version,
+                        UserVersion = source.UserVersion,
+                        LegendaryEdition = source.BSVersion < 100
+                    }).Convert(db);
+
+                List<MeshGeometry> now = CollisionMeshes(rebuilt);
+
+                if (now.Count != was.Count)
+                    return $"{was.Count} collision meshes became {now.Count}";
+
+                for (int i = 0; i < was.Count; i++)
+                {
+                    if (Incongruent(was[i], now[i]) is { } why)
+                        return $"collision mesh {i}: {why}";
+                }
+
+                return null;
+            },
+            ceiling: KnownCollisionDivergence);
+        }
+
+        /// <summary>
+        /// The share of collision meshes known to come back a different shape.
+        /// </summary>
+        /// <remarks>
+        /// 54 of 22,047 meshes, 0.24%, and the tail is thin: 24 lose or gain up to a
+        /// couple of percent of their surface, 23 put a vertex two to two and a half
+        /// units off anything in the source, 5 shift a bounding box by exactly 0.700
+        /// units, and one is `sbigplanter01`, whose collision cannot be rebuilt at all
+        /// (§7.3).
+        ///
+        /// A ceiling rather than a list of paths, as the field ratchet is, because the
+        /// list would go stale against a corpus this large. The failures file names
+        /// every one on any run that writes it.
+        ///
+        /// What causes them is Havok's own builder and not anything this port chose,
+        /// which was checked rather than assumed: `civilwarmapflag01` is a box eight
+        /// vertices and twelve triangles across, half a unit thick, and it comes back
+        /// with all eight vertices and eight triangles -- two whole faces discarded, so
+        /// it is not welding, which would have taken vertices with it. Rebuilding
+        /// mopper with the weld tolerance at a tenth of a millimetre instead of one
+        /// gives byte-identical output on all three of the worst meshes.
+        /// </remarks>
+        private const double KnownCollisionDivergence = 0.003;
+
+        /// <summary>How two collision meshes fail to be the same shape, or null.</summary>
+        private static string? Incongruent(MeshGeometry was, MeshGeometry now)
+        {
+            (double areaA, NifVector3 minA, NifVector3 maxA) = MeasureMesh(was);
+            (double areaB, NifVector3 minB, NifVector3 maxB) = MeasureMesh(now);
+
+            if (areaA > 0 && Math.Abs(areaB / areaA - 1) > 0.01)
+                return $"surface area changed by {(areaB / areaA - 1) * 100:F2}%";
+
+            double box = Math.Max(
+                Math.Max(Math.Abs(minA.X - minB.X), Math.Max(Math.Abs(minA.Y - minB.Y), Math.Abs(minA.Z - minB.Z))),
+                Math.Max(Math.Abs(maxA.X - maxB.X), Math.Max(Math.Abs(maxA.Y - maxB.Y), Math.Abs(maxA.Z - maxB.Z))));
+
+            if (box > 0.5)
+                return $"bounding box moved by {box:F3} units";
+
+            double apart = HausdorffTo(now, was);
+
+            return apart > 2.0
+                ? $"a rebuilt vertex sits {apart:F3} units from anything in the source"
+                : null;
+        }
+
+        /// <summary>Total surface area and bounding box.</summary>
+        private static (double Area, NifVector3 Min, NifVector3 Max) MeasureMesh(MeshGeometry mesh)
+        {
+            double area = 0;
+
+            foreach (NifTriangle t in mesh.Triangles)
+            {
+                NifVector3 a = mesh.Vertices[t.V1], b = mesh.Vertices[t.V2], c = mesh.Vertices[t.V3];
+
+                double ux = b.X - a.X, uy = b.Y - a.Y, uz = b.Z - a.Z;
+                double vx = c.X - a.X, vy = c.Y - a.Y, vz = c.Z - a.Z;
+
+                double cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+
+                area += 0.5 * Math.Sqrt(cx * cx + cy * cy + cz * cz);
+            }
+
+            return (
+                area,
+                new NifVector3(mesh.Vertices.Min(v => v.X), mesh.Vertices.Min(v => v.Y), mesh.Vertices.Min(v => v.Z)),
+                new NifVector3(mesh.Vertices.Max(v => v.X), mesh.Vertices.Max(v => v.Y), mesh.Vertices.Max(v => v.Z)));
+        }
+
+        /// <summary>
+        /// The furthest any vertex of one mesh sits from the nearest vertex of the other.
+        /// </summary>
+        /// <remarks>
+        /// One way only, and the caller measures rebuilt against source: what that asks
+        /// is whether anything was invented. The other direction asks whether anything
+        /// went missing, which welding makes it bad at -- see the remarks on the test --
+        /// and which the area comparison answers better.
+        ///
+        /// Bucketed, because the meshes run to thousands of vertices and the honest
+        /// answer to "nearest of these to each of those" is quadratic. Buckets are four
+        /// units across and only the twenty-seven around a point are searched, which is
+        /// exact for any distance under a bucket and returns something too large rather
+        /// than too small beyond it -- so a mesh this reports as congruent is congruent.
+        /// </remarks>
+        private static double HausdorffTo(MeshGeometry from, MeshGeometry to)
+        {
+            const double Cell = 4.0;
+
+            var grid = new Dictionary<(int, int, int), List<NifVector3>>();
+
+            static (int, int, int) At(NifVector3 v) =>
+                ((int)Math.Floor(v.X / Cell), (int)Math.Floor(v.Y / Cell), (int)Math.Floor(v.Z / Cell));
+
+            foreach (NifVector3 v in to.Vertices)
+            {
+                (int, int, int) key = At(v);
+
+                if (!grid.TryGetValue(key, out List<NifVector3>? bucket))
+                    grid[key] = bucket = [];
+
+                bucket.Add(v);
+            }
+
+            double worst = 0;
+
+            foreach (NifVector3 v in from.Vertices)
+            {
+                (int cx, int cy, int cz) = At(v);
+                double best = double.MaxValue;
+
+                for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                for (int dz = -1; dz <= 1; dz++)
+                {
+                    if (!grid.TryGetValue((cx + dx, cy + dy, cz + dz), out List<NifVector3>? bucket))
+                        continue;
+
+                    foreach (NifVector3 w in bucket)
+                    {
+                        double d = (v.X - w.X) * (v.X - w.X)
+                                   + (v.Y - w.Y) * (v.Y - w.Y)
+                                   + (v.Z - w.Z) * (v.Z - w.Z);
+
+                        if (d < best) best = d;
+                    }
+                }
+
+                // Nothing within a bucket of it. Reported as the whole extent rather
+                // than infinity, so the message says something a reader can size up.
+                if (best == double.MaxValue)
+                    return double.MaxValue;
+
+                worst = Math.Max(worst, Math.Sqrt(best));
+            }
+
+            return worst;
+        }
+
+        /// <summary>Every collision mesh in a model, decoded as the export decodes it.</summary>
+        private static List<MeshGeometry> CollisionMeshes(NifModel m)
+        {
+            var all = new List<MeshGeometry>();
+            FbxScene scene;
+
+            try { scene = new FbxScene(new NifToFbx(m).Convert()); }
+            catch { return all; }
+
+            foreach (FbxObject node in scene.OfClass("Model").Where(o => o.Name.Contains("mopp_mesh")))
+            {
+                if (scene.ChildrenOf(node.Id).FirstOrDefault(o => o.Class == "Geometry") is not { } geometry)
+                    continue;
+
+                MeshGeometry? mesh = FbxMeshReader.Read(
+                    geometry, new FbxMeshReader.Options { InvertU = false, InvertV = false });
+
+                if (mesh is { Triangles.Count: > 0 })
+                    all.Add(mesh);
+            }
+
+            return all;
+        }
+
+        /// <summary>
         /// The same round trip, compared field by field rather than block by block.
         /// </summary>
         /// <remarks>
