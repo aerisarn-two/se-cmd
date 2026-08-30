@@ -127,7 +127,12 @@ namespace SECmd.Fbx
         }
 
         /// <summary>Rebuilds the controllers that animate nothing, onto the block.</summary>
-        public static void Read(FbxObject node, NifModel model, NifItem block, List<string> warnings)
+        public static void Read(
+            FbxObject node,
+            NifModel model,
+            NifItem block,
+            List<string> warnings,
+            Action<NifItem, string>? aimsAt = null)
         {
             string text = node.Properties.GetString(CountProperty);
 
@@ -166,7 +171,8 @@ namespace SECmd.Fbx
                         if (link.Value.Type == NifValueType.UpLink)
                             return;
 
-                        if (FbxInterpolatorCodec.Read(model, $"{name}_", Source, "NiInterpolator")
+                        if (FbxInterpolatorCodec.Read(
+                                model, $"{name}_", Source, "NiInterpolator", 0, aimsAt)
                             is { } interpolator)
                         {
                             link.Value.SetLink(model.IndexOf(interpolator));

@@ -2701,6 +2701,14 @@ namespace SECmd.Tests
             // The interpolator came across; the node it aims at did not come twice.
             Assert.Single(rebuilt.Blocks, b => b.Name == "NiLookAtInterpolator");
             Assert.Equal(before, rebuilt.Blocks.Count(b => b.Name == "NiNode"));
+
+            // And it still aims at it. Not following the pointer is right; leaving it
+            // unset is not, and an interpolator aiming at nothing is what that leaves.
+            NifItem back = rebuilt.Blocks.First(b => b.Name == "NiLookAtInterpolator");
+            NifItem? target = rebuilt.GetBlock(rebuilt.FindItem(back, "Look At")!);
+
+            Assert.NotNull(target);
+            Assert.Equal("Target", rebuilt.GetName(target));
         }
 
         [Fact]

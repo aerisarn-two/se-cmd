@@ -411,7 +411,6 @@ namespace SECmd.Tests
             ["Points"] = "a strips shape's strips are restructured",
             ["Num Strips"] = "a strips shape's strips are restructured",
             ["Strip Lengths"] = "a strips shape's strips are restructured",
-            ["Look At"] = "a NiLookAtInterpolator's target reference is not carried",
 
             // Also found the moment synthetic models were compared in full, each by a
             // test that was looking at something else at the time.

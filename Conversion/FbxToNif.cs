@@ -144,7 +144,7 @@ namespace SECmd.Conversion
                 FbxNodeType.ReadFlags(sceneRoots[0], _model, root);
                 FbxExtraDataWriter.ReadExtraData(sceneRoots[0], _model, root, Warnings);
                 FbxMultiBound.Read(sceneRoots[0], _model, root, Warnings);
-                FbxNodeControllers.Read(sceneRoots[0], _model, root, Warnings);
+                FbxNodeControllers.Read(sceneRoots[0], _model, root, Warnings, AimAt);
             }
             _nodesByName[_options.RootName] = root;
             _sceneRoot = root;
@@ -184,6 +184,19 @@ namespace SECmd.Conversion
             // Collision sitting directly under the scene root belongs to the root
             // block, and would otherwise be left unattached.
             BuildCollisionFrom(root, 0);
+
+            // Pointers, for the same reason as skins below: what a pointer aims at is a
+            // node elsewhere in the scene, and is as likely as not built after the block
+            // that aims at it.
+            foreach ((NifItem field, string named) in _pendingPointers)
+            {
+                if (_nodesByName.TryGetValue(named, out NifItem? aimed))
+                    field.Value.SetLink(_model.IndexOf(aimed));
+                else
+                    Warnings.Add($"no node named \"{named}\" for a pointer to aim at");
+            }
+
+            _pendingPointers.Clear();
 
             // Skins are wired up last: a bone is a node elsewhere in the scene, so
             // they can only be resolved once the whole tree exists.
@@ -378,7 +391,7 @@ namespace SECmd.Conversion
             // Controllers that animate nothing. A particle system rebuilds its own
             // through its carrier, which owns the whole system.
             if (!NifParticleWriter.HasParticleSystem(model))
-                FbxNodeControllers.Read(model, _model, node, Warnings);
+                FbxNodeControllers.Read(model, _model, node, Warnings, AimAt);
 
             // Collision found under this node attaches to it rather than becoming a
             // child, so collect it before recursing into the real children.
@@ -2331,6 +2344,20 @@ namespace SECmd.Conversion
 
         /// <summary>Nodes by name, for resolving bones.</summary>
         private readonly Dictionary<string, NifItem> _nodesByName = new(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Pointer fields waiting for the node they name, and the name they want.
+        /// </summary>
+        /// <remarks>
+        /// A pointer is the upward half of a two-way link and is never followed when a
+        /// block is carried, or the thing it aims at comes across as a second copy
+        /// attached to nothing. So the name travels instead and the link is made here,
+        /// once every node the scene holds has been built and can be found.
+        /// </remarks>
+        private readonly List<(NifItem Field, string Named)> _pendingPointers = [];
+
+        /// <summary>Records a pointer to resolve once the tree exists.</summary>
+        private void AimAt(NifItem field, string named) => _pendingPointers.Add((field, named));
 
         /// <summary>
         /// Builds every skin once the nodes its bones refer to exist.

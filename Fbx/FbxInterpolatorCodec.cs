@@ -38,6 +38,9 @@ namespace SECmd.Fbx
         /// </remarks>
         public const string IdSuffix = "id";
 
+        /// <summary>The suffix a pointer's target name is stored under.</summary>
+        public const string PointerSuffix = "_ptr";
+
         /// <summary>Fields rebuilt from context rather than carried.</summary>
         private static bool Rebuilt(NifItem child) => child.Name is "Next Controller" or "Target";
 
@@ -65,7 +68,20 @@ namespace SECmd.Fbx
                 (field, link) =>
                 {
                     if (link.Value.Type != NifValueType.UpLink)
+                    {
                         Write(model, model.GetBlock(link), $"{field}_", sink, depth + 1);
+                        return;
+                    }
+
+                    // A pointer is not followed -- see the remarks above -- but it still
+                    // says something, and the name of what it aims at is the part that
+                    // survives a trip through a scene. A NiLookAtInterpolator whose
+                    // Look At comes back unset is an interpolator aiming at nothing.
+                    if (model.GetBlock(link) is { } aimed
+                        && model.GetName(aimed) is { Length: > 0 } named)
+                    {
+                        sink($"{field}{PointerSuffix}", named);
+                    }
                 });
         }
 
@@ -78,7 +94,12 @@ namespace SECmd.Fbx
         /// inserted.
         /// </param>
         public static NifItem? Read(
-            NifModel model, string prefix, Func<string, string?> source, string ancestor, int depth = 0)
+            NifModel model,
+            string prefix,
+            Func<string, string?> source,
+            string ancestor,
+            int depth = 0,
+            Action<NifItem, string>? aimsAt = null)
         {
             if (depth > 2
                 || source($"{prefix}{TypeSuffix}") is not { Length: > 0 } type
@@ -109,9 +130,17 @@ namespace SECmd.Fbx
                 (field, link) =>
                 {
                     if (link.Value.Type == NifValueType.UpLink)
-                        return;
+                    {
+                        // Resolved by the caller once every node exists: the node a
+                        // pointer aims at is elsewhere in the scene and is very often
+                        // built after the block that aims at it.
+                        if (aimsAt is not null && source($"{field}{PointerSuffix}") is { Length: > 0 } named)
+                            aimsAt(link, named);
 
-                    if (Read(model, $"{field}_", source, "NiObject", depth + 1) is { } data)
+                        return;
+                    }
+
+                    if (Read(model, $"{field}_", source, "NiObject", depth + 1, aimsAt) is { } data)
                         link.Value.SetLink(model.IndexOf(data));
                 });
 
