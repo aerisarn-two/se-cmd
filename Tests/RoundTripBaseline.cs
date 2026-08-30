@@ -412,12 +412,6 @@ namespace SECmd.Tests
             ["Num Strips"] = "a strips shape's strips are restructured",
             ["Strip Lengths"] = "a strips shape's strips are restructured",
             ["Look At"] = "a NiLookAtInterpolator's target reference is not carried",
-            // A shader property's own name is not carried. Found the moment the
-            // synthetic models were compared in full: the test that put a
-            // BSWaterShaderProperty on a shape checked its flags and what it hung from,
-            // and never that it was still called "water". Keyed by path, because
-            // excusing `Name` everywhere would hide the next one of these.
-            ["BSWaterShaderProperty/Name"] = "a shader property's name is not carried",
 
             // Also found the moment synthetic models were compared in full, each by a
             // test that was looking at something else at the time.

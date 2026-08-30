@@ -2796,6 +2796,12 @@ namespace SECmd.Conversion
             NifItem shader = _model.InsertBlock("BSLightingShaderProperty");
             FbxProperties properties = material.Properties;
 
+            // The shader block's own name. Empty on nearly every shader the game ships,
+            // and not on all of them: a water shader is called "water", and one that
+            // comes back nameless is a block nothing can find that way.
+            if (properties.GetString(FbxMaterialWriter.ShaderNameProperty) is { Length: > 0 } shaderName)
+                _model.SetString(shader, "Name", shaderName);
+
             SetFloat(shader, "Glossiness", (float)properties.GetDouble("ShininessExponent"));
 
             // FBX keeps the specular factor over 0..1, NIF over 0..999.

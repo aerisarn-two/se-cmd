@@ -2300,6 +2300,12 @@ namespace SECmd.Tests
 
             Assert.Equal(0x80000000u, rebuilt.GetUInt(after, "Shader Flags 1"));
 
+            // And its own name. A shader property is a NiObjectNET and carries one; the
+            // flat carrier skips `Name` because the codec walks a block's own fields, so
+            // it has to be brought over beside them. Left out, a water shader came back
+            // called nothing, which nothing that looks one up by name would find.
+            Assert.Equal("water", rebuilt.GetName(after));
+
             // Hung on a shape, not merely present.
             Assert.Contains(
                 rebuilt.Blocks.Where(b => b.Name == "NiTriShape"),

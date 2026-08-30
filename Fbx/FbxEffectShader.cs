@@ -95,6 +95,18 @@ namespace SECmd.Fbx
                 name => material.Properties.GetString(name) is { Length: > 0 } value ? value : null,
                 child => Skipped.Contains(child.Name));
 
+            // `Name` is skipped by the codec, which walks a block's own fields and has
+            // no business with the NiObjectNET level above them. It still has to travel:
+            // a water shader is called "water" in the files that have one, and a rebuilt
+            // block with no name is one nothing can find that way. It rides on the
+            // material beside the rest, written by FbxMaterialWriter from
+            // `MaterialData.ShaderName`.
+            if (material.Properties.GetString(FbxMaterialWriter.ShaderNameProperty)
+                is { Length: > 0 } named)
+            {
+                model.SetString(shader, "Name", named);
+            }
+
             return shader;
         }
     }

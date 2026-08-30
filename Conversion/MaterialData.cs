@@ -188,6 +188,20 @@ namespace SECmd.Conversion
         /// <summary>The shader path, kept as its enum name so it survives a round trip.</summary>
         public string ShaderType { get; set; } = string.Empty;
 
+        /// <summary>
+        /// The shader property block's own name, which is not the material's.
+        /// </summary>
+        /// <remarks>
+        /// A shader property is a `NiObjectNET` and carries a name like anything else
+        /// on that level. It is usually empty, and when it is not it says something a
+        /// reader relies on: the water shaders are called "water", and a rebuilt one
+        /// that is not called anything is a shader nothing can find by name.
+        ///
+        /// Distinct from <see cref="Name"/>, which is the FBX material's -- built from
+        /// the shape it hangs off, since FBX needs every material to have one.
+        /// </remarks>
+        public string ShaderName { get; set; } = string.Empty;
+
         public NifColor3 EmissiveColor { get; set; }
 
         public float EmissiveMultiple { get; set; } = 1f;

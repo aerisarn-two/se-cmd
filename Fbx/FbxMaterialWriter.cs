@@ -46,6 +46,9 @@ namespace SECmd.Fbx
 
         public const string TextureSetIdProperty = "nif_texture_set";
 
+        /// <summary>The property carrying the shader property block's own name.</summary>
+        public const string ShaderNameProperty = "nif_shader_name";
+
         /// <summary>Names the source block a material's alpha property came from.</summary>
         public const string AlphaIdProperty = "nif_alpha_property";
 
@@ -96,6 +99,12 @@ namespace SECmd.Fbx
             // No standard FBX slot for these, so they ride as user properties.
             if (material.ShaderType.Length > 0)
                 properties.SetUserString("shader_type", material.ShaderType);
+
+            // The shader block's own name, which the material's name is not: a material
+            // is named for the shape it dresses, and a shader property is named
+            // whatever the file called it.
+            if (material.ShaderName.Length > 0)
+                properties.SetUserString(ShaderNameProperty, material.ShaderName);
 
             // Which source blocks the parts came from, so blocks shared there are
             // shared again rather than copied per shape.
