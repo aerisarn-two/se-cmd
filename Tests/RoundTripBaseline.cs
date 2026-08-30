@@ -193,6 +193,25 @@ namespace SECmd.Tests
             // a lone byte. Nothing reads them, and a rebuilt block zeroes them.
             ["Unused 01"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
             ["Unused 03"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
+
+            // A partition's vertex map holds the right vertices in an order of our own.
+            // Accepted in the spec (§7.3): the set is always exact -- 860 of 860
+            // partitions in a 600-mesh sample come back holding what they held -- and
+            // the sequence follows no rule that can be re-derived. Of those 860, 317
+            // are ascending, 229 are first appearance in the partition's own triangles,
+            // and 314 are neither, so there is nothing to reproduce it from. The
+            // deformers cannot supply it either: a cluster lists only the vertices its
+            // own bone moves, and no cluster holds the whole map.
+            //
+            // The renderer walks the map rather than indexing into it by position, so a
+            // map is as good in one order as another; this is a byte-fidelity gap, not
+            // a behavioural one.
+            //
+            // Only this field. `Vertex Weights` and the partition's own `Triangles` are
+            // indexed by the map and shift with it, but they differ for reasons of
+            // their own as well, and excusing them here would blind the sweep to those.
+            ["Vertex Map"] = "a partition's vertex map holds the right vertices in our order (spec §7.3)",
+
         };
 
         /// <summary>
@@ -385,23 +404,7 @@ namespace SECmd.Tests
             // buffer's slot order in all 1,764,398 vertices where the two agree.
             ["Bone Indices"] = "the fixture's NiSkinData and vertex buffer disagree; vanilla's do not",
 
-            // A partition's vertex map holds the right vertices in an order of our own.
-            // Accepted in the spec (§7.3): the set is always exact -- 860 of 860
-            // partitions in a 600-mesh sample come back holding what they held -- and
-            // the sequence follows no rule that can be re-derived. Of those 860, 317
-            // are ascending, 229 are first appearance in the partition's own triangles,
-            // and 314 are neither, so there is nothing to reproduce it from. The
-            // deformers cannot supply it either: a cluster lists only the vertices its
-            // own bone moves, and no cluster holds the whole map.
-            //
-            // The renderer walks the map rather than indexing into it by position, so a
-            // map is as good in one order as another; this is a byte-fidelity gap, not
-            // a behavioural one.
-            //
-            // Only this field. `Vertex Weights` and the partition's own `Triangles` are
-            // indexed by the map and shift with it, but they differ for reasons of
-            // their own as well, and excusing them here would blind the sweep to those.
-            ["Vertex Map"] = "a partition's vertex map holds the right vertices in our order (spec §7.3)",
+
 
             ["BSTriShape"] = "a shape with no vertices comes back as NiTriShape",
 
