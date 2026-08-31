@@ -474,6 +474,23 @@ namespace SECmd.Tests
             // bones, so "round the distinct set up to four" is not it either.
             ["Num Bones"] = "Bethesda pads a partition's bone list with repeats; this writes the distinct set",
 
+            // The list the count above counts, which differs for the one reason the
+            // count does. Over a 1,200-mesh sample it accounts for 2,009 differences in
+            // the array's length -- every sampled one a file holding a multiple of four
+            // against our one or two -- and 206 in an entry of it, where the lengths
+            // happened to match and the repeats fell in different slots.
+            //
+            // Recorded the same way `Children` is recorded beside `Num Children`, for
+            // the same padding.
+            //
+            // Scoped to the path rather than the field name, which is much too common to
+            // excuse everywhere: `NiSkinInstance` names its own bones in a `Bones` array
+            // and a bone missing from *that* is a skin that has lost a bone. So is
+            // `BSTreeNode`'s, which differs 85 times in the same sample and stays
+            // reported.
+            ["NiSkinPartition/Partitions/Partitions/Bones"] =
+                "Bethesda pads a partition's bone list with repeats; this writes the distinct set",
+
             ["Num Extra Targets"] = "Bethesda pads this array; 92.5% of vanilla slots are empty",
             ["Extra Targets"] = "Bethesda pads this array; 92.5% of vanilla slots are empty",
 
