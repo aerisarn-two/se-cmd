@@ -1256,6 +1256,21 @@ namespace SECmd.Conversion
             return shape;
         }
 
+        /// <summary>
+        /// The quantization step a compressed mesh's chunks are packed in.
+        /// </summary>
+        /// <remarks>
+        /// A millimetre, matching mopper and matching every file the game ships. It is
+        /// also the resolution a collision shape is built at, and a shape whose thinnest
+        /// dimension is only a few steps across can lose faces to it: the civil war map
+        /// flag is a box half a game unit -- seven millimetres -- thick, and it comes
+        /// back with four of its twelve triangles gone. Built at a hundredth of this it
+        /// keeps all twelve, which is the evidence that the quantum is the cause, and
+        /// also not a change that can be made here: the offsets are 16-bit, so a finer
+        /// step buys resolution with range, and no vanilla file uses one (§7.3).
+        /// </remarks>
+        private const float MoppQuantizationError = 0.001f;
+
         /// <summary>Four comma-separated floats, or null when there are not four.</summary>
         private static NifVector4? ParseVector4(string text)
         {
@@ -1680,7 +1695,15 @@ namespace SECmd.Conversion
             SetCount(data, "Bits Per W Index", 18);
             SetCount(data, "Mask W Index", 262143);
             SetCount(data, "Mask Index", 131071);
-            SetFloat(data, "Error", 0.001f);
+            // The step mopper packs a chunk's offsets in, which the export reads back
+            // out of this field. mopper asks Havok for it by name --
+            // `createMeshShape(0.001f, ...)` in mopper.cpp -- so the two are one number
+            // written in two places, and they have to say the same thing or a rebuilt
+            // shape decodes at the wrong scale.
+            //
+            // 0.001 is not a choice here so much as what the format settled on: all
+            // 8,188 compressed shapes Skyrim ships carry it, and nothing else.
+            SetFloat(data, "Error", MoppQuantizationError);
 
             if (_model.SetArraySize(data, "Num Big Verts", "Big Verts", built.BigVertices.Count) is { } bigVerts)
             {

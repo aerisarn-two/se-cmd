@@ -924,6 +924,12 @@ namespace SECmd.Conversion
             if (_model.FindItem(data, "Chunks") is not { } chunks)
                 return mesh;
 
+            // The step a chunk's packed offsets are counted in. A file that says
+            // nothing, or says zero, gets the value every vanilla one carries.
+            float quantum = _model.FindItem(data, "Error")?.Value.ToFloat() is { } error and > 0f
+                ? error
+                : 0.001f;
+
             foreach (NifItem chunk in chunks.Children)
             {
                 NifVector4 origin = _model.FindItem(chunk, "Translation")?.Value.Get<NifVector4>() ?? default;
@@ -942,13 +948,22 @@ namespace SECmd.Conversion
 
                 int firstVertex = mesh.Vertices.Count;
 
-                // Vertices are millimetre offsets from the chunk's own origin.
+                // Vertices are quantised offsets from the chunk's own origin, in units
+                // of the data block's `Error` -- which nif.xml calls the quantization
+                // error and every one of the 8,188 compressed shapes Skyrim ships sets
+                // to 0.001, a millimetre.
+                //
+                // Read rather than assumed. The scale was a hardcoded thousandth, which
+                // is right for every vanilla file and silently wrong for any other: the
+                // field is there precisely because the number is the encoder's to
+                // choose, and a shape quantised finer decoded a hundred times too
+                // large.
                 for (int i = 0; i + 2 < offsets.Count; i += 3)
                 {
                     var local = new NifVector3(
-                        origin.X + offsets[i] / 1000f,
-                        origin.Y + offsets[i + 1] / 1000f,
-                        origin.Z + offsets[i + 2] / 1000f);
+                        origin.X + offsets[i] * quantum,
+                        origin.Y + offsets[i + 1] * quantum,
+                        origin.Z + offsets[i + 2] * quantum);
 
                     mesh.Vertices.Add(placement.Apply(local));
                 }
