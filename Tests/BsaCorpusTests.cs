@@ -279,7 +279,20 @@ namespace SECmd.Tests
                 return difference is null
                     ? string.Join("; ", trouble)
                     : $"{difference}; {string.Join("; ", trouble)}";
-            });
+            },
+            tolerated:
+            [
+                // The one mesh in the game whose collision cannot be rebuilt. Its
+                // compressed shape has two chunks and the first is a near-flat sliver --
+                // 0.049 by 0.007 by 0.063 metres, ten triangles -- which Havok will not
+                // build a MOPP for on its own, so the two-material split fails and the
+                // shape goes with it. ck-cmd builds these the same way and loses it too;
+                // the spec records what has been ruled out (§7.3).
+                //
+                // Named rather than allowed for by a ceiling, so that a *second* mesh
+                // losing its collision still fails. A share would absorb it.
+                "meshes/architecture/solitude/clutter/sbigplanter01.nif"
+            ]);
         }
 
         /// <summary>
