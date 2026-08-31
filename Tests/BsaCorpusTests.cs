@@ -990,6 +990,122 @@ namespace SECmd.Tests
             return seen.Count;
         }
 
+        /// <summary>
+        /// A rebuilt mesh does not quietly start losing more vertices than it does now.
+        /// </summary>
+        /// <remarks>
+        /// The reader merges two corners that agree in all twenty-three factors, which
+        /// is what FBXWrangler does and what a scene from a DCC tool needs. Vanilla
+        /// ships byte-identical duplicate rows -- a castle wall with 75 vertices and 54
+        /// distinct ones -- so a rebuilt mesh is routinely smaller than its source, and
+        /// nothing else in the file indexes those rows: no `BSSubIndexTriShape`, no
+        /// segments, no morph controller anywhere in the game, and a dynamic shape's
+        /// parallel buffer is rebuilt from the same list.
+        ///
+        /// Measured over the whole corpus: 11,988 shapes in 6,265 meshes come back
+        /// smaller, losing 464,897 vertices of 36,183,819 -- 1.28%, and under 1% of what
+        /// the eighteen-factor key alone would merge. Half of the affected shapes lose
+        /// ten vertices or fewer.
+        ///
+        /// So this is a ratchet on the share of meshes affected rather than a gate. What
+        /// it is for is the direction: welding is a judgement about what makes a vertex
+        /// itself, and a change to the key that starts merging more aggressively would
+        /// otherwise be invisible -- the block sweep counts blocks, and a shape with
+        /// fewer vertices has the same ones.
+        /// </remarks>
+        [Fact]
+        public void NoMoreVanillaMeshesLoseVerticesThanAlreadyDo()
+        {
+            Sweep((original, db) =>
+            {
+                using var input = new MemoryStream(original);
+                NifModel source = NifModel.Load(input, db);
+
+                if (source.FindItem(source.Footer, "Roots") is not { Children.Count: > 0 } roots
+                    || source.GetBlock(roots.Children[0]) is not { } root)
+                {
+                    return null;
+                }
+
+                List<int> was = VertexCounts(source);
+
+                if (was.Count == 0)
+                    return null;
+
+                NifModel rebuilt = new FbxToNif(
+                    new FbxScene(new NifToFbx(source).Convert()),
+                    new FbxToNifOptions
+                    {
+                        RootName = source.GetName(root),
+                        Version = source.Version,
+                        UserVersion = source.UserVersion,
+                        LegendaryEdition = source.BSVersion < 100
+                    }).Convert(db);
+
+                List<int> now = VertexCounts(rebuilt);
+
+                // A different number of shapes is the block sweep's business.
+                if (now.Count != was.Count)
+                    return null;
+
+                int lost = 0, shapes = 0;
+
+                for (int i = 0; i < was.Count; i++)
+                {
+                    if (now[i] >= was[i]) continue;
+
+                    lost += was[i] - now[i];
+                    shapes++;
+                }
+
+                return shapes == 0 ? null : $"{shapes} shape(s) lost {lost} vertices";
+            },
+            ceiling: KnownVertexLoss);
+        }
+
+        /// <summary>
+        /// The share of vanilla meshes that come back with fewer vertices.
+        /// </summary>
+        /// <remarks>
+        /// 6,265 of 22,047, and the cause is welding duplicate rows the game ships
+        /// rather than anything lost. The number to watch is whether it rises.
+        /// </remarks>
+        private const double KnownVertexLoss = 0.30;
+
+        /// <summary>Every geometry shape's vertex count, in block order.</summary>
+        private static List<int> VertexCounts(NifModel m)
+        {
+            var all = new List<int>();
+
+            foreach (NifItem shape in m.Blocks.Where(b => m.BlockInherits(b, "NiAVObject")).ToList())
+            {
+                if (m.BlockInherits(shape, "BSTriShape"))
+                {
+                    NifItem? buffer = m.FindItem(shape, "Vertex Data");
+
+                    // A skinned SSE shape keeps its geometry in the partition, with its
+                    // own counts at zero.
+                    if ((buffer?.Children.Count ?? 0) == 0
+                        && m.GetRef(shape, "Skin") is { } skin
+                        && m.GetRef(skin, "Skin Partition") is { } partition)
+                    {
+                        buffer = m.FindItem(partition, "Vertex Data");
+                    }
+
+                    if (buffer is not null)
+                        all.Add(buffer.Children.Count);
+                }
+                else if (m.BlockInherits(shape, "NiTriBasedGeom")
+                         && m.GetRef(shape, "Data") is { } data
+                         && m.FindItem(data, "Vertices") is { } vertices)
+                {
+                    all.Add(vertices.Children.Count);
+                }
+            }
+
+            return all;
+        }
+
         /// <summary>How two collision meshes fail to be the same shape, or null.</summary>
         private static string? Incongruent(MeshGeometry was, MeshGeometry now)
         {
