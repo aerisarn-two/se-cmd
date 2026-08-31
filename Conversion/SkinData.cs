@@ -102,6 +102,22 @@ namespace SECmd.Conversion
         /// </remarks>
         public List<(string Slot, uint Flags)> BodySlots { get; } = [];
 
+        /// <summary>
+        /// Whether the source kept its weights in `NiSkinData`'s bone list.
+        /// </summary>
+        /// <remarks>
+        /// A skinned shape holds its weights twice, in `NiSkinData` and in the renderer's
+        /// own copy, and a few files keep only the second: of 6,760 `NiSkinData` sampled,
+        /// 6,724 have `Has Vertex Weights` set with a populated bone list and 36 have it
+        /// clear with an empty one. Both are read the same way here -- the bone list
+        /// first, the partition when it holds nothing -- so which copy the weights came
+        /// out of is the only record that the other one was empty on purpose.
+        ///
+        /// True when nothing said otherwise, since that is what all but half a percent
+        /// of files are and what a skin authored in a DCC tool should become.
+        /// </remarks>
+        public bool WeightsInBoneList { get; set; } = true;
+
         /// <summary>The whole skin's transform, usually identity.</summary>
         public NifTransform SkinTransform { get; set; } = NifTransform.Identity;
 

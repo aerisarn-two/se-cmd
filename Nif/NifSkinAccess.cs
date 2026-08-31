@@ -86,8 +86,16 @@ namespace SECmd.Nif
 
             // The bone list is exact; the partition caps a vertex at four
             // influences, so only fall back to it.
+            //
+            // Falling back is also the only sign that the file left NiSkinData empty on
+            // purpose, which a few dozen do, so it is recorded rather than merely acted
+            // on -- otherwise a shape that kept its weights in one copy comes back with
+            // them in both.
             if (!ReadWeightsFromBoneList(model, data, result))
+            {
+                result.WeightsInBoneList = false;
                 ReadWeightsFromPartition(model, skin, result);
+            }
 
             ReadPartitions(model, skin, result);
 

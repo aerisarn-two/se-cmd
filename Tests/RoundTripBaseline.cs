@@ -446,14 +446,6 @@ namespace SECmd.Tests
             ["Start Time"] = "an attached controller's span covers its keys; Bethesda's is narrower",
             ["Stop Time"] = "an attached controller's span covers its keys; Bethesda's is narrower",
 
-            // Now follows whether the bone list actually holds weights, which is exactly
-            // what vanilla does: of 6,760 NiSkinData sampled, 6,724 have the flag set
-            // with a populated list and 36 have it clear with an empty one. It still
-            // differs for a shape whose source kept the weights only in its vertex
-            // buffer and left NiSkinData empty on purpose: reading the buffer is the
-            // only way to get them, and writing them back fills the list this flag then
-            // has to report. Which copy a file keeps them in does not survive FBX.
-            ["Has Vertex Weights"] = "a shape that kept weights only in its buffer gets them in both",
 
             // Not our selection: the fixture's own two copies of the weights disagree,
             // and only one of them can be rebuilt from the other.

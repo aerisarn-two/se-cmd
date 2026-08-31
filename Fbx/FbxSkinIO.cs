@@ -66,6 +66,14 @@ namespace SECmd.Fbx
         /// <summary>Which partition a skin deformer stands for, in the file's order.</summary>
         public const string PartitionProperty = "nif_skin_partition";
 
+        /// <summary>Set when the source kept its weights out of `NiSkinData`.</summary>
+        /// <remarks>
+        /// Written only for the shapes that did, so a scene that came from anywhere else
+        /// gets the ordinary arrangement -- weights in both copies -- which is what all
+        /// but half a percent of the game's skins have.
+        /// </remarks>
+        public const string BufferWeightsProperty = "nif_skin_weights_buffer_only";
+
         private const int SkinVersion = 101;
         private const int ClusterVersion = 100;
 
@@ -176,6 +184,10 @@ namespace SECmd.Fbx
             // The class the shape had, when the scene came from a NIF at all.
             if (skin.InstanceType.Length > 0)
                 skinObject.Properties.SetUserString(InstanceTypeProperty, skin.InstanceType);
+
+            // Which copy of the weights the file kept. Only when it is the unusual one.
+            if (!skin.WeightsInBoneList)
+                skinObject.Properties.SetUserString(BufferWeightsProperty, "1");
 
             // Which skin data it shared, so two shapes that shared one still do.
             if (skin.SkinDataId >= 0)
@@ -305,6 +317,8 @@ namespace SECmd.Fbx
 
             var skin = new SkinData
             {
+                WeightsInBoneList =
+                    skinObject.Properties.GetString(BufferWeightsProperty).Length == 0,
                 InstanceType = skinObject.Properties.GetString(InstanceTypeProperty),
                 SkinDataId = int.TryParse(
                     skinObject.Properties.GetString(DataIdProperty),

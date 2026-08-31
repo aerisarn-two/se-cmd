@@ -183,6 +183,35 @@ namespace SECmd.Tests
             SkinData skin = model.ReadSkin(FirstSkinnedShape(model))!;
 
             Assert.Contains(skin.Bones, b => b.Weights.Count > 0);
+
+            // And says where it found them. Both copies read the same way -- the bone
+            // list first, the renderer's when that holds nothing -- so which one a file
+            // actually used is only knowable here, and a shape that kept its weights out
+            // of NiSkinData came back with them in both.
+            Assert.False(skin.WeightsInBoneList);
+        }
+
+        [Fact]
+        public void AShapeThatKeptItsWeightsOutOfNiSkinDataStillDoes()
+        {
+            NifModel rebuilt = RoundTrip("TestNifFile_Skinned_NoNiSkinDataWeights.nif", legendary: false);
+
+            NifItem data = rebuilt.Blocks.First(b => b.Name == "NiSkinData");
+
+            Assert.Equal(0u, rebuilt.GetUInt(data, "Has Vertex Weights"));
+
+            // The bones and their counts stay: nif.xml makes only the weight array
+            // conditional on that flag, so a bone still says how many vertices it moves
+            // and still carries its bind pose.
+            NifItem bones = rebuilt.FindItem(data, "Bone List")!;
+
+            Assert.NotEmpty(bones.Children);
+            Assert.All(bones.Children, b => Assert.True(rebuilt.GetUInt(b, "Num Vertices") > 0));
+
+            // And the weights are still in the copy the renderer reads.
+            SkinData skin = rebuilt.ReadSkin(FirstSkinnedShape(rebuilt))!;
+
+            Assert.Contains(skin.Bones, b => b.Weights.Count > 0);
         }
 
         [Fact]

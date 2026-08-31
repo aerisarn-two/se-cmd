@@ -528,12 +528,16 @@ namespace SECmd.Nif
             // the two without exception: of 6,760 NiSkinData sampled, 6,724 have the
             // flag set with a populated list and 36 have it clear with an empty one.
             //
-            // No conversion reaches the false arm today -- a skin with no weighted bone
-            // is dropped before it gets here, by NifSkinAccess.ReadSkin and by the FBX
-            // reader alike -- so this is a correctness tidy rather than a fix, and there
-            // is deliberately no test claiming otherwise. It is here so the field cannot
-            // start lying if a skin with an empty bone list ever does reach this point.
-            bool anyWeights = bones.Any(b => b.Weights.Count > 0);
+            // A file that kept its weights out of NiSkinData keeps them out of it again.
+            // Both copies are read the same way -- the bone list first, the renderer's
+            // when it holds nothing -- so a shape that had them in one came back with
+            // them in both, and the flag, following what was written, said so honestly.
+            // Which of the two a file uses is now carried, so it can be put back.
+            //
+            // The bone list is still written, with its transforms: the flag says whether
+            // the *weights* are there, and the 36 files that clear it still name their
+            // bones and still pose them.
+            bool anyWeights = skin.WeightsInBoneList && bones.Any(b => b.Weights.Count > 0);
 
             model.FindItem(data, "Has Vertex Weights")?.Value.SetCount(anyWeights ? 1u : 0u);
 
@@ -546,6 +550,18 @@ namespace SECmd.Nif
                 SkinBone bone = bones[i];
 
                 WriteTransform(model, entry, "Skin Transform", bone.SkinTransform);
+
+                if (!anyWeights)
+                {
+                    // The count stays, the weights go. nif.xml makes only the array
+                    // conditional on the flag, so `Num Vertices` is written either way
+                    // and still says how many vertices this bone moves --
+                    // `TestNifFile_Skinned_NoNiSkinDataWeights` clears the flag and keeps
+                    // 76 and 60. Zeroing it would lose a count the file has and the
+                    // renderer's own copy still honours.
+                    model.FindItem(entry, "Num Vertices")?.Value.SetCount((uint)bone.Weights.Count);
+                    continue;
+                }
 
                 if (model.SetArraySize(entry, "Num Vertices", "Vertex Weights", bone.Weights.Count)
                     is not { } weights)
