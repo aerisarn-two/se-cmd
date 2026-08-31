@@ -1461,6 +1461,42 @@ the arrays without the bit leaves them in the file for nothing to read.
 The generated vectors agree with those in ck-cmd's own example files to four decimal
 places, which is what establishes that this is the same algorithm.
 
+##### Normals are computed for a mesh that has none, unless the NIF said it had none
+
+The same question one channel over, and this port answers it differently from the way it
+answers tangents.
+
+ck-cmd computes normals for any mesh that arrives without them
+(`FBXWrangler.cpp:3393`, `if (normals.empty() && verts.size()) CalculateNormals(...)`),
+and that is right for an FBX authored elsewhere: a DCC that exported no normal layer
+would otherwise give a shape the game renders unlit. This port does the same, and the
+default is unchanged.
+
+It is wrong for an FBX this port wrote. A NIF may hold a shape with no normals at all,
+and the game ships **341** of them in a 1,500-mesh sample — 249 `BSDynamicTriShape` and
+92 `BSTriShape`, **3.5%** of all shapes. Computing normals for one of those is not the
+addition of a channel it looks like: every offset in `Vertex Desc` moves along by one,
+`Vertex Data Size` grows from 5 to 6, and every vertex in the buffer is rewritten.
+
+| | `Vertex Desc` | Data size | Normal off. | Colour off. | Skinning off. |
+| --- | --- | --- | --- | --- | --- |
+| file | `0x46200021000045` | 5 | 0 | 1 | 2 |
+| computed | `0x46A00032010046` | 6 | 1 | 2 | 3 |
+
+It was the largest single pattern in the field sweep's `Vertex Desc` residue — 685 of
+1,204 differences — and removing it takes `Vertex Desc` out of the sweep's sixteen
+commonest fields altogether.
+
+Nothing in an FBX distinguishes *the NIF had none* from *the exporter wrote none*, so
+the fact travels, as `nif_shape_no_normals` on the geometry. An FBX arriving without the
+marker gets ck-cmd's behaviour exactly, so this costs a DCC workflow nothing.
+
+Note the asymmetry with tangents above, which is deliberate. Tangents are regenerated
+whenever the mesh has UVs, *replacing* what the FBX carried; normals are computed only
+when there are none to keep. A normal is geometry and survives a round trip unchanged; a
+tangent frame is a convention, and the one an FBX carries was built for its own vertex
+layout.
+
 #### 5.3.4 Materials, on the way back
 
 An FBX material is the busiest carrier in the format: three unrelated things arrive as
