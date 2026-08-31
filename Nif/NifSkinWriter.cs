@@ -55,8 +55,19 @@ namespace SECmd.Nif
         {
             var missing = new List<string>();
 
-            // Drop influences Skyrim cannot read, renormalising what is left.
-            skin.LimitInfluences(MaxInfluences);
+            // The four-influence limit is not applied here, because it is not a limit on
+            // what a skin may hold. It is a limit on the two copies the renderer reads:
+            // the partition has `Num Weights Per Vertex` slots and the vertex buffer has
+            // four, and each takes the heaviest four and normalises them on its own --
+            // see `WriteOnePartition` and `FbxToNif.WriteVertexWeights`.
+            //
+            // `NiSkinData` is the third copy and holds what was authored, which is more
+            // than four often enough to matter. Across a 3,000-mesh sample it names a
+            // bone that no partition of the same shape renders on 4,319 vertices,
+            // 5,069 influences in all -- `nordcuirassm_0.nif` weights vertex 1728 with
+            // five bones and renders four of them. Capping it here dropped those, and
+            // then renormalised the survivors, which moved every other weight on the
+            // vertex too.
 
             var bones = new List<SkinBone>();
             var nodes = new List<NifItem>();
@@ -667,8 +678,8 @@ namespace SECmd.Nif
                 // normalised. NiSkinData beside it holds them as authored, which is not
                 // the same thing: a file can carry a vertex summing to 0.99986 there and
                 // to exactly one here, and TestNifFile_LooseBlocks_SE does. Normalising
-                // in SkinData.LimitInfluences, which feeds both, made the two copies
-                // agree with each other and neither agree with the file.
+                // before either copy was written, as a shared trim once did, made the
+                // two copies agree with each other and neither agree with the file.
                 float total = 0f;
 
                 if (influences is not null)

@@ -225,31 +225,103 @@ namespace SECmd.Tests
         // --- limiting influences ---------------------------------------------
 
         [Fact]
-        public void LimitingInfluencesKeepsTheHeaviestAndRenormalises()
+        public void OnlyTheCopiesTheRendererReadsAreCutToFourInfluences()
         {
+            // Six bones pulling one vertex. Skyrim renders four of them, and the
+            // question is which copy of the weights that limit applies to.
+            //
+            // It applies to the two the renderer reads -- the partition, whose rows are
+            // `Num Weights Per Vertex` wide, and the vertex buffer. `NiSkinData` is the
+            // third copy and holds what was authored, which the game's own files show
+            // going past four: over a 3,000-mesh sample it names a bone that no
+            // partition of the same shape renders on 4,319 vertices. Cutting it back
+            // here dropped those influences and renormalised what was left, moving every
+            // other weight on the vertex with them.
+            NifModel model = NifModel.CreateNew(Db, bsVersion: 100);
+
+            NifItem root = model.InsertBlock("NiNode");
+            model.SetString(root, "Name", "root");
+
+            NifItem shape = model.InsertBlock("NiTriShape");
+            model.SetString(shape, "Name", "Pulled");
+
+            NifItem data = model.InsertBlock("NiTriShapeData");
+            model.FindItem(data, "Num Vertices")!.Value.SetCount(3);
+            model.FindItem(data, "Has Vertices")!.Value.SetCount(1);
+
+            NifItem positions = model.FindItem(data, "Vertices")!;
+            positions.InvalidateConditionsRecursive();
+            model.UpdateArraySize(positions);
+
+            for (int i = 0; i < 3; i++)
+                positions.Children[i].Value.Set(new NifVector3(i, i * 2, 0f));
+
+            model.SetRef(shape, "Data", data);
+
+            float[] authored = [0.30f, 0.25f, 0.20f, 0.15f, 0.07f, 0.03f];
+
             var skin = new SkinData();
+            var nodes = new Dictionary<string, NifItem>(StringComparer.Ordinal);
 
-            for (int i = 0; i < 6; i++)
-                skin.Bones.Add(new SkinBone { Name = $"Bone{i}" });
+            for (int i = 0; i < authored.Length; i++)
+            {
+                var bone = new SkinBone { Name = $"Bone{i}" };
+                bone.Weights.Add((0, authored[i]));
+                skin.Bones.Add(bone);
 
-            // One vertex pulled by six bones, which Skyrim cannot represent.
-            float[] weights = [0.30f, 0.25f, 0.20f, 0.15f, 0.07f, 0.03f];
+                NifItem node = model.InsertBlock("NiNode");
+                model.SetString(node, "Name", bone.Name);
+                nodes[bone.Name] = node;
+            }
 
-            for (int i = 0; i < weights.Length; i++)
-                skin.Bones[i].Weights.Add((0, weights[i]));
+            model.WriteSkin(
+                shape, skin, nodes, root, 3, [new NifTriangle(0, 1, 2)], "NiSkinInstance");
 
-            skin.LimitInfluences(4);
+            NifItem instance = model.GetSkinInstance(shape)!;
 
-            var influences = skin.ByVertex()[0];
+            // NiSkinData keeps all six, as authored and unscaled.
+            NifItem boneList = model.FindItem(model.GetBlock(model.FindItem(instance, "Data")!)!, "Bone List")!;
+            var kept = new List<float>();
 
-            Assert.Equal(4, influences.Count);
+            foreach (NifItem entry in boneList.Children)
+            {
+                if (model.FindItem(entry, "Vertex Weights") is not { } weights)
+                    continue;
 
-            // Renormalised, or the vertex would be under-weighted by the 10% that
-            // the dropped influences carried.
-            Assert.Equal(1f, influences.Sum(i => i.Weight), 4);
+                foreach (NifItem w in weights.Children)
+                {
+                    if (model.GetUInt(w, "Index") == 0)
+                        kept.Add(model.FindItem(w, "Weight")!.Value.ToFloat());
+                }
+            }
 
-            // The four kept are the heaviest four.
-            Assert.Equal([0, 1, 2, 3], influences.Select(i => i.Bone).OrderBy(b => b));
+            kept.Sort();
+            Assert.Equal(authored.OrderBy(x => x), kept);
+
+            // The partition renders the heaviest four, normalised between them.
+            NifItem partitions = model.FindItem(
+                model.GetBlock(model.FindItem(instance, "Skin Partition")!)!, "Partitions")!;
+
+            NifItem row = model.FindItem(partitions.Children[0], "Vertex Weights")!.Children[0];
+            List<float> rendered = [.. row.Children.Select(c => c.Value.ToFloat()).Where(w => w > 0f)];
+
+            Assert.Equal(4, rendered.Count);
+            Assert.Equal(1f, rendered.Sum(), 4);
+
+            // The four heaviest, and no others: 0.30, 0.25, 0.20 and 0.15 over their
+            // own total of 0.90.
+            Assert.Equal(
+                authored.Take(4).Select(w => w / 0.90f).OrderBy(w => w),
+                rendered.OrderBy(w => w),
+                new FloatComparer(1e-4f));
+        }
+
+        /// <summary>Compares floats to a tolerance, for a sequence assertion.</summary>
+        private sealed class FloatComparer(float tolerance) : IEqualityComparer<float>
+        {
+            public bool Equals(float a, float b) => MathF.Abs(a - b) <= tolerance;
+
+            public int GetHashCode(float value) => 0;
         }
 
         // --- conversion to FBX -------------------------------------------------

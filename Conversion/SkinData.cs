@@ -222,63 +222,11 @@ namespace SECmd.Conversion
         /// and whose partition still holds them scaled to exactly one.
         ///
         /// `NiSkinData` beside it is the copy that keeps the authored values, which is
-        /// why normalising in <see cref="LimitInfluences"/>, which feeds both, made the
-        /// two copies agree with each other and neither agree with the file.
+        /// why normalising them before either copy was written -- as a shared trim once
+        /// did -- made the two copies agree with each other and neither agree with the
+        /// file.
         /// </remarks>
         public static float PartitionScale(float total) => total > 0f ? 1f / total : 1f;
 
-        public void LimitInfluences(int maxPerVertex = 4)
-        {
-            var byVertex = ByVertex();
-
-            // What survives for each vertex, and what its weights are then multiplied
-            // by. Worked out first and applied second, so that each bone's list keeps
-            // the order it arrived in -- rebuilding the lists from a walk of this
-            // dictionary put them in its enumeration order instead, which is nobody's,
-            // and every rebuilt NiSkinData came back holding the right weights on the
-            // right vertices in the wrong sequence.
-            var scale = new Dictionary<ushort, float>(byVertex.Count);
-            var survivors = new Dictionary<ushort, HashSet<int>>(byVertex.Count);
-
-            foreach ((ushort vertex, List<(int Bone, float Weight)> influences) in byVertex)
-            {
-                int take = Math.Min(maxPerVertex, influences.Count);
-                float total = 0f;
-
-                for (int i = 0; i < take; i++)
-                    total += influences[i].Weight;
-
-                if (total <= 0f)
-                    continue;
-
-                // Rescaled only when something was actually dropped, or when the weights
-                // were never normalised to begin with. Dividing by a total that is
-                // already one is not a no-op in floating point, and both renderer copies
-                // store halves, so every weight on every fully-weighted vertex came back
-                // a few parts in ten thousand adrift for arithmetic with nothing to fix.
-                // Measured over the 4,201,422 skinned vertices in a third of Skyrim's
-                // meshes: with four influences or fewer the worst |sum - 1| is 1.6e-7,
-                // and not one vertex is further out than 1e-4.
-                bool renormalise = influences.Count > maxPerVertex || !IsNormalised(total);
-
-                scale[vertex] = renormalise ? 1f / total : 1f;
-                survivors[vertex] = [.. influences.Take(take).Select(x => x.Bone)];
-            }
-
-            for (int bone = 0; bone < Bones.Count; bone++)
-            {
-                List<(ushort Vertex, float Weight)> weights = Bones[bone].Weights;
-                var keptForBone = new List<(ushort Vertex, float Weight)>(weights.Count);
-
-                foreach ((ushort vertex, float weight) in weights)
-                {
-                    if (survivors.TryGetValue(vertex, out HashSet<int>? kept) && kept.Contains(bone))
-                        keptForBone.Add((vertex, weight * scale[vertex]));
-                }
-
-                weights.Clear();
-                weights.AddRange(keptForBone);
-            }
-        }
     }
 }
