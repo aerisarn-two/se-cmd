@@ -138,6 +138,15 @@ namespace SECmd.Fbx
                             ControllerFlagsKey(track.NodeName, property),
                             flags.ToString(System.Globalization.CultureInfo.InvariantCulture));
                     }
+
+                    // Only when it is not the zero every other controller has, so a
+                    // scene gains a property per emitter rather than per controller.
+                    if (property.ControllerPhase is { } phase && phase != 0f)
+                    {
+                        stack.Properties.SetUserString(
+                            ControllerPhaseKey(track.NodeName, property),
+                            phase.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+                    }
                 }
             }
 
@@ -162,6 +171,19 @@ namespace SECmd.Fbx
         /// <summary>The key a controller's flags ride under.</summary>
         public static string ControllerFlagsKey(string nodeName, AnimProperty property) =>
             $"{ControllerFlagsPrefix}{nodeName}{AnimProperty.Separator}"
+            + $"{property.ControllerType}{AnimProperty.Separator}{property.ControllerId}";
+
+        /// <summary>Prefix on a stack property carrying a controller's phase.</summary>
+        /// <remarks>
+        /// Keyed as the flags are, and written only when non-zero: 28,084 of the game's
+        /// controllers hold zero and 1,367 do not, and those are the particle emitters
+        /// whose phase is what keeps them from pulsing in step.
+        /// </remarks>
+        public const string ControllerPhasePrefix = "ctlrphase_";
+
+        /// <summary>The key a controller's phase rides under.</summary>
+        public static string ControllerPhaseKey(string nodeName, AnimProperty property) =>
+            $"{ControllerPhasePrefix}{nodeName}{AnimProperty.Separator}"
             + $"{property.ControllerType}{AnimProperty.Separator}{property.ControllerId}";
 
         public const string ConstantPrefix = "const_";

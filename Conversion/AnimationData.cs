@@ -76,6 +76,20 @@ namespace SECmd.Conversion
         public uint? ControllerFlags { get; set; }
 
         /// <summary>
+        /// The controller's phase, when the file gave it one.
+        /// </summary>
+        /// <remarks>
+        /// The offset that stops every emitter in a scene pulsing together. Zero in
+        /// 28,084 of the game's controllers and something else in 1,367, and those
+        /// cluster in exactly the two blocks it matters for: NiPSysEmitterCtlr and
+        /// BSPSysMultiTargetEmitterCtlr, holding values like 0.125, 19.33 and 56.36.
+        ///
+        /// Written as a flat zero before this, which is right for all but those 1,367
+        /// and turns a staggered set of emitters into a synchronised one.
+        /// </remarks>
+        public float? ControllerPhase { get; set; }
+
+        /// <summary>
         /// One curve per component: one for a scalar, three for a colour.
         /// </summary>
         /// <remarks>

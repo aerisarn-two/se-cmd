@@ -329,7 +329,8 @@ namespace SECmd.Nif
                     DataId = DataIdOf(model, interpolator),
                     ControllerId = id,
                     InterpolatorId = interpolatorId,
-                    ControllerFlags = FlagsOf(model, controller)
+                    ControllerFlags = FlagsOf(model, controller),
+                    ControllerPhase = PhaseOf(model, controller)
                 };
 
                 if (ReadValueKeys(model, interpolator, property))
@@ -514,6 +515,7 @@ namespace SECmd.Nif
                     InterpolatorId = model.GetString(controlled, "Interpolator ID"),
                     PropertyType = model.GetString(controlled, "Property Type"),
                     ControllerFlags = FlagsOf(model, model.GetRef(controlled, "Controller")),
+                    ControllerPhase = PhaseOf(model, model.GetRef(controlled, "Controller")),
                     CarriedInterpolator = FbxInterpolatorCodec.Capture(model, interpolator)
                 });
 
@@ -534,7 +536,8 @@ namespace SECmd.Nif
                 ControllerId = model.GetString(controlled, "Controller ID"),
                 InterpolatorId = model.GetString(controlled, "Interpolator ID"),
                 PropertyType = model.GetString(controlled, "Property Type"),
-                ControllerFlags = FlagsOf(model, model.GetRef(controlled, "Controller"))
+                ControllerFlags = FlagsOf(model, model.GetRef(controlled, "Controller")),
+                ControllerPhase = PhaseOf(model, model.GetRef(controlled, "Controller"))
             };
 
             if (ReadValueKeys(model, interpolator, property))
@@ -618,6 +621,10 @@ namespace SECmd.Nif
         /// <summary>A controller's flags, or null when there is no controller to ask.</summary>
         private static uint? FlagsOf(NifModel model, NifItem? controller) =>
             controller is null ? null : model.FindItem(controller, "Flags")?.Value.ToUInt();
+
+        /// <summary>A controller's phase, when it has one.</summary>
+        private static float? PhaseOf(NifModel model, NifItem? controller) =>
+            controller is null ? null : model.FindItem(controller, "Phase")?.Value.ToFloat();
 
         /// <summary>The data block an interpolator reads its keys from, if any.</summary>
         public static int DataIdOf(NifModel model, NifItem interpolator) =>

@@ -318,6 +318,17 @@ namespace SECmd.Fbx
                     {
                         property.ControllerFlags = flags;
                     }
+
+                    // The phase rides beside them, and only when it is not zero.
+                    if (float.TryParse(
+                            stack.Properties.GetString(
+                                FbxAnimWriter.ControllerPhaseKey(nodeName, property)),
+                            System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out float phase))
+                    {
+                        property.ControllerPhase = phase;
+                    }
                 }
             }
         }

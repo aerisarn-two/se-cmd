@@ -287,7 +287,7 @@ namespace SECmd.Nif
 
                 model.SetRef(controller, "Target", host);
                 model.FindItem(controller, "Flags")?.Value.SetCount(property.ControllerFlags ?? StandaloneControllerFlags);
-                model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
+                SetPhase(model, controller, property);
 
                 // Which of several same-typed controllers this is. nif.xml states
                 // the field per class as GetCtlrID(): a particle modifier controller
@@ -513,7 +513,8 @@ namespace SECmd.Nif
                     if (!existing)
                     {
                         model.FindItem(controller, "Flags")?.Value.SetCount(FlagsFor(group, StandaloneControllerFlags));
-                        model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
+                        model.FindItem(controller, "Phase")?.Value
+                            .SetFloat(group.Select(p => p.ControllerPhase).FirstOrDefault(p => p is not null) ?? 0f);
                     }
 
                     // The controller's own span is the span of the keys it holds; a
@@ -601,7 +602,7 @@ namespace SECmd.Nif
             controller = model.InsertBlock(property.ControllerType);
 
             model.FindItem(controller, "Flags")?.Value.SetCount(property.ControllerFlags ?? StandaloneControllerFlags);
-            model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
+            SetPhase(model, controller, property);
 
             WriteControllerId(model, controller, property.ControllerId);
             BlendInto(model, controller, property);
@@ -833,6 +834,19 @@ namespace SECmd.Nif
             for (int i = 0; i < chain.Count; i++)
                 model.SetRef(chain[i], "Next Controller", i + 1 < chain.Count ? chain[i + 1] : null);
         }
+
+        /// <summary>
+        /// Puts back the phase the file gave a controller, or leaves it at zero.
+        /// </summary>
+        /// <remarks>
+        /// Zero in 28,084 of the game's controllers and something else in 1,367, all of
+        /// them particle emitters -- NiPSysEmitterCtlr and BSPSysMultiTargetEmitterCtlr,
+        /// holding 0.125, 19.33, 56.36 and the like. It is the offset that stops every
+        /// emitter in a scene pulsing together, and writing a flat zero over it
+        /// synchronised them.
+        /// </remarks>
+        private static void SetPhase(NifModel model, NifItem controller, AnimProperty property) =>
+            model.FindItem(controller, "Phase")?.Value.SetFloat(property.ControllerPhase ?? 0f);
 
         /// <summary>The controller that runs a particle system rather than animating it.</summary>
         private static bool IsRunSwitch(NifItem controller) => controller.Name == "NiPSysUpdateCtlr";
