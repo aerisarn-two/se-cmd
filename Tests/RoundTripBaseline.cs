@@ -436,6 +436,20 @@ namespace SECmd.Tests
             // does not contain the shape is the file being wrong about itself, which the
             // convex hulls do too (§7.3).
             ["Min"] = "Havok quantises the mesh it was given, not the one Bethesda had",
+
+            // The other corner of that same box, which moves with it. Of 490 compressed
+            // mesh shapes sampled, 149 have both corners differing and exactly one has
+            // Max differing while Min does not -- so this is the same quantisation, seen
+            // from the far end of the AABB, and not a second fault.
+            //
+            // It was missing only because `Min` above excuses its corner everywhere, so
+            // the sweep reported the box under whichever corner was left: 2,052 meshes,
+            // 348 of them differing in nothing else at all.
+            //
+            // Scoped to the path. `Max` on its own is too common a name to excuse
+            // wholesale -- `BSRangeNode` has one, and it is a byte with nothing to do
+            // with Havok.
+            ["AABB/Max"] = "Havok quantises the mesh it was given, not the one Bethesda had",
             ["Offset"] = "vanilla's origin margin is 0.005; Havok's default, which mopper takes, is 0.05",
 
 
