@@ -1260,14 +1260,15 @@ namespace SECmd.Conversion
         /// The quantization step a compressed mesh's chunks are packed in.
         /// </summary>
         /// <remarks>
-        /// A millimetre, matching mopper and matching every file the game ships. It is
-        /// also the resolution a collision shape is built at, and a shape whose thinnest
-        /// dimension is only a few steps across can lose faces to it: the civil war map
-        /// flag is a box half a game unit -- seven millimetres -- thick, and it comes
-        /// back with four of its twelve triangles gone. Built at a hundredth of this it
-        /// keeps all twelve, which is the evidence that the quantum is the cause, and
-        /// also not a change that can be made here: the offsets are 16-bit, so a finer
-        /// step buys resolution with range, and no vanilla file uses one (§7.3).
+        /// A millimetre, matching mopper and matching every file the game ships -- all
+        /// 8,188 compressed shapes carry it and nothing else.
+        ///
+        /// It is also the step a shape is built at, and building at a hundredth of it
+        /// recovers the faces a thin box loses (§7.3). That is not licence to change it:
+        /// the offsets are 16-bit, so a finer step buys resolution with range, no vanilla
+        /// file uses one, and the loss is not explained by the step anyway -- Bethesda's
+        /// own chunk for the mesh in question holds all twelve triangles at this very
+        /// value.
         /// </remarks>
         private const float MoppQuantizationError = 0.001f;
 
