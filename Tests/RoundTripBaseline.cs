@@ -231,6 +231,21 @@ namespace SECmd.Tests
             ["Num Strips"] = "a strips shape's strips are written one triangle each, by design",
             ["Strip Lengths"] = "a strips shape's strips are written one triangle each, by design",
 
+            // An empty shape's class, when the model asks for one its edition does not
+            // have. The carried class is honoured -- `BuildEmptyShape` reads it and
+            // rebuilds a BSTriShape as a BSTriShape -- with one exception: a Legendary
+            // Edition file has no BSTriShape at all, so one is written as the NiTriShape
+            // that edition does have.
+            //
+            // The difference is the test's own doing rather than the conversion's. It
+            // puts a BSTriShape into `multi_material_cube`, which is an LE fixture, to
+            // check that a dummy shape survives at all -- nif.xml says a
+            // BSProceduralLightningController is "paired with dummy TriShapes", and
+            // losing them cost the staff bolts half their blocks. A model that mixes
+            // editions gets the class its edition has, which is the right answer to a
+            // question that should not have been asked.
+            ["BSTriShape"] = "an SE-only class in an LE model comes back as LE's equivalent",
+
             ["Unused 01"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
             ["Unused 03"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
 
@@ -446,7 +461,6 @@ namespace SECmd.Tests
 
 
 
-            ["BSTriShape"] = "a shape with no vertices comes back as NiTriShape",
 
 
             // Also found the moment synthetic models were compared in full, each by a
