@@ -57,6 +57,10 @@ namespace SECmd.Tests
             public readonly List<NifDifference> Differences = [];
 
             private readonly HashSet<(NifItem, NifItem)> _seen = [];
+
+            /// <summary>Arrays whose two sides line up by name rather than by index.</summary>
+            private readonly Dictionary<NifItem, int[]> _permuted = [];
+
             private NifItem _owner = null!;
 
             public void Blocks(NifItem a, NifItem b, string path)
@@ -72,6 +76,10 @@ namespace SECmd.Tests
 
                 NifItem outer = _owner;
                 _owner = a;
+
+                if (left.BlockInherits(a, "NiSkinInstance"))
+                    AlignBones(a, b);
+
                 Fields(a, b, $"{path}/{a.Name}");
                 _owner = outer;
             }
@@ -86,9 +94,11 @@ namespace SECmd.Tests
                     return;
                 }
 
+                _permuted.TryGetValue(a, out int[]? order);
+
                 for (int i = 0; i < a.Children.Count; i++)
                 {
-                    NifItem ca = a.Children[i], cb = b.Children[i];
+                    NifItem ca = a.Children[i], cb = b.Children[order is null ? i : order[i]];
                     string p = $"{path}/{ca.Name}";
 
                     // A field whose condition is false in both files is in neither
@@ -143,6 +153,95 @@ namespace SECmd.Tests
                             p, ca.Name, ca.Value.ToString(), cb.Value.ToString()));
                     }
                 }
+            }
+
+            /// <summary>
+            /// Lines a skin's bone list up by bone name rather than by position.
+            /// </summary>
+            /// <remarks>
+            /// A skin names its bones in an array, and everything else about a bone --
+            /// its bind transform in <c>NiSkinData</c>, the weights in each partition --
+            /// is found by that array's index. The order is therefore internal
+            /// bookkeeping: a file listing the head before the spine and a file listing
+            /// the spine before the head describe the same skin, so long as each bone
+            /// keeps its own transform and its own weights.
+            ///
+            /// The rebuild does not preserve it. Bones are discovered while walking the
+            /// scene's deformers, which is a different traversal from the one that wrote
+            /// the file, and 141 of 2,184 vanilla skins come back with the same bones in
+            /// a different order.
+            ///
+            /// Compared position by position that reads as every bone being wrong: a
+            /// list rotated by one reports a difference on each entry, and on each
+            /// entry of the parallel <c>Bone List</c> beside it -- some 7,400 field
+            /// differences from 141 skins, drowning whatever else those files had to
+            /// say. So the two sides are matched by name here, and the same matching is
+            /// applied to <c>Bone List</c>, which is ordered by the same index.
+            ///
+            /// A bone the rebuild does not have is left alone: that is a real
+            /// difference, and it stays reported as one.
+            /// </remarks>
+            private void AlignBones(NifItem skinLeft, NifItem skinRight)
+            {
+                if (left.FindItem(skinLeft, "Bones") is not { Children.Count: > 0 } bonesLeft
+                    || right.FindItem(skinRight, "Bones") is not { } bonesRight
+                    || bonesLeft.Children.Count != bonesRight.Children.Count)
+                {
+                    return;
+                }
+
+                List<string> wanted = Names(left, bonesLeft), have = Names(right, bonesRight);
+
+                var order = new int[wanted.Count];
+                var taken = new bool[have.Count];
+                bool moved = false;
+
+                for (int i = 0; i < wanted.Count; i++)
+                {
+                    int found = -1;
+
+                    for (int j = 0; j < have.Count && found < 0; j++)
+                    {
+                        if (!taken[j] && have[j] == wanted[i])
+                            found = j;
+                    }
+
+                    if (found < 0)
+                        return;
+
+                    taken[found] = true;
+                    order[i] = found;
+                    moved |= found != i;
+                }
+
+                if (!moved)
+                    return;
+
+                _permuted[bonesLeft] = order;
+
+                // The bind transforms, which the same index addresses.
+                if (left.FindItem(skinLeft, "Data") is { } dataLeft
+                    && right.FindItem(skinRight, "Data") is { } dataRight
+                    && left.GetBlock(dataLeft) is { } skinDataLeft
+                    && right.GetBlock(dataRight) is { } skinDataRight
+                    && left.FindItem(skinDataLeft, "Bone List") is { } listLeft
+                    && right.FindItem(skinDataRight, "Bone List") is { } listRight
+                    && listLeft.Children.Count == order.Length
+                    && listRight.Children.Count == order.Length)
+                {
+                    _permuted[listLeft] = order;
+                }
+            }
+
+            /// <summary>The names of the blocks an array of links points at.</summary>
+            private static List<string> Names(NifModel model, NifItem array)
+            {
+                var names = new List<string>(array.Children.Count);
+
+                foreach (NifItem link in array.Children)
+                    names.Add(model.GetBlock(link) is { } block ? model.GetName(block) : string.Empty);
+
+                return names;
             }
 
             private bool Same(NifItem a, NifItem b)
