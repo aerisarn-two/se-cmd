@@ -136,7 +136,31 @@ namespace SECmd.Nif
             NifItem controller = WriteMultiTargetController(model, root, targets);
             model.SetRef(manager, "Next Controller", controller);
 
-            model.SetRef(manager, "Object Palette", WritePalette(model, root, targets));
+            // Every node any sequence names, not only the ones whose transform moves.
+            //
+            // `targets` is the multi-target controller's list and is right to be narrow:
+            // it drives transforms, and a node in it without transform keys would be
+            // driven to nothing. The palette answers a different question -- how the
+            // animation system finds a track's target by name -- and a sequence names
+            // shader properties, alpha properties and particle modifiers as readily as
+            // it names moving nodes.
+            //
+            // Built from the narrow list, 866 of the game's meshes came back with at
+            // least one sequence target the palette could not resolve: a track with
+            // nothing to bind to. Vanilla's palettes cover every target they name in
+            // 1,271 of 1,274 files.
+            var resolvable = new List<NifItem>();
+
+            foreach ((AnimSequence _, var entries) in resolved)
+            {
+                foreach ((AnimTrack _, NifItem node) in entries)
+                {
+                    if (!resolvable.Contains(node))
+                        resolvable.Add(node);
+                }
+            }
+
+            model.SetRef(manager, "Object Palette", WritePalette(model, root, resolvable));
 
             // The manager is reached through the root's controller chain, which is
             // the only thing that makes it part of the file rather than a loose block.

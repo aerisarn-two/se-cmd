@@ -697,6 +697,102 @@ namespace SECmd.Tests
             return worst;
         }
 
+        /// <summary>
+        /// Every node a rebuilt sequence names can be found in the palette.
+        /// </summary>
+        /// <remarks>
+        /// A `NiDefaultAVObjectPalette` maps a name to a block so the animation system
+        /// can resolve a sequence's tracks without walking the tree. A target the
+        /// palette does not list is a track with nothing to bind to.
+        ///
+        /// This is not a comparison against vanilla, because the palette's *contents*
+        /// are a known gap (`RoundTripBaseline`, "Num Objs"): Bethesda lists more than
+        /// the animated nodes -- emitters and geometry among them -- and no rule for
+        /// which has been found. What is not a gap, and is what the block is for, is
+        /// that everything the sequences name is in there. Vanilla holds that in 1,271
+        /// of its 1,274 palettes; the three that do not are files wrong about
+        /// themselves, in the way 306 convex hulls and 13 MOPP trees are.
+        ///
+        /// So this asks it of the rebuilt file alone, which makes it an invariant rather
+        /// than a fidelity measure: whatever the palette ends up holding, a sequence
+        /// must be able to resolve through it.
+        /// </remarks>
+        [Fact]
+        public void EveryRebuiltSequenceTargetIsInThePalette()
+        {
+            Sweep((original, db) =>
+            {
+                using var input = new MemoryStream(original);
+                NifModel source = NifModel.Load(input, db);
+
+                if (!source.Blocks.Any(b => source.BlockInherits(b, "NiSequence")))
+                    return null;
+
+                if (source.FindItem(source.Footer, "Roots") is not { Children.Count: > 0 } roots
+                    || source.GetBlock(roots.Children[0]) is not { } root)
+                {
+                    return null;
+                }
+
+                NifModel rebuilt = new FbxToNif(
+                    new FbxScene(new NifToFbx(source).Convert()),
+                    new FbxToNifOptions
+                    {
+                        RootName = source.GetName(root),
+                        Version = source.Version,
+                        UserVersion = source.UserVersion,
+                        LegendaryEdition = source.BSVersion < 100
+                    }).Convert(db);
+
+                var named = new HashSet<string>(StringComparer.Ordinal);
+
+                foreach (NifItem sequence in rebuilt.Blocks.Where(b => rebuilt.BlockInherits(b, "NiSequence")))
+                foreach (NifItem entry in rebuilt.FindItem(sequence, "Controlled Blocks")?.Children ?? [])
+                {
+                    if (rebuilt.GetString(entry, "Node Name") is { Length: > 0 } target)
+                        named.Add(target);
+                }
+
+                if (named.Count == 0)
+                    return null;
+
+                if (rebuilt.Blocks.FirstOrDefault(b => b.Name == "NiDefaultAVObjectPalette")
+                    is not { } palette)
+                {
+                    return $"{named.Count} sequence targets and no palette to resolve them";
+                }
+
+                var listed = new HashSet<string>(StringComparer.Ordinal);
+
+                foreach (NifItem obj in rebuilt.FindItem(palette, "Objs")?.Children ?? [])
+                {
+                    if (rebuilt.GetString(obj, "Name") is { Length: > 0 } name)
+                        listed.Add(name);
+                }
+
+                var missing = named.Where(n => !listed.Contains(n)).OrderBy(n => n, StringComparer.Ordinal).ToList();
+
+                return missing.Count == 0
+                    ? null
+                    : $"{missing.Count} sequence target(s) missing from the palette: "
+                      + string.Join(", ", missing.Take(3));
+            },
+            ceiling: KnownPaletteDivergence);
+        }
+
+        /// <summary>
+        /// The share of meshes whose rebuilt palette cannot resolve every target.
+        /// </summary>
+        /// <remarks>
+        /// Two, and both are the source's doing. `dragon_oh_bloodyhead` names
+        /// `Ohdaviing_Tail_DragonBloodTail` and `sprigganmatron` names two
+        /// `SprigganBodyLeaves01` nodes that their own palettes do not list either --
+        /// they are two of the three vanilla files that miss a target of the 1,274 that
+        /// have one. Reproducing a file's own omission is the conversion being faithful;
+        /// inventing an entry the source lacks would not be.
+        /// </remarks>
+        private const double KnownPaletteDivergence = 0.001;
+
         /// <summary>How two collision meshes fail to be the same shape, or null.</summary>
         private static string? Incongruent(MeshGeometry was, MeshGeometry now)
         {
