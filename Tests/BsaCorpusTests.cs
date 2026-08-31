@@ -543,6 +543,160 @@ namespace SECmd.Tests
         /// </remarks>
         private const double KnownCollisionDivergence = 0.003;
 
+        /// <summary>
+        /// Every convex hull comes back with the corners it went in with.
+        /// </summary>
+        /// <remarks>
+        /// Corners rather than planes, and that is the whole of the point.
+        ///
+        /// A `bhkConvexVerticesShape` stores both: the corners, and the half-spaces
+        /// Havok actually collides against. The obvious test is whether the two hulls
+        /// bound the same space -- every corner of each inside the other's half-spaces,
+        /// which for convex bodies is a proof of equality rather than a tolerance. That
+        /// test was written, run over all 3,516 hulls the game ships, and found 306 of
+        /// them different by more than a hundredth of their own span.
+        ///
+        /// The 306 are vanilla's. Asked to contain their *own* corners, 306 of the
+        /// game's hulls do not, by more than a hundredth of a span -- and another 454
+        /// miss by less. The stored corners and the stored planes describe different
+        /// bodies in the file itself. A rebuild that reproduces the corners and fits
+        /// planes around them therefore reads as "too big" against planes that never
+        /// bounded those corners to begin with, which says nothing about the rebuild.
+        ///
+        /// So what is asked is what can be answered: the corner sets agree, within a
+        /// hundredth of the hull's own span, in both directions. They do, and by a
+        /// wide margin -- 3,499 of 3,516 agree to a *thousandth* of a span, with a
+        /// median displacement of exactly zero.
+        ///
+        /// The plane count is not asked about at all. It differs on half the hulls, and
+        /// what to make of that is genuinely open (§7.3): our planes contain our corners
+        /// and 306 files' planes do not contain theirs, so matching them field for field
+        /// would mean reproducing a fault.
+        /// </remarks>
+        [Fact]
+        public void EveryVanillaConvexHullKeepsItsCorners()
+        {
+            Sweep((original, db) =>
+            {
+                using var input = new MemoryStream(original);
+                NifModel source = NifModel.Load(input, db);
+
+                if (!source.Blocks.Any(b => b.Name == "bhkConvexVerticesShape"))
+                    return null;
+
+                if (source.FindItem(source.Footer, "Roots") is not { Children.Count: > 0 } roots
+                    || source.GetBlock(roots.Children[0]) is not { } root)
+                {
+                    return null;
+                }
+
+                List<List<NifVector3>> was = HullCorners(source);
+
+                if (was.Count == 0)
+                    return null;
+
+                NifModel rebuilt = new FbxToNif(
+                    new FbxScene(new NifToFbx(source).Convert()),
+                    new FbxToNifOptions
+                    {
+                        RootName = source.GetName(root),
+                        Version = source.Version,
+                        UserVersion = source.UserVersion,
+                        LegendaryEdition = source.BSVersion < 100
+                    }).Convert(db);
+
+                List<List<NifVector3>> now = HullCorners(rebuilt);
+
+                if (now.Count != was.Count)
+                    return $"{was.Count} convex hulls became {now.Count}";
+
+                for (int i = 0; i < was.Count; i++)
+                {
+                    float ex = was[i].Max(v => v.X) - was[i].Min(v => v.X);
+                    float ey = was[i].Max(v => v.Y) - was[i].Min(v => v.Y);
+                    float ez = was[i].Max(v => v.Z) - was[i].Min(v => v.Z);
+
+                    double span = Math.Max(ex, Math.Max(ey, ez));
+
+                    if (span <= 0)
+                        continue;
+
+                    double moved = Math.Max(CornersApart(was[i], now[i]), CornersApart(now[i], was[i]));
+
+                    if (moved / span > 0.01)
+                    {
+                        return $"hull {i}: a corner moved {moved:F4}, "
+                               + $"{moved / span:P1} of its {span:F3} span";
+                    }
+                }
+
+                return null;
+            },
+            ceiling: KnownHullDivergence);
+        }
+
+        /// <summary>
+        /// The share of meshes whose convex hulls come back a different shape.
+        /// </summary>
+        /// <remarks>
+        /// 17 hulls of 3,516 move a corner by more than a hundredth of their span. The
+        /// rest are exact: 3,499 agree to a thousandth, and the median displacement over
+        /// all of them is zero.
+        /// </remarks>
+        private const double KnownHullDivergence = 0.002;
+
+        /// <summary>Every convex hull's corners, in block order.</summary>
+        private static List<List<NifVector3>> HullCorners(NifModel m)
+        {
+            var all = new List<List<NifVector3>>();
+
+            foreach (NifItem hull in m.Blocks.Where(b => b.Name == "bhkConvexVerticesShape"))
+            {
+                var corners = new List<NifVector3>();
+
+                foreach (NifItem item in m.FindItem(hull, "Vertices")?.Children ?? [])
+                {
+                    NifVector4 v = item.Value.Get<NifVector4>();
+                    corners.Add(new NifVector3(v.X, v.Y, v.Z));
+                }
+
+                if (corners.Count > 0)
+                    all.Add(corners);
+            }
+
+            return all;
+        }
+
+        /// <summary>The furthest any corner of one hull sits from the nearest of the other.</summary>
+        /// <remarks>
+        /// One way, so callers take both. A hull is a few dozen corners at most, so this
+        /// is the honest quadratic rather than the bucketing the collision meshes need.
+        /// </remarks>
+        private static double CornersApart(List<NifVector3> from, List<NifVector3> to)
+        {
+            double worst = 0;
+
+            foreach (NifVector3 a in from)
+            {
+                double best = double.MaxValue;
+
+                foreach (NifVector3 b in to)
+                {
+                    double d = (a.X - b.X) * (a.X - b.X)
+                               + (a.Y - b.Y) * (a.Y - b.Y)
+                               + (a.Z - b.Z) * (a.Z - b.Z);
+
+                    if (d < best) best = d;
+                }
+
+                if (best == double.MaxValue) return double.MaxValue;
+
+                worst = Math.Max(worst, Math.Sqrt(best));
+            }
+
+            return worst;
+        }
+
         /// <summary>How two collision meshes fail to be the same shape, or null.</summary>
         private static string? Incongruent(MeshGeometry was, MeshGeometry now)
         {
