@@ -268,8 +268,55 @@ namespace SECmd.Nif
                 }
             }
 
-            // Compound defaults (vectors, colours) are cosmetic and left alone; the
-            // file always overwrites them.
+            // Compound defaults -- vectors and colours -- are parsed too, as a
+            // comma-separated list. They used to be left alone on the reasoning that
+            // the file overwrites them, which is true of a block being read and false
+            // of one being built: the import creates blocks from the schema, and a
+            // default nobody applies is a zero.
+            //
+            // nif.xml writes these as tokens, `#VEC4_1110#` and friends, which the
+            // loader has already expanded into "1.0, 1.0, 1.0, 0.0" by the time this
+            // sees them.
+            string[] parts = text.Split(',');
+
+            if (parts.Length is < 2 or > 4)
+                return;
+
+            var numbers = new float[parts.Length];
+
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (!float.TryParse(parts[i], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out numbers[i]))
+                {
+                    return;
+                }
+            }
+
+            // Set by what the field already holds, since that is what the schema said
+            // its type was.
+            switch (value.Get<object>())
+            {
+                case NifVector2 when parts.Length == 2:
+                    value.Set(new NifVector2(numbers[0], numbers[1]));
+                    break;
+
+                case NifVector3 when parts.Length == 3:
+                    value.Set(new NifVector3(numbers[0], numbers[1], numbers[2]));
+                    break;
+
+                case NifVector4 when parts.Length == 4:
+                    value.Set(new NifVector4(numbers[0], numbers[1], numbers[2], numbers[3]));
+                    break;
+
+                case NifColor3 when parts.Length == 3:
+                    value.Set(new NifColor3(numbers[0], numbers[1], numbers[2]));
+                    break;
+
+                case NifColor4 when parts.Length == 4:
+                    value.Set(new NifColor4(numbers[0], numbers[1], numbers[2], numbers[3]));
+                    break;
+            }
         }
 
         /// <summary>Appends a block of the named type, built from its full inherited field list.</summary>

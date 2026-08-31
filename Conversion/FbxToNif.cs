@@ -1256,22 +1256,6 @@ namespace SECmd.Conversion
             return shape;
         }
 
-        /// <summary>
-        /// The quantization step a compressed mesh's chunks are packed in.
-        /// </summary>
-        /// <remarks>
-        /// A millimetre, matching mopper and matching every file the game ships -- all
-        /// 8,188 compressed shapes carry it and nothing else.
-        ///
-        /// It is also the step a shape is built at, and building at a hundredth of it
-        /// recovers the faces a thin box loses (§7.3). That is not licence to change it:
-        /// the offsets are 16-bit, so a finer step buys resolution with range, no vanilla
-        /// file uses one, and the loss is not explained by the step anyway -- Bethesda's
-        /// own chunk for the mesh in question holds all twelve triangles at this very
-        /// value.
-        /// </remarks>
-        private const float MoppQuantizationError = 0.001f;
-
         /// <summary>Four comma-separated floats, or null when there are not four.</summary>
         private static NifVector4? ParseVector4(string text)
         {
@@ -1317,22 +1301,19 @@ namespace SECmd.Conversion
 
             NifItem shape = _model.InsertBlock("bhkNiTriStripsShape");
 
-            // Both carried rather than assumed. nif.xml's defaults -- 0.1 and
-            // (1,1,1,0) -- are what these mean when a file says nothing, and writing
-            // them over what a file did say is how a shape came back a different size
-            // from the one it went out as.
-            SetFloat(
-                shape,
-                "Radius",
-                float.TryParse(
+            // Both written only when the scene carried them. nif.xml's defaults -- 0.1
+            // and (1,1,1,0) -- are what these mean when nothing said otherwise, and
+            // InsertBlock has already applied them, so the fallback is to leave them
+            // alone rather than to spell them out again here.
+            if (float.TryParse(
                     node.Properties.GetString(NifToFbx.StripsRadiusProperty),
-                    NumberStyles.Float, CultureInfo.InvariantCulture, out float radius)
-                    ? radius
-                    : 0.1f);
+                    NumberStyles.Float, CultureInfo.InvariantCulture, out float radius))
+            {
+                SetFloat(shape, "Radius", radius);
+            }
 
-            _model.FindItem(shape, "Scale")?.Value.Set(
-                ParseVector4(node.Properties.GetString(NifToFbx.StripsScaleProperty))
-                ?? new NifVector4(1f, 1f, 1f, 0f));
+            if (ParseVector4(node.Properties.GetString(NifToFbx.StripsScaleProperty)) is { } scale)
+                _model.FindItem(shape, "Scale")?.Value.Set(scale);
 
             // One shape can hold several data blocks, and FBX has one mesh per node,
             // so the seams travel as properties and the merged mesh is cut back along
@@ -1562,10 +1543,10 @@ namespace SECmd.Conversion
                 SetFloat(shape, "Unknown Float 1", unknown);
             }
 
-            SetFloat(shape, "Radius", 0.005f);
-            SetFloat(shape, "Radius Copy", 0.005f);
-            _model.FindItem(shape, "Scale")?.Value.Set(new NifVector4(1f, 1f, 1f, 0f));
-            _model.FindItem(shape, "Scale Copy")?.Value.Set(new NifVector4(1f, 1f, 1f, 0f));
+            // Radius, Radius Copy, Scale and Scale Copy are not written. nif.xml gives
+            // this block 0.005 and (1,1,1,0) for them and InsertBlock applies that, so
+            // writing the same numbers again only puts a second copy of the schema in
+            // the code, where it can drift from the first.
             _model.SetRef(shape, "Data", data);
 
             WriteCompressedMeshData(data, built, materials);
@@ -1696,15 +1677,12 @@ namespace SECmd.Conversion
             SetCount(data, "Bits Per W Index", 18);
             SetCount(data, "Mask W Index", 262143);
             SetCount(data, "Mask Index", 131071);
-            // The step mopper packs a chunk's offsets in, which the export reads back
-            // out of this field. mopper asks Havok for it by name --
-            // `createMeshShape(0.001f, ...)` in mopper.cpp -- so the two are one number
-            // written in two places, and they have to say the same thing or a rebuilt
-            // shape decodes at the wrong scale.
-            //
-            // 0.001 is not a choice here so much as what the format settled on: all
-            // 8,188 compressed shapes Skyrim ships carry it, and nothing else.
-            SetFloat(data, "Error", MoppQuantizationError);
+            // `Error` is not written either. nif.xml's default is 0.001, which is the
+            // step mopper packs a chunk's offsets in (`createMeshShape(0.001f, ...)`)
+            // and what all 8,188 compressed shapes Skyrim ships carry. The export reads
+            // this field rather than assuming that step, so the one thing that matters
+            // is that the number in the file matches the one mopper used -- and the
+            // schema already says it.
 
             if (_model.SetArraySize(data, "Num Big Verts", "Big Verts", built.BigVertices.Count) is { } bigVerts)
             {
@@ -1814,8 +1792,6 @@ namespace SECmd.Conversion
                 array.Children[i].Value.SetCount(values[i]);
         }
 
-        /// <summary>The shell a hull gets when the scene carried none: Skyrim's commonest.</summary>
-        private const float DefaultConvexRadius = 0.05f;
 
         private NifItem BuildConvex(IReadOnlyList<NifVector3> points, FbxObject node)
         {
@@ -1830,11 +1806,15 @@ namespace SECmd.Conversion
             //
             // Carried, because it is authored: 0.05 is the commonest of many values and
             // 78 hulls use zero. se-cmd wrote a flat 0.01, which is neither.
+            //
+            // Written only when carried. 0.05 is also nif.xml's default for
+            // bhkConvexShape and InsertBlock has applied it, so a scene that says
+            // nothing already has it without this repeating the number.
             float radius = float.TryParse(
                 node.Properties.GetString(NifToFbx.ConvexRadiusProperty),
                 NumberStyles.Float, CultureInfo.InvariantCulture, out float carried)
                 ? carried
-                : DefaultConvexRadius;
+                : _model.FindItem(shape, "Radius")?.Value.ToFloat() ?? 0f;
 
             SetFloat(shape, "Radius", radius);
 
