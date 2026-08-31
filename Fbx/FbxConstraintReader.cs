@@ -67,7 +67,14 @@ namespace SECmd.Fbx
                 Type = node.Properties.GetString(FbxConstraintWriter.TypeProperty),
                 Wrapper = node.Properties.GetString(FbxConstraintWriter.WrapperProperty),
                 OwnerName = owner,
-                OtherName = other.Length > 0 ? other : ParentName(scene, node),
+                // An empty far-body name means "the parent", unless the constraint says
+                // it has no far body at all -- see FbxConstraintWriter.OneSidedProperty.
+                // Falling back there pointed Entity B at the owner and joined a body to
+                // itself.
+                OtherName = other.Length > 0 ? other
+                    : node.Properties.GetString(FbxConstraintWriter.OneSidedProperty).Length > 0
+                        ? string.Empty
+                        : ParentName(scene, node),
                 ChainedNames = [.. node.Properties.GetString(FbxConstraintWriter.ChainedProperty)
                     .Split(FbxConstraintWriter.NameSeparator, StringSplitOptions.RemoveEmptyEntries)],
                 FrameB = ReadTransform(node)

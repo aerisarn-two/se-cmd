@@ -36,6 +36,22 @@ namespace SECmd.Fbx
         /// <summary>Separates the two body names in an attachment point's name.</summary>
         public const string NameSeparator = "_con_";
 
+        /// <summary>Set when the constraint names one body rather than two.</summary>
+        /// <remarks>
+        /// A constraint normally joins two bodies, and 650 of the 652 the game ships
+        /// name both. The rest name one -- ragdoll constraints with a null `Entity B`,
+        /// and Bethesda's breakable constraints -- which in Havok is a body pinned to
+        /// the world rather than to anything else.
+        ///
+        /// It has to be said explicitly. The node's name carries the far body's name in
+        /// its first half, and a one-sided constraint leaves that half empty; an empty
+        /// half is also what a constraint authored in a DCC tool has, where falling back
+        /// to the parent node is right. Without something to tell the two apart, a
+        /// constraint that named one body came back naming the owner twice -- a body
+        /// joined to itself, which is worse than the wrong partner.
+        /// </remarks>
+        public const string OneSidedProperty = "constraint_one_sided";
+
         /// <summary>The property naming which kind of constraint this was.</summary>
         public const string TypeProperty = "constraint_type";
 
@@ -93,6 +109,10 @@ namespace SECmd.Fbx
 
             FbxObject node = FbxMeshWriter.AddModel(scene, name, "Null", FrameOf(model, descriptor));
             scene.Connect(node, parent);
+
+            // Which of the two the name's empty half means.
+            if (entityB is null)
+                node.Properties.SetUserString(OneSidedProperty, "1");
 
             node.Properties.SetUserString(TypeProperty, TypeNameOf(model, constraint, descriptor));
 

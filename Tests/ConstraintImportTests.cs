@@ -111,6 +111,29 @@ namespace SECmd.Tests
         }
 
         [Fact]
+        public void AConstraintThatNamesOneBodyStillNamesOne()
+        {
+            NifModel before = Load("TestNifFile_Furniture_Col_SE.nif");
+
+            NifItem source = before.Blocks.First(b => b.Name == "bhkBreakableConstraint");
+
+            // The fixture is one of the few that names a single body. In Havok that is
+            // a body pinned to the world rather than joined to another.
+            Assert.Equal(-1, before.FindItem(source, "Entity B")!.Value.ToLink());
+
+            (NifModel model, _) = RoundTrip("TestNifFile_Furniture_Col_SE.nif");
+
+            NifItem after = model.Blocks.First(b => b.Name == "bhkBreakableConstraint");
+
+            // Not the owner. The node's name leaves the far body's half empty, which is
+            // also what a constraint authored in a DCC tool looks like -- and there the
+            // parent node is the right answer. Read as that, this came back with
+            // Entity B pointing at Entity A: a body joined to itself.
+            Assert.Equal(-1, model.FindItem(after, "Entity B")!.Value.ToLink());
+            Assert.NotEqual(-1, model.FindItem(after, "Entity A")!.Value.ToLink());
+        }
+
+        [Fact]
         public void DescriptorValuesSurviveTheRoundTrip()
         {
             NifModel before = Load("TestNifFile_Furniture_Col_SE.nif");
