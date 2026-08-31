@@ -420,11 +420,29 @@ namespace SECmd.Tests
 
             // A controller shared by several sequences no longer claims nif.xml's
             // inverted infinite span -- it now covers the keys it is given -- but which
-            // span Bethesda writes is still not known. The one shader controller in the
-            // fixtures holds 0.0333333 to 0.1, frames 1 to 3, where the union of every
-            // sequence that drives it is 0 to 3.333 and the last of them alone is 0 to
-            // 0.333. Neither rule produces a sub-range of both, so it is something
-            // narrower than either and this keeps the wider, defensible answer.
+            // span Bethesda writes is still not known, and has now been looked for
+            // properly rather than guessed at.
+            //
+            // For a controller holding its own interpolator the rule is plain and this
+            // follows it: of the 12,326 in the game with keys to compare against, 12,315
+            // have a span exactly equal to their key range. Eleven are narrower, all of
+            // them bird-flight and light-beam meshes that start late.
+            //
+            // An attached controller is the open case. It holds a blend interpolator and
+            // no keys of its own -- the keys are in each sequence that names it -- and
+            // over the 10,432 such controllers the game ships, four candidate rules were
+            // measured and none accounts for more than a twelfth:
+            //
+            //   the union of every driving sequence's keys      816
+            //   some driving sequence's own Start/Stop          817
+            //   a sequence's start plus its key range           836
+            //   the first driving sequence's keys                11
+            //   none of those                                 9,605
+            //
+            // farmhousewindmill has one at 18.60 to 18.90 where the keys of everything
+            // driving it span 0 to 16.67, and a NiPSysModifierActiveCtlr at 0 to 22.50
+            // where its one sequence's keys reach 5.50. Whatever sets these is not in
+            // the sequences, so this keeps the wider, defensible answer: cover the keys.
             ["Start Time"] = "an attached controller's span covers its keys; Bethesda's is narrower",
             ["Stop Time"] = "an attached controller's span covers its keys; Bethesda's is narrower",
 
