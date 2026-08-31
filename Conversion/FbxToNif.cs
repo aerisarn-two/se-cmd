@@ -1891,36 +1891,27 @@ namespace SECmd.Conversion
         /// What each control point's skinning looks like, for telling vertices apart.
         /// </summary>
         /// <remarks>
-        /// Four pairs of a bone and a weight, heaviest first, and not the raw cluster
-        /// list that produced them. A NIF vertex holds exactly four influences, so four
-        /// pairs are the whole of what the file will remember about how this point
-        /// moves, and the key has to be a statement about that rather than about what
-        /// the scene happened to arrive carrying.
+        /// Every pair of a bone and a weight, heaviest first, and not just the four
+        /// the renderer will draw with.
         ///
-        /// The trim happens later -- `NifSkinWriter.LimitInfluences`, after the reader
-        /// has already decided what the vertices are -- so keyed on the raw list, two
-        /// control points identical in their four heaviest influences are split apart
-        /// by a fifth that is about to be discarded, and come out as two vertices
-        /// holding the same four weights: a difference invented on the way through and
-        /// then thrown away. The weights are renormalised here for the same reason,
-        /// since that is what the vertex will hold, and two points whose kept four
-        /// scale to the same numbers are the same vertex whatever they summed to
-        /// before.
+        /// Four is the limit on the partition and on the vertex buffer, not on the
+        /// skin: `NiSkinData` keeps what was authored, and the game's own files put
+        /// more than four there often enough to matter -- 4,319 vertices over a
+        /// 3,000-mesh sample. So the fifth influence is not discarded on the way
+        /// through, and a point that carries one is not the same vertex as a point that
+        /// does not, however alike their heaviest four.
         ///
-        /// A NIF cannot reach that case, because four influences is all one stores, so
-        /// a scene converted from one never presents a fifth: rebuilt both ways, 2,500
-        /// meshes give the same 5,118,725 vertices across the same 13,255 skinned
-        /// shapes. This is for FBX that came from somewhere else, where eight or more
-        /// influences on a vertex is ordinary and the fifth is exactly what a DCC tool
-        /// hands over.
+        /// This key was once trimmed to four and renormalised over them, back when the
+        /// writer cut `NiSkinData` down to the same four. Two points alike in their
+        /// heaviest four then keyed the same however they differed beyond it, which was
+        /// right while the difference was about to be thrown away and wrong once it was
+        /// kept: the two merge into one vertex, and one of the two sets of weights is
+        /// the one the file ends up with.
         ///
-        /// Selection mirrors `SkinData.ByVertex` and `LimitInfluences` exactly --
-        /// weight descending, four taken, rescaled when one was dropped or the total
-        /// was never one -- since a key that picks a different four than the writer
-        /// keeps is answering a question nobody asked. Ties break on the name, which
-        /// `List.Sort` leaves to chance; two points bound the same way must key the
-        /// same, and equal weights are the one case where the writer's own choice is
-        /// arbitrary.
+        /// Weights are compared as authored, unscaled, for the same reason -- that is
+        /// what `NiSkinData` will hold. Ties break on the name, which `List.Sort`
+        /// leaves to chance; two points bound the same way must key the same, and equal
+        /// weights are the one case where the ordering is otherwise arbitrary.
         ///
         /// Each influence names its bone rather than its place in the bone list,
         /// because the place is a fact about the list and not about the binding. A skin
@@ -1972,23 +1963,12 @@ namespace SECmd.Conversion
                     return byWeight != 0 ? byWeight : string.CompareOrdinal(a.Bone, b.Bone);
                 });
 
-                int take = Math.Min(NifSkinWriter.MaxInfluences, list.Count);
-                float total = 0f;
-
-                for (int i = 0; i < take; i++)
-                    total += list[i].Weight;
-
-                bool renormalise =
-                    list.Count > NifSkinWriter.MaxInfluences || !SkinData.IsNormalised(total);
-
-                float scale = renormalise && total > 0f ? 1f / total : 1f;
-
                 var text = new System.Text.StringBuilder();
 
-                for (int i = 0; i < take; i++)
+                foreach ((string bone, float weight) in list)
                 {
-                    text.Append(list[i].Bone).Append(':')
-                        .Append((list[i].Weight * scale).ToString("R", CultureInfo.InvariantCulture))
+                    text.Append(bone).Append(':')
+                        .Append(weight.ToString("R", CultureInfo.InvariantCulture))
                         .Append(',');
                 }
 
