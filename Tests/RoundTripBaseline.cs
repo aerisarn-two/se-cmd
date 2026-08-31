@@ -216,6 +216,21 @@ namespace SECmd.Tests
             ["bhkCompressedMeshShapeData/Chunks"] = "Havok chunks the mesh its own way (shape checked separately)",
             ["Num Chunks"] = "Havok cuts its own number of chunks (shape checked separately)",
 
+            // A strips shape's strips, written one triangle each.
+            //
+            // A strip is a compression of an index list and nothing reads it back as
+            // anything else: three points per triangle says the same mesh as a run of
+            // eight, and reconstructing longer runs would be guessing at how whichever
+            // tool made the file happened to split them. `BuildTriStrips` says so where
+            // it writes them.
+            //
+            // By design rather than open, because there is no version of this that comes
+            // out matching. The triangles are the fact; the strips are one of many ways
+            // to spell them, and the file does not record which way was chosen.
+            ["Points"] = "a strips shape's strips are written one triangle each, by design",
+            ["Num Strips"] = "a strips shape's strips are written one triangle each, by design",
+            ["Strip Lengths"] = "a strips shape's strips are written one triangle each, by design",
+
             ["Unused 01"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
             ["Unused 03"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
 
@@ -433,9 +448,6 @@ namespace SECmd.Tests
 
             ["BSTriShape"] = "a shape with no vertices comes back as NiTriShape",
 
-            ["Points"] = "a strips shape's strips are restructured",
-            ["Num Strips"] = "a strips shape's strips are restructured",
-            ["Strip Lengths"] = "a strips shape's strips are restructured",
 
             // Also found the moment synthetic models were compared in full, each by a
             // test that was looking at something else at the time.
