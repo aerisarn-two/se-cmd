@@ -191,6 +191,31 @@ namespace SECmd.Tests
             // nif.xml calls these padding and they are padding: `Unused 01` is a binary
             // byte[4] on the rigid body info and a byte[8] on a constraint's, `Unused 03`
             // a lone byte. Nothing reads them, and a rebuilt block zeroes them.
+            // A compressed mesh is not stored as geometry. It is stored as chunks, each
+            // a cloud of 16-bit offsets from an origin Havok picked, and Havok picks
+            // again on the way back -- so every per-chunk field reads as changed on a
+            // mesh that came through intact, and the count of them changes too: 13
+            // chunks where the file has 14, 2 where it has 3.
+            //
+            // What is left after mopper was given the shape-builder settings HKXWrangler
+            // uses -- one stripper pass, welding on, a 0.001 tolerance
+            // (HKXWrangler.cpp:3349). Those decide how Havok cuts the mesh into strips
+            // and which vertices it merges, and so decide every array in a chunk. With
+            // mopper's own 5,000 passes and no welding the fixtures differed in 12,600
+            // fields; with ck-cmd's, in 25. Ten sibling entries that existed only to
+            // excuse the old wholesale mismatch are long gone.
+            //
+            // By design rather than open, because the question these fields were
+            // standing in for now has a test of its own.
+            // `EveryVanillaCollisionMeshKeepsItsShape` decodes both sides and asks
+            // whether the *shape* survived -- surface area, bounding box, and whether
+            // any rebuilt vertex sits off the original surface -- which is the only
+            // thing the physics engine reads. 21,993 of 22,047 pass it. Comparing the
+            // encoding was never going to answer that, in either direction: it cannot
+            // tell a re-chunked mesh from a broken one.
+            ["bhkCompressedMeshShapeData/Chunks"] = "Havok chunks the mesh its own way (shape checked separately)",
+            ["Num Chunks"] = "Havok cuts its own number of chunks (shape checked separately)",
+
             ["Unused 01"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
             ["Unused 03"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
 
@@ -421,27 +446,6 @@ namespace SECmd.Tests
             //
 
 
-            // The chunks of a compressed mesh come back in a different order, so every
-            // per-chunk field reads as changed.
-            // What is left of the chunk decomposition after mopper was given the
-            // shape-builder settings HKXWrangler uses -- one stripper pass, welding on,
-            // a 0.001 tolerance (HKXWrangler.cpp:3349). Those decide how Havok cuts the
-            // mesh into strips and which vertices it merges, and so decide every array
-            // in a chunk. With mopper's own 5,000 passes and no welding, the fixtures
-            // differed in 12,600 fields; with ck-cmd's, in 25.
-            //
-            // The residue is a millimetre on a chunk origin and one chunk's worth of
-            // strips, which is Havok being run twice rather than a field going
-            // uncarried. Ten sibling entries that existed only to excuse the old
-            // wholesale mismatch are gone.
-            ["bhkCompressedMeshShapeData/Chunks"] = "Havok chunks the mesh its own way",
-
-            // And it makes one fewer of them: 13 where the file has 14, 2 where it has
-            // 3. Close, and not the same. Before mopper was given the shape-builder
-            // settings HKXWrangler uses it was 1 where the file had 2 -- half the
-            // chunks -- so what is left is the last of the difference rather than the
-            // bulk of it.
-            ["Num Chunks"] = "Havok cuts one chunk fewer than Bethesda's build did",
 
             // Not the V flip -- that is fixed and asserted by AUvSurvivesTheRoundTrip.
             // What is left is vertex *order*: the reader numbers vertices in the order
