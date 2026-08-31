@@ -266,6 +266,14 @@ namespace SECmd.Nif
                 {
                     value.SetCount(unchecked((ulong)signed));
                 }
+                else if (bool.TryParse(s, out bool flag))
+                {
+                    // nif.xml writes a bool default as 0 or 1 in all but one place, and
+                    // as "false" in that one -- `Has Texture Transform`. A default the
+                    // schema states and this cannot read is a field silently left at
+                    // zero, which is the same shape of fault the compound values had.
+                    value.SetCount(flag ? 1u : 0u);
+                }
             }
 
             // Compound defaults -- vectors and colours -- are parsed too, as a
@@ -315,6 +323,14 @@ namespace SECmd.Nif
 
                 case NifColor4 when parts.Length == 4:
                     value.Set(new NifColor4(numbers[0], numbers[1], numbers[2], numbers[3]));
+                    break;
+
+                // W first, as the struct has it. The only quaternion nif.xml gives a
+                // default is #INV_VEC4#, four copies of -FLT_MAX, which is the sentinel
+                // for "this interpolator holds no value" -- so getting it wrong means a
+                // pose of all zeros where the format means none at all.
+                case NifQuat when parts.Length == 4:
+                    value.Set(new NifQuat(numbers[0], numbers[1], numbers[2], numbers[3]));
                     break;
             }
         }
