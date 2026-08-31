@@ -113,10 +113,36 @@ namespace SECmd.Nif
                     if (node is null)
                         continue;
 
-                    // Only nodes whose transform moves belong in the target list: it
-                    // is what the transform controller drives, and a node listed
-                    // there without transform keys would be driven to nothing.
-                    if (track.Curves.Any(c => c.HasKeys) && !targets.Contains(node))
+                    // Every node the transform half of a track says anything about, keys
+                    // or not. A NiTransformInterpolator with no data block still carries
+                    // a Transform, and that pose is what the node takes for the whole
+                    // sequence -- a door held open, a pot held tipped -- so a track with
+                    // no keys is not a track with nothing to bind.
+                    //
+                    // Filtering on keys alone dropped those. `dwedresser01` fans out to
+                    // DoorLeft and DoorRight in the file and came back naming only
+                    // DoorLeft, because DoorRight's tracks in Open and Close hold poses
+                    // rather than keys -- and a node the multi-target controller does not
+                    // name stays still whatever a sequence says about it. Forty of the
+                    // game's meshes lost a target that way.
+                    //
+                    // A transform can also arrive as an interpolator this layer does not
+                    // model -- a NiPathInterpolator walks a node along a spline, with no
+                    // keys and no pose, and it is carried whole. The moths in
+                    // `ancestormothstaticcloud` and the catapult's fireball fly that way,
+                    // and the file fans out to every one of them.
+                    //
+                    // Properties alone are not enough: a node whose shader is animated
+                    // has no business in a list of transform targets. It is a transform
+                    // target when the thing carried is the transform controller's.
+                    bool transform =
+                        track.Curves.Any(c => c.HasKeys)
+                        || track.Pose is not null
+                        || track.Properties.Any(p =>
+                            p.CarriedInterpolator is not null
+                            && p.ControllerType == "NiTransformController");
+
+                    if (transform && !targets.Contains(node))
                         targets.Add(node);
                 }
 

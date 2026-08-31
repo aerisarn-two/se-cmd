@@ -793,6 +793,97 @@ namespace SECmd.Tests
         /// </remarks>
         private const double KnownPaletteDivergence = 0.001;
 
+        /// <summary>
+        /// Every node a rebuilt transform track moves is named by the controller that
+        /// fans the sequences out to it.
+        /// </summary>
+        /// <remarks>
+        /// The companion to the palette check, and for the same reason. A
+        /// `NiMultiTargetTransformController` lists the nodes a sequence's transform
+        /// tracks drive, and the engine binds those tracks through the list rather than
+        /// through each node's own controller chain -- so a node missing from it stays
+        /// still however many keys name it.
+        ///
+        /// Whether Bethesda's list is *longer* than ours is a separate and open
+        /// question: it pads the array, and 92.5% of the slots in the game's are empty
+        /// (`RoundTripBaseline`, "Num Extra Targets"). Padding costs nothing. A missing
+        /// entry costs the animation, which is what this asks about.
+        ///
+        /// Asked of the rebuilt file alone, so it is an invariant rather than a
+        /// comparison -- the same shape as the palette check, which was written to
+        /// confirm a list was adequate and found 866 meshes where it was not.
+        /// </remarks>
+        [Fact]
+        public void EveryRebuiltTransformTargetIsFannedOutTo()
+        {
+            Sweep((original, db) =>
+            {
+                using var input = new MemoryStream(original);
+                NifModel source = NifModel.Load(input, db);
+
+                if (!source.Blocks.Any(b => source.BlockInherits(b, "NiSequence")))
+                    return null;
+
+                if (source.FindItem(source.Footer, "Roots") is not { Children.Count: > 0 } roots
+                    || source.GetBlock(roots.Children[0]) is not { } root)
+                {
+                    return null;
+                }
+
+                NifModel rebuilt = new FbxToNif(
+                    new FbxScene(new NifToFbx(source).Convert()),
+                    new FbxToNifOptions
+                    {
+                        RootName = source.GetName(root),
+                        Version = source.Version,
+                        UserVersion = source.UserVersion,
+                        LegendaryEdition = source.BSVersion < 100
+                    }).Convert(db);
+
+                // Which nodes a transform track actually drives.
+                var moved = new HashSet<string>(StringComparer.Ordinal);
+
+                foreach (NifItem sequence in rebuilt.Blocks.Where(b => rebuilt.BlockInherits(b, "NiSequence")))
+                foreach (NifItem entry in rebuilt.FindItem(sequence, "Controlled Blocks")?.Children ?? [])
+                {
+                    if (rebuilt.GetString(entry, "Controller Type") is not "NiTransformController")
+                        continue;
+
+                    if (rebuilt.GetString(entry, "Node Name") is { Length: > 0 } target)
+                        moved.Add(target);
+                }
+
+                if (moved.Count == 0)
+                    return null;
+
+                var fanned = new HashSet<string>(StringComparer.Ordinal);
+
+                foreach (NifItem controller in rebuilt.Blocks
+                             .Where(b => b.Name == "NiMultiTargetTransformController"))
+                {
+                    // The controller's own target counts: it is the root, and a sequence
+                    // may accumulate against it.
+                    if (rebuilt.GetRef(controller, "Target") is { } own)
+                        fanned.Add(rebuilt.GetName(own));
+
+                    foreach (NifItem slot in rebuilt.FindItem(controller, "Extra Targets")?.Children ?? [])
+                    {
+                        if (rebuilt.GetBlock(slot) is { } node)
+                            fanned.Add(rebuilt.GetName(node));
+                    }
+                }
+
+                var missing = moved.Where(n => !fanned.Contains(n))
+                    .OrderBy(n => n, StringComparer.Ordinal)
+                    .ToList();
+
+                return missing.Count == 0
+                    ? null
+                    : $"{missing.Count} transform target(s) nothing fans out to: "
+                      + string.Join(", ", missing.Take(3));
+            });
+        }
+
         /// <summary>How two collision meshes fail to be the same shape, or null.</summary>
         private static string? Incongruent(MeshGeometry was, MeshGeometry now)
         {
