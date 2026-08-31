@@ -1019,12 +1019,27 @@ has no reason to have respected either:
 | Limit | What it is | How it is met |
 | --- | --- | --- |
 | 60 bones per partition | The matrix palette a partition is drawn against in one pass | The partition is split until each piece fits. Nothing is dropped, and each piece keeps its source's body slot |
-| 4 influences per vertex | All a NIF vertex stores | The lightest influences go and the rest are renormalised — the one limit that cannot be met without loss |
+| 4 influences per vertex | All the partition and the vertex buffer hold | Each takes the heaviest four and normalises them over their own total. `NiSkinData` beside them keeps every influence the scene carried |
 
 Measured over 6,439 skinned shapes in a 1,500-mesh sample: every one comes back with the
 partition count and the body slots it went out with, where 2,675 of them lost both when
 the partitions were rebuilt from the weights instead. No partition comes back naming more
-than sixty bones and no vertex more than four influences.
+than sixty bones, and no partition row or buffer vertex holds more than four influences.
+
+The second limit is the partition's and the buffer's, and **not** the skin's — a
+distinction that cost a round of wrong weights. A shape's `NiSkinData` regularly names
+more than four bones for a vertex, because that is where the authored binding lives:
+over a 3,000-mesh sample it names a bone that no partition of the same shape renders on
+**4,319** vertices, **5,069** influences in all, and `nordcuirassm_0.nif` weights vertex
+1728 with five bones while rendering four of them. ck-cmd reads the same way round —
+`remake_partitions` takes its four from `block.boneIndices` and `block.vertexWeights`,
+and `NifFile.cpp`'s own `maxBonesPerVertex` trim is commented out.
+
+Enforcing four on the skin before writing any copy therefore dropped authored influences
+and, worse, renormalised the survivors, which moved every other weight on those vertices
+too. Vanilla meshes came back with weights they had never held: `dragon.nif` changed 32
+of its 86 bones, `draugrmale04` 9 of 106. Both are exact once each copy enforces its own
+limit.
 
 #### 5.2.4 Which geometry class
 
@@ -1159,20 +1174,22 @@ further out than 1e-4 (only 8,792, 0.2%, carry more than four influences at all)
 rescale now happens only when an influence was actually dropped, or when the weights were
 never normalised to begin with.
 
-*Where.* A skinned shape stores its weights **twice**, and the two copies are not
+*Where.* A skinned shape stores its weights **three** times, and the copies are not
 required to agree:
 
-| Copy | Holds | Normalised |
-| --- | --- | --- |
-| `NiSkinData\Bone List\Vertex Weights` | the authored weights | no |
-| `NiSkinPartition` and the vertex buffer | what the renderer reads | yes |
+| Copy | Holds | Capped at four | Normalised |
+| --- | --- | --- | --- |
+| `NiSkinData\Bone List\Vertex Weights` | the authored weights | no | no |
+| `NiSkinPartition` | what the renderer draws with | yes | yes, unconditionally |
+| The vertex buffer | the same, quantised to halves | yes | yes, past a 1e-4 guard |
 
-`TestNifFile_LooseBlocks_SE` is the file that shows it: vertices whose authored weights
-sum to 0.999924 in `NiSkinData` and to exactly one in the partition. Normalising in
-`SkinData.LimitInfluences`, which feeds both, made the two copies agree with each other
-and neither agree with the file. The partition normalises unconditionally (it holds full
-floats, so there is no neighbouring half to round into); the vertex buffer keeps a 1e-4
-guard, because it does.
+`TestNifFile_LooseBlocks_SE` is the file that shows the disagreement: vertices whose
+authored weights sum to 0.999924 in `NiSkinData` and to exactly one in the partition.
+Each copy therefore does its own capping and its own rescaling as it is written. A shared
+trim ahead of all three — which se-cmd had — made them agree with each other and none of
+them agree with the file. The partition normalises unconditionally (it holds full floats,
+so there is no neighbouring half to round into); the vertex buffer keeps the 1e-4 guard,
+because it has one.
 
 ##### Which copy to read
 
@@ -1201,10 +1218,10 @@ list. 296 are a fourth influence the buffer carries and `NiSkinData` omits; six 
 whose slot order a per-bone list does not record. Reproducing both would mean carrying
 both, and FBX has one skin per mesh.
 
-*Order.* `LimitInfluences` rebuilt each bone's weight list by walking a dictionary, so a
+*Order.* The shared trim rebuilt each bone's weight list by walking a dictionary, so a
 rebuilt `NiSkinData` came back holding the right weights on the right vertices in an
-order that is nobody's. The surviving influences and the scale are now worked out first
-and applied to each bone's existing list in place, which keeps the order the file had.
+order that is nobody's. Nothing rewrites those lists now, so each keeps the order the
+file had.
 
 #### 5.3.0A Two vertex words with no channel of their own
 
