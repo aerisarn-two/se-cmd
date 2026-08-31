@@ -404,14 +404,33 @@ namespace SECmd.Tests
             // Both come out a millimetre off, which is Havok quantising a mesh it built
             // itself rather than the one Bethesda built.
             //
-            // The tree's origin sits a margin below those bounds, and the margin is not
-            // a constant in Bethesda's own files: TestNifFile_RootNonZero uses 0.05,
-            // which is what mopper produces and what matches there, while
-            // TestNifFile_Furniture_Col_SE uses 0.005 and does not. Neither mopper nor
-            // ck-cmd sets the MOPP fit tolerances that would decide it -- both leave
-            // Havok's defaults -- so there is no setting to copy across.
+            // The tree's origin sits a margin below those bounds, and the margin *is*
+            // near enough a constant in Bethesda's files -- just not the one nif.xml
+            // documents nor the one Havok defaults to. Of the 8,188 MOPP trees the game
+            // ships:
+            //
+            //   8,040   origin = the geometry's minimum minus 0.005
+            //     135   minus 0.05, which is what mopper and ck-cmd produce
+            //      13   an origin *above* the geometry, by up to 0.034
+            //
+            // and not one uses the 0.1 that nif.xml states outright ("the minimum of all
+            // vertices in the packed shape along each axis, minus 0.1"). The two fixtures
+            // that disagree are one of each of the first two kinds, which is why this
+            // read as inconstant when only they had been looked at.
+            //
+            // So there is a number to aim at and no way yet found to ask for it. The
+            // margin is Havok's, not this port's: neither mopper nor ck-cmd sets the MOPP
+            // fit tolerances -- m_absoluteFitToleranceOfTriangles and its siblings --
+            // and their defaults are not in the SDK source to read, so establishing which
+            // one yields 0.005 means building mopper against a value and measuring what
+            // comes out, repeatedly.
+            //
+            // The thirteen with the origin above their geometry are worth remembering
+            // before anyone treats vanilla as the specification here. A tree whose frame
+            // does not contain the shape is the file being wrong about itself, which the
+            // convex hulls do too (§7.3).
             ["Min"] = "Havok quantises the mesh it was given, not the one Bethesda had",
-            ["Offset"] = "the MOPP origin's margin is not constant in vanilla either",
+            ["Offset"] = "vanilla's origin margin is 0.005; Havok's default, which mopper takes, is 0.05",
 
 
             // Bethesda over-allocates this array and leaves the rest empty. Every one of
