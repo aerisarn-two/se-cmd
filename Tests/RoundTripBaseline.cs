@@ -246,6 +246,31 @@ namespace SECmd.Tests
             // question that should not have been asked.
             ["BSTriShape"] = "an SE-only class in an LE model comes back as LE's equivalent",
 
+            // The fixture's own two copies of the weights disagree, and only one of
+            // them can be rebuilt from the other.
+            //
+            // 302 of 12,840 slots in TestNifFile_LooseBlocks_SE differ, all of them
+            // where the file's NiSkinData and its vertex buffer say different things.
+            // 296 are a fourth influence the buffer carries and NiSkinData omits
+            // outright -- vertex 1628 has b3 at 0.0001 in the buffer and three
+            // influences in NiSkinData. The other six are ties: vertex 2235 weights
+            // b4 and b1 at 0.375977 each, and the buffer's slot order for a tie is the
+            // authoring order, which a per-bone list sorted by bone does not record.
+            //
+            // Reading NiSkinData, as this does, reproduces it exactly and loses those
+            // 302 buffer slots; reading the buffer would do the reverse. Carrying both
+            // would mean carrying two sets of weights for one skin and choosing between
+            // them at the far end, which is a machinery for reproducing a contradiction.
+            //
+            // By design rather than open, because vanilla does not have the problem.
+            // Over 1,768,446 skinned vertices in a seventh of Skyrim's meshes, once the
+            // empty-NiSkinData case is accounted for, the buffer holds an influence
+            // NiSkinData lacks exactly **zero** times, and sorting NiSkinData by
+            // descending weight reproduces the buffer's slot order in all 1,764,398
+            // vertices where the two agree. A file whose copies disagree is a file that
+            // is wrong about itself, and there is no rebuilding it that is right.
+            ["Bone Indices"] = "the fixture's two copies of the weights disagree; no vanilla file's do",
+
             ["Unused 01"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
             ["Unused 03"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
 
@@ -447,27 +472,6 @@ namespace SECmd.Tests
             ["Stop Time"] = "an attached controller's span covers its keys; Bethesda's is narrower",
 
 
-            // Not our selection: the fixture's own two copies of the weights disagree,
-            // and only one of them can be rebuilt from the other.
-            //
-            // 302 of 12,840 slots in TestNifFile_LooseBlocks_SE differ, all of them
-            // where the file's NiSkinData and its vertex buffer say different things.
-            // 296 are a fourth influence the buffer carries and NiSkinData omits
-            // outright -- vertex 1628 has b3 at 0.0001 in the buffer and three
-            // influences in NiSkinData. The other six are ties: vertex 2235 weights
-            // b4 and b1 at 0.375977 each, and the buffer's slot order for a tie is the
-            // authoring order, which a per-bone list sorted by bone does not record.
-            //
-            // Reading NiSkinData, as this does, reproduces it exactly and loses those
-            // 302 buffer slots; reading the buffer would do the reverse. Both would
-            // need carrying separately, and FBX has one skin per mesh.
-            //
-            // Vanilla does not have the problem. Over 1,768,446 skinned vertices in a
-            // seventh of Skyrim's meshes, once the empty-NiSkinData fallback is
-            // accounted for, the buffer holds an influence NiSkinData lacks exactly
-            // **zero** times, and sorting NiSkinData by descending weight reproduces the
-            // buffer's slot order in all 1,764,398 vertices where the two agree.
-            ["Bone Indices"] = "the fixture's NiSkinData and vertex buffer disagree; vanilla's do not",
 
 
 
