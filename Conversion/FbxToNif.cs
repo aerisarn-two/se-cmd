@@ -525,8 +525,6 @@ namespace SECmd.Conversion
             // rig built from a scene that carried no gains gets the ones ck-cmd uses.
             if (_model.BlockInherits(collision, "bhkBlendCollisionObject"))
             {
-                SetFloat(collision, "Heir Gain", 1f);
-                SetFloat(collision, "Vel Gain", 1f);
             }
 
             FbxCollisionObject.ReadGains(bodyNode, _model, collision);
@@ -1672,11 +1670,9 @@ namespace SECmd.Conversion
             _model.FindItem(data, @"AABB\Min")?.Value.Set(built.BoundsMin);
             _model.FindItem(data, @"AABB\Max")?.Value.Set(built.BoundsMax);
 
-            // The index widths Havok packs chunk vertices with.
-            SetCount(data, "Bits Per Index", 17);
-            SetCount(data, "Bits Per W Index", 18);
-            SetCount(data, "Mask W Index", 262143);
-            SetCount(data, "Mask Index", 131071);
+            // The index widths Havok packs chunk vertices with -- 17 and 18 bits, and
+            // the masks that go with them -- are nif.xml's own defaults for this block
+            // and are applied when it is created, so they are not written again here.
             // `Error` is not written either. nif.xml's default is 0.001, which is the
             // step mopper packs a chunk's offsets in (`createMeshShape(0.001f, ...)`)
             // and what all 8,188 compressed shapes Skyrim ships carry. The export reads

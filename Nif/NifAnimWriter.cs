@@ -156,7 +156,6 @@ namespace SECmd.Nif
             NifItem manager = model.InsertBlock("NiControllerManager");
             model.SetRef(manager, "Target", root);
             model.FindItem(manager, "Flags")?.Value.SetCount(ManagerFlags);
-            model.FindItem(manager, "Frequency")?.Value.SetFloat(1f);
             model.FindItem(manager, "Phase")?.Value.SetFloat(0f);
 
             NifItem controller = WriteMultiTargetController(model, root, targets);
@@ -288,7 +287,6 @@ namespace SECmd.Nif
 
                 model.SetRef(controller, "Target", host);
                 model.FindItem(controller, "Flags")?.Value.SetCount(property.ControllerFlags ?? StandaloneControllerFlags);
-                model.FindItem(controller, "Frequency")?.Value.SetFloat(1f);
                 model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
 
                 // Which of several same-typed controllers this is. nif.xml states
@@ -515,7 +513,6 @@ namespace SECmd.Nif
                     if (!existing)
                     {
                         model.FindItem(controller, "Flags")?.Value.SetCount(FlagsFor(group, StandaloneControllerFlags));
-                        model.FindItem(controller, "Frequency")?.Value.SetFloat(1f);
                         model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
                     }
 
@@ -554,7 +551,6 @@ namespace SECmd.Nif
             model.SetRef(controller, "Target", node);
 
             model.FindItem(controller, "Flags")?.Value.SetCount(StandaloneControllerFlags);
-            model.FindItem(controller, "Frequency")?.Value.SetFloat(1f);
             model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
 
             // The controller's span is the span of the keys it holds; a bare
@@ -605,7 +601,6 @@ namespace SECmd.Nif
             controller = model.InsertBlock(property.ControllerType);
 
             model.FindItem(controller, "Flags")?.Value.SetCount(property.ControllerFlags ?? StandaloneControllerFlags);
-            model.FindItem(controller, "Frequency")?.Value.SetFloat(1f);
             model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
 
             WriteControllerId(model, controller, property.ControllerId);
@@ -849,7 +844,6 @@ namespace SECmd.Nif
 
             model.SetRef(controller, "Target", root);
             model.FindItem(controller, "Flags")?.Value.SetCount(TransformControllerFlags);
-            model.FindItem(controller, "Frequency")?.Value.SetFloat(1f);
             model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
             // An inverted infinite span, which is what an unset one looks like: all 310
             // multi-target controllers in a quarter of Skyrim's meshes hold exactly
@@ -919,8 +913,6 @@ namespace SECmd.Nif
 
             model.FindItem(block, "Start Time")?.Value.SetFloat(0f);
             model.FindItem(block, "Stop Time")?.Value.SetFloat(length);
-            model.FindItem(block, "Frequency")?.Value.SetFloat(1f);
-            model.FindItem(block, "Weight")?.Value.SetFloat(1f);
             // What the sequence does at its end, as the source said. This was a constant
             // named CycleClamp holding zero -- and nif.xml's zero is CYCLE_LOOP, clamp
             // being 2 -- so every sequence in every file this wrote looped, including
