@@ -457,6 +457,23 @@ namespace SECmd.Tests
             // somewhere in between. Nothing about the block says where it belongs.
             ["NiIntegerExtraData"] = "BSXFlags is appended; Bethesda puts it last 57% of the time",
 
+            // A partition's bone list is padded to a multiple of four by repeating
+            // entries, and se-cmd writes the distinct set. Of the 40,626 partitions the
+            // game ships, 36,778 have a bone count that is a multiple of four and 30,218
+            // hold at least one bone twice: 12,037 list a single bone four times over,
+            // 17,763 list two bones in four slots, 418 list three.
+            //
+            // The repeats say nothing. A bone palette naming the same bone twice binds
+            // the same matrix twice, and the partition's own rows index whichever slot
+            // they please. It is the largest single difference left in the field sweep
+            // -- 3,081 meshes differ in Num Bones and nothing else -- and the smallest
+            // in meaning.
+            //
+            // Reproducing it needs the padding rule and not only the count: 9,994
+            // partitions list exactly the skin's whole bone list rather than their own
+            // bones, so "round the distinct set up to four" is not it either.
+            ["Num Bones"] = "Bethesda pads a partition's bone list with repeats; this writes the distinct set",
+
             ["Num Extra Targets"] = "Bethesda pads this array; 92.5% of vanilla slots are empty",
             ["Extra Targets"] = "Bethesda pads this array; 92.5% of vanilla slots are empty",
 
