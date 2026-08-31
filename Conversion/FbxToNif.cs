@@ -2061,10 +2061,19 @@ namespace SECmd.Conversion
                 return null;
             }
 
-            // NIF expects normals; recompute rather than emit a shape that renders
-            // with ambient light only.
-            if (!mesh.HasNormals)
+            // A mesh that arrives without normals gets them computed, as ck-cmd does
+            // (`FBXWrangler.cpp:3393`), since a DCC that exported none would otherwise
+            // give a shape that renders unlit.
+            //
+            // Unless the shape said it has none. A NIF may hold one -- the game ships
+            // 341 in a 1,500-mesh sample, 3.5% of its shapes -- and computing them for
+            // those rewrites the whole vertex buffer: every offset in `Vertex Desc`
+            // moves along by one and `Vertex Data Size` grows from 5 to 6.
+            if (!mesh.HasNormals
+                && geometry.Properties.GetString(NifToFbx.ShapeHasNoNormalsProperty).Length == 0)
+            {
                 mesh.RecalculateNormals();
+            }
 
             // Normal maps are read in tangent space, so tangents a shape has are
             // regenerated here rather than carried: the ones the FBX holds were split

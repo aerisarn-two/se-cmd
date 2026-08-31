@@ -1170,6 +1170,51 @@ namespace SECmd.Conversion
         /// <summary>Marks a skinned shape that kept its geometry in itself as well.</summary>
         public const string ShapeKeepsGeometryProperty = "nif_shape_keeps_geometry";
 
+        /// <summary>Whether the file gives this shape normals at all.</summary>
+        /// <remarks>
+        /// The two geometry families say it differently: a `BSTriShape` sets a bit in
+        /// `Vertex Desc`, and everything under `NiTriBasedGeom` sets `Has Normals` on
+        /// the data block beside it. A shape this cannot read either way is treated as
+        /// having them, which leaves it exactly as it was.
+        /// </remarks>
+        private bool HasNormals(NifItem shape)
+        {
+            if (_model.FindItem(shape, "Vertex Desc") is { } desc)
+            {
+                var flags = (VertexFlags)((desc.Value.ToUInt64() >> BSVertexDesc.Member.VertexAttributes) & 0xFFF);
+
+                return (flags & VertexFlags.Normal) != 0;
+            }
+
+            if (_model.GetRef(shape, "Data") is { } data
+                && _model.FindItem(data, "Has Normals") is { } has)
+            {
+                return has.Value.ToUInt() != 0;
+            }
+
+            return true;
+        }
+
+        /// <summary>Marks a shape whose source declared no normals.</summary>
+        /// <remarks>
+        /// An import computes normals for a mesh that arrives without them, as ck-cmd
+        /// does (`FBXWrangler.cpp:3393`), because a DCC that exported none would
+        /// otherwise give a shape that renders unlit. That is right for an FBX authored
+        /// elsewhere and wrong for one of ours: a NIF is allowed to hold a shape with no
+        /// normals and the game ships 341 of them in a 1,500-mesh sample -- 249
+        /// `BSDynamicTriShape` and 92 `BSTriShape`, 3.5% of all shapes.
+        ///
+        /// Computing normals for those does not merely add a channel. It moves every
+        /// offset in `Vertex Desc` along by one, grows `Vertex Data Size` from 5 to 6,
+        /// and rewrites every vertex in the buffer -- the largest single pattern in the
+        /// field sweep's `Vertex Desc` residue, 685 of 1,204 differences.
+        ///
+        /// Nothing in an FBX distinguishes "the NIF had none" from "the exporter wrote
+        /// none", so the fact travels, and an FBX without the marker keeps ck-cmd's
+        /// behaviour.
+        /// </remarks>
+        public const string ShapeHasNoNormalsProperty = "nif_shape_no_normals";
+
         /// <summary>Where a geometry's active material index rides.</summary>
         /// <remarks>
         /// `Material Data` sits on `NiGeometry`, below the base class the field carrier
@@ -1260,6 +1305,11 @@ namespace SECmd.Conversion
             {
                 geometry.Properties.SetUserString(ShapeKeepsGeometryProperty, "1");
             }
+
+            // A shape the file gives no normals. Read before anything recomputes them,
+            // since by the time the mesh is built there is nothing left to tell.
+            if (!HasNormals(shape))
+                geometry.Properties.SetUserString(ShapeHasNoNormalsProperty, "1");
 
             if (_model.FindItem(shape, @"Material Data\Active Material") is { } active)
             {
