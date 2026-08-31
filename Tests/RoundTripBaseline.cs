@@ -271,6 +271,25 @@ namespace SECmd.Tests
             // is wrong about itself, and there is no rebuilding it that is right.
             ["Bone Indices"] = "the fixture's two copies of the weights disagree; no vanilla file's do",
 
+            // The root's controller, on a file that carries animation and has no
+            // manager to run it.
+            //
+            // A controlled block's own controller reference is set -- a transform entry
+            // points at the multi-target controller, as the file does -- and this is the
+            // root's, which gains a NiControllerManager because the import builds one
+            // for the animation it was given.
+            //
+            // Which is what every file that has animation does. Of the 1,274 meshes the
+            // game ships holding either a sequence or a manager, all 1,274 hold both,
+            // and in all 1,274 the root's controller chain reaches the manager. Not one
+            // has sequences without a manager, and not one has a manager without
+            // sequences.
+            //
+            // So a source with animation and no manager is a file no vanilla mesh
+            // resembles, and giving it one is the conversion doing its job rather than
+            // adding something. The fixture that flags this is a synthetic model.
+            ["Controller"] = "animation gets the manager that runs it, as all 1,274 vanilla files have",
+
             ["Unused 01"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
             ["Unused 03"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
 
@@ -376,11 +395,6 @@ namespace SECmd.Tests
             // holds eleven, including emitters and geometry.
             //
 
-            // What is left of the controller references. A controlled block's own is now
-            // set -- a transform entry points at the multi-target controller, as the file
-            // does -- and this is the root's, which gains a manager in a file that had
-            // none because the import builds one for the animation it was given.
-            ["Controller"] = "a file with no manager gains one when it carries animation",
 
             // A breakable constraint in the game's files often names only one entity, and
             // the import links both from the scene -- the far body is the node the
