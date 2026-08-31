@@ -884,6 +884,112 @@ namespace SECmd.Tests
             });
         }
 
+        /// <summary>
+        /// A rebuilt file does not strand blocks the source could reach.
+        /// </summary>
+        /// <remarks>
+        /// The block sweep counts blocks and the field sweep compares their contents.
+        /// Neither asks whether they are still *joined up*: a shape whose parent no
+        /// longer lists it, or a property nothing points at, is present in both counts
+        /// and absent from the game.
+        ///
+        /// Counted rather than matched block for block, because the two files number
+        /// their blocks differently and a name is not an identity -- what a stranded
+        /// block costs is that it stops being reached, and the count of what is reached
+        /// says that without needing to know which one went.
+        ///
+        /// Reachable means from the footer's roots, following every link and reference
+        /// there is. Some of the game's files carry loose blocks on purpose -- there is
+        /// a fixture named for it -- so this asks only that the rebuilt file reaches no
+        /// *fewer* than the source did, not that it reaches everything.
+        ///
+        /// A gate rather than a ratchet: all 22,047 pass, so there is no known set to
+        /// hold the line against, and a file that starts stranding blocks should fail
+        /// rather than be counted.
+        ///
+        /// It is the slowest of these sweeps by some way -- twenty minutes against six
+        /// -- because it walks every link in both files rather than a few fields. Worth
+        /// it for what it covers: a shape whose parent no longer lists it is present in
+        /// the block sweep's count and correct in the field sweep's comparison, and gone
+        /// from the game.
+        /// </remarks>
+        [Fact]
+        public void ARebuiltFileStrandsNothingTheSourceReached()
+        {
+            Sweep((original, db) =>
+            {
+                using var input = new MemoryStream(original);
+                NifModel source = NifModel.Load(input, db);
+
+                if (source.FindItem(source.Footer, "Roots") is not { Children.Count: > 0 } roots
+                    || source.GetBlock(roots.Children[0]) is not { } root)
+                {
+                    return null;
+                }
+
+                int before = Reachable(source);
+
+                NifModel rebuilt = new FbxToNif(
+                    new FbxScene(new NifToFbx(source).Convert()),
+                    new FbxToNifOptions
+                    {
+                        RootName = source.GetName(root),
+                        Version = source.Version,
+                        UserVersion = source.UserVersion,
+                        LegendaryEdition = source.BSVersion < 100
+                    }).Convert(db);
+
+                int after = Reachable(rebuilt);
+
+                // Fewer blocks overall is the block sweep's business; this is about the
+                // ones that survived and then went unreferenced.
+                if (after >= before || rebuilt.Blocks.Count < before)
+                    return null;
+
+                return $"{before} blocks were reachable and {after} are, "
+                       + $"of {rebuilt.Blocks.Count} in the rebuilt file";
+            });
+        }
+
+        /// <summary>How many blocks the footer's roots can reach, by any link.</summary>
+        private static int Reachable(NifModel m)
+        {
+            var seen = new HashSet<int>();
+            var queue = new Queue<NifItem>();
+
+            foreach (NifItem entry in m.FindItem(m.Footer, "Roots")?.Children ?? [])
+            {
+                if (m.GetBlock(entry) is { } block && seen.Add(m.IndexOf(block)))
+                    queue.Enqueue(block);
+            }
+
+            while (queue.Count > 0)
+            {
+                NifItem block = queue.Dequeue();
+
+                Walk(block);
+
+                void Walk(NifItem item)
+                {
+                    foreach (NifItem child in item.Children)
+                    {
+                        if (child.Value.IsLink)
+                        {
+                            if (m.GetBlock(child) is { } target && seen.Add(m.IndexOf(target)))
+                                queue.Enqueue(target);
+
+                            continue;
+                        }
+
+                        if (child.Children.Count > 0)
+                            Walk(child);
+                    }
+                }
+            }
+
+            return seen.Count;
+        }
+
         /// <summary>How two collision meshes fail to be the same shape, or null.</summary>
         private static string? Incongruent(MeshGeometry was, MeshGeometry now)
         {
