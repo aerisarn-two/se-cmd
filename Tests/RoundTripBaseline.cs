@@ -418,12 +418,18 @@ namespace SECmd.Tests
             // that disagree are one of each of the first two kinds, which is why this
             // read as inconstant when only they had been looked at.
             //
-            // So there is a number to aim at and no way yet found to ask for it. The
-            // margin is Havok's, not this port's: neither mopper nor ck-cmd sets the MOPP
-            // fit tolerances -- m_absoluteFitToleranceOfTriangles and its siblings --
-            // and their defaults are not in the SDK source to read, so establishing which
-            // one yields 0.005 means building mopper against a value and measuring what
-            // comes out, repeatedly.
+            // So there is a number to aim at, and the obvious way to ask for it does not
+            // work. The margin is Havok's rather than this port's, and it is not any of
+            // the MOPP fit tolerances: mopper was built with each of
+            // m_absoluteFitToleranceOfTriangles, m_absoluteFitToleranceOfInternalNodes
+            // and m_absoluteFitToleranceOfAxisAlignedTriangles set to 0.005, and the
+            // margin came out 0.050000 every time, to the last digit. Whatever fixes it
+            // is inside the compiler for this version of Havok and is not on the input
+            // struct.
+            //
+            // Nor can it be corrected afterwards. The tree's node bounds are quantised
+            // against the origin and the scale, so moving the origin without rebuilding
+            // shifts every bound in the tree by the same amount.
             //
             // The thirteen with the origin above their geometry are worth remembering
             // before anyone treats vanilla as the specification here. A tree whose frame
