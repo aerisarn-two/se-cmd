@@ -94,6 +94,11 @@ namespace SECmd.Tests
                     return;
                 }
 
+                // A list whose order is bookkeeping rather than content, matched by
+                // what its entries are instead of where they sit.
+                if (a.Name == "Extra Data List")
+                    AlignExtraData(a, b);
+
                 _permuted.TryGetValue(a, out int[]? order);
 
                 for (int i = 0; i < a.Children.Count; i++)
@@ -231,6 +236,75 @@ namespace SECmd.Tests
                 {
                     _permuted[listLeft] = order;
                 }
+            }
+
+            /// <summary>
+            /// Lines two extra data lists up by what they hold, not by position.
+            /// </summary>
+            /// <remarks>
+            /// The engine looks an annotation up by name -- `BSX`, `INV`, the behaviour
+            /// graph's path -- so where it sits in the list says nothing, and the
+            /// rebuild does not preserve it: `BSXFlags` is recalculated and appended,
+            /// which shifts everything Bethesda had after it.
+            ///
+            /// Compared position by position that reads as the wrong *block* at each
+            /// slot -- 36 files reporting `BSInvMarker vs NiStringExtraData` and 27
+            /// `BSInvMarker vs BSXFlags` over a 1,200-mesh sample, none of which has
+            /// anything wrong with its inventory marker. The baseline records this
+            /// under `NiIntegerExtraData` alone, which excuses the one block that moved
+            /// and not the ones it displaced.
+            ///
+            /// Matched on the block's class and its own name together, since a file can
+            /// hold several `NiStringExtraData` telling them apart by name. A list that
+            /// gained or lost a block cannot be matched this way and is left to report
+            /// itself, which is the case worth keeping.
+            /// </remarks>
+            private void AlignExtraData(NifItem left_, NifItem right_)
+            {
+                if (left_.Children.Count == 0 || left_.Children.Count != right_.Children.Count)
+                    return;
+
+                List<string> wanted = Annotations(left, left_), have = Annotations(right, right_);
+
+                var order = new int[wanted.Count];
+                var taken = new bool[have.Count];
+                bool moved = false;
+
+                for (int i = 0; i < wanted.Count; i++)
+                {
+                    int found = -1;
+
+                    for (int j = 0; j < have.Count && found < 0; j++)
+                    {
+                        if (!taken[j] && have[j] == wanted[i])
+                            found = j;
+                    }
+
+                    if (found < 0)
+                        return;
+
+                    taken[found] = true;
+                    order[i] = found;
+                    moved |= found != i;
+                }
+
+                if (moved)
+                    _permuted[left_] = order;
+            }
+
+            /// <summary>Each entry of an extra data list, as class and name.</summary>
+            private static List<string> Annotations(NifModel model, NifItem array)
+            {
+                var names = new List<string>(array.Children.Count);
+
+                foreach (NifItem link in array.Children)
+                {
+                    names.Add(model.GetBlock(link) is { } block
+                        ? $"{block.Name}\u0000{model.GetName(block)}"
+                        : string.Empty);
+                }
+
+                return names;
             }
 
             /// <summary>The names of the blocks an array of links points at.</summary>
