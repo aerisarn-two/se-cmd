@@ -310,6 +310,27 @@ namespace SECmd.Tests
             // and `EveryRebuiltSequenceTargetIsInThePalette` measures it directly.
             [NifComparer.UnpairedEntry] = "a fixture palette names nodes the file does not have",
 
+            // A partition row the file draws with fewer influences than it authored.
+            //
+            // A few of the game's meshes disagree with themselves. horse.nif's partition
+            // rows and vertex buffer agree with each other on all 4,287 rows, and its
+            // NiSkinData disagrees with both on 289: the drawn row holds a subset of the
+            // authored influences, renormalised over what is left. beard01.nif authors
+            // vertex 76 with two bones and draws it with one at 1.0 -- dropping the
+            // heavier -- so this is neither the four-slot limit nor "the lightest goes".
+            //
+            // This port reads NiSkinData, the authored copy, and writes every influence
+            // it finds into both renderer copies. An extractor that dropped them to
+            // match the drawn half would lose what it was given, and a file that
+            // contradicts itself has no reading that reproduces both halves anyway.
+            //
+            // Recorded as narrowly as the situation allows: the comparer raises this
+            // only where the drawn bones are a *strict subset* of the ones written and
+            // every kept weight is ours renormalised over exactly that subset. A row
+            // differing in any other way -- a bone we lack, a weight that is not the
+            // renormalised one -- reports itself.
+            [NifComparer.DroppedInfluence] = "the file draws fewer influences than it authored",
+
             ["Unused 01"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
             ["Unused 03"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
 

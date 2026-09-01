@@ -48,6 +48,17 @@ namespace SECmd.Tests
         /// </remarks>
         public const string UnpairedEntry = "Unpaired Table Entry";
 
+        /// <summary>
+        /// The field a partition row is reported under when the file drew fewer
+        /// influences than it authored.
+        /// </summary>
+        /// <remarks>
+        /// Not a nif.xml field: the row is not wrong in one place, it holds a
+        /// different set of influences. Named separately so it can be recorded on its
+        /// own, without excusing a weight difference anywhere else.
+        /// </remarks>
+        public const string DroppedInfluence = "Dropped Influence";
+
         /// <summary>Every field the two models disagree about.</summary>
         public static List<NifDifference> Compare(NifModel left, NifModel right)
         {
@@ -80,6 +91,9 @@ namespace SECmd.Tests
             /// disagreement is the name, and that is what gets reported.
             /// </remarks>
             private readonly Dictionary<NifItem, (string Left, string Right)> _unpaired = [];
+
+            /// <summary>Partition rows the file drew with fewer influences than it authored.</summary>
+            private readonly Dictionary<NifItem, (string Left, string Right)> _dropped = [];
 
             /// <summary>Arrays whose two sides may be of different lengths.</summary>
             /// <remarks>
@@ -120,6 +134,12 @@ namespace SECmd.Tests
 
             private void Fields(NifItem a, NifItem b, string path)
             {
+                if (_dropped.TryGetValue(a, out (string Left, string Right) drawn))
+                {
+                    Differences.Add(new NifDifference(path, DroppedInfluence, drawn.Left, drawn.Right));
+                    return;
+                }
+
                 if (_unpaired.TryGetValue(a, out (string Left, string Right) names))
                 {
                     // Reported under a name of its own rather than `Name`, so that
@@ -261,23 +281,127 @@ namespace SECmd.Tests
                     moved |= j != i;
                 }
 
-                if (!moved)
-                    return;
-
-                // The arrays the map indexes. Not `Vertex Map` itself, which is the
-                // statement of the order rather than something ordered by it, and not
-                // the triangles, which index into the map and are renumbered with it.
-                foreach (string field in new[] { "Vertex Weights", "Bone Indices" })
+                // The arrays the map indexes, when the map moved at all. Not
+                // `Vertex Map` itself, which is the statement of the order rather than
+                // something ordered by it, and not the triangles, which index into the
+                // map and are renumbered with it.
+                if (moved)
                 {
-                    if (left.FindItem(left_, field) is { } rows
-                        && right.FindItem(right_, field) is { } theirs
-                        && rows.Children.Count == order.Length
-                        && theirs.Children.Count == order.Length)
+                    foreach (string field in new[] { "Vertex Weights", "Bone Indices" })
                     {
-                        _permuted[rows] = order;
+                        if (left.FindItem(left_, field) is { } rows
+                            && right.FindItem(right_, field) is { } theirs
+                            && rows.Children.Count == order.Length
+                            && theirs.Children.Count == order.Length)
+                        {
+                            _permuted[rows] = order;
+                        }
                     }
                 }
+
+                // Whether or not it moved. A partition whose rows are already in step
+                // can still hold a row the file drew with fewer influences than it
+                // authored, and `horse.nif` is exactly that: same order throughout.
+                MarkDroppedInfluences(left_, right_, order);
             }
+
+            /// <summary>
+            /// Marks the rows where the file drew fewer influences than it authored.
+            /// </summary>
+            /// <remarks>
+            /// A few of the game's meshes disagree with themselves. In `horse.nif` the
+            /// partition rows and the vertex buffer agree with each other on all 4,287
+            /// rows and `NiSkinData` disagrees with both on 289: the drawn row holds a
+            /// subset of the authored influences, renormalised over what is left.
+            /// `beard01.nif` authors vertex 76 with two bones and draws it with one at
+            /// 1.0 -- and drops the heavier of the two, so it is not the four-slot limit
+            /// and not "the lightest goes" either.
+            ///
+            /// This converter reads `NiSkinData`, the authored copy, and writes every
+            /// influence it finds into both renderer copies, so its output says one
+            /// thing throughout. That is the point: a file that contradicts itself has
+            /// no reading that reproduces both halves, and dropping influences to match
+            /// the one would make the extractor lose what it was given.
+            ///
+            /// So the row is recorded rather than the field excused, and the test is as
+            /// narrow as the situation:
+            ///
+            /// <list type="bullet">
+            /// <item>the drawn bones must be a *strict subset* of the ones we wrote;</item>
+            /// <item>every weight the file kept must be ours renormalised over exactly
+            /// that subset, to within a thousandth.</item>
+            /// </list>
+            ///
+            /// A row that differs in any other way -- a bone we lack, a weight that is
+            /// not the renormalised one, a set that matches with different numbers --
+            /// falls through and is reported as the difference it is.
+            /// </remarks>
+            private void MarkDroppedInfluences(NifItem left_, NifItem right_, int[] order)
+            {
+                if (left.FindItem(left_, "Vertex Weights") is not { } theirs
+                    || right.FindItem(right_, "Vertex Weights") is not { } ours
+                    || left.FindItem(left_, "Bone Indices") is not { } theirIndices
+                    || right.FindItem(right_, "Bone Indices") is not { } ourIndices
+                    || left.FindItem(left_, "Bones") is not { } theirBones
+                    || right.FindItem(right_, "Bones") is not { } ourBones)
+                {
+                    return;
+                }
+
+                for (int i = 0; i < order.Length && i < theirs.Children.Count; i++)
+                {
+                    int j = order[i];
+
+                    if (j < 0 || j >= ours.Children.Count) continue;
+
+                    Dictionary<uint, float> drawn =
+                        Row(theirs.Children[i], theirIndices.Children[i], theirBones);
+
+                    Dictionary<uint, float> authored =
+                        Row(ours.Children[j], ourIndices.Children[j], ourBones);
+
+                    if (drawn.Count == 0 || drawn.Count >= authored.Count) continue;
+                    if (!drawn.Keys.All(authored.ContainsKey)) continue;
+
+                    float kept = drawn.Keys.Sum(b => authored[b]);
+
+                    if (kept <= 0f) continue;
+
+                    bool renormalised = drawn.All(
+                        p => MathF.Abs(p.Value - (authored[p.Key] / kept)) < 1e-3f);
+
+                    if (!renormalised) continue;
+
+                    _dropped[theirs.Children[i]] = (Spell(drawn), Spell(authored));
+                }
+            }
+
+            /// <summary>One partition row as bone-to-weight, zero slots left out.</summary>
+            private static Dictionary<uint, float> Row(NifItem weights, NifItem indices, NifItem bones)
+            {
+                var row = new Dictionary<uint, float>();
+
+                for (int k = 0; k < weights.Children.Count && k < indices.Children.Count; k++)
+                {
+                    float w = weights.Children[k].Value.ToFloat();
+
+                    if (w <= 0f)
+                        continue;
+
+                    var local = (int)indices.Children[k].Value.ToUInt();
+
+                    if (local >= 0 && local < bones.Children.Count)
+                        row[bones.Children[local].Value.ToUInt()] = w;
+                }
+
+                return row;
+            }
+
+            private static string Spell(Dictionary<uint, float> row) =>
+                string.Join(
+                    " ",
+                    row.OrderBy(p => p.Key).Select(p => string.Create(
+                        System.Globalization.CultureInfo.InvariantCulture, $"{p.Key}:{p.Value:F3}")));
 
             /// <summary>
             /// Lines a skin's bone list up by bone name rather than by position.
