@@ -39,6 +39,15 @@ namespace SECmd.Tests
         /// <summary>The flag nif.xml says Skyrim carries sometimes and not others.</summary>
         private const uint IgnoredAvFlag = 0x80000;
 
+        /// <summary>
+        /// The field a table row with no counterpart is reported under.
+        /// </summary>
+        /// <remarks>
+        /// Not a nif.xml field name: no single field is wrong, the row is. Named
+        /// separately so that it can be recorded without recording `Name` everywhere.
+        /// </remarks>
+        public const string UnpairedEntry = "Unpaired Table Entry";
+
         /// <summary>Every field the two models disagree about.</summary>
         public static List<NifDifference> Compare(NifModel left, NifModel right)
         {
@@ -60,6 +69,17 @@ namespace SECmd.Tests
 
             /// <summary>Arrays whose two sides line up by name rather than by index.</summary>
             private readonly Dictionary<NifItem, int[]> _permuted = [];
+
+            /// <summary>
+            /// Table rows the two sides do not agree on, and the names that differ.
+            /// </summary>
+            /// <remarks>
+            /// Two palette entries naming different things are different entries, and
+            /// what stands behind them is not a comparison worth making: following both
+            /// pairs a billboard with a mesh and reports every field of each. The
+            /// disagreement is the name, and that is what gets reported.
+            /// </remarks>
+            private readonly Dictionary<NifItem, (string Left, string Right)> _unpaired = [];
 
             private NifItem _owner = null!;
 
@@ -86,6 +106,14 @@ namespace SECmd.Tests
 
             private void Fields(NifItem a, NifItem b, string path)
             {
+                if (_unpaired.TryGetValue(a, out (string Left, string Right) names))
+                {
+                    // Reported under a name of its own rather than `Name`, so that
+                    // recording it excuses this and not every name in the file.
+                    Differences.Add(new NifDifference(path, UnpairedEntry, names.Left, names.Right));
+                    return;
+                }
+
                 if (a.Children.Count != b.Children.Count)
                 {
                     Differences.Add(new NifDifference(
@@ -94,10 +122,12 @@ namespace SECmd.Tests
                     return;
                 }
 
-                // A list whose order is bookkeeping rather than content, matched by
-                // what its entries are instead of where they sit.
+                // Lists whose order is bookkeeping rather than content, matched by
+                // what their entries hold instead of where they sit.
                 if (a.Name == "Extra Data List")
-                    AlignExtraData(a, b);
+                    Align(a, b, Annotations, whole: true);
+                else if (a.Name == "Objs")
+                    Align(a, b, PaletteNames, whole: false);
 
                 _permuted.TryGetValue(a, out int[]? order);
 
@@ -239,6 +269,45 @@ namespace SECmd.Tests
             }
 
             /// <summary>
+            /// Each entry of an object palette, by the name it is looked up under.
+            /// </summary>
+            /// <remarks>
+            /// A `NiDefaultAVObjectPalette` is a lookup table: a sequence names a node
+            /// and the palette says which block that is. The order is the table's own
+            /// business and Bethesda's is not one this reproduces --
+            /// `dlc1protoswingingbridge.nif` lists Bone00, Bone01, Bone05, Bone04,
+            /// Bone06, Bone03, Bone02.
+            ///
+            /// Worth matching rather than reporting, because the comparison does not
+            /// stop at the entry: it follows `AV Object` into the block, so one shifted
+            /// palette pairs a billboard with a particle system and reports every field
+            /// of both, down to the vertices of a mesh hanging off the wrong entry.
+            ///
+            /// Note the name is a `SizedString` and not an index into the header's
+            /// table -- the palette is meant to be readable without it -- so resolving
+            /// it as an index gives nothing, and every entry keys alike.
+            /// </remarks>
+            private static List<string> PaletteNames(NifModel model, NifItem array)
+            {
+                var names = new List<string>(array.Children.Count);
+
+                foreach (NifItem entry in array.Children)
+                {
+                    if (model.FindItem(entry, "Name") is not { } n)
+                    {
+                        names.Add(string.Empty);
+                        continue;
+                    }
+
+                    names.Add(n.Value.Type == NifValueType.StringIndex
+                        ? model.ResolveString(n)
+                        : n.Value.ToString());
+                }
+
+                return names;
+            }
+
+            /// <summary>
             /// Lines two extra data lists up by what they hold, not by position.
             /// </summary>
             /// <remarks>
@@ -259,15 +328,27 @@ namespace SECmd.Tests
             /// gained or lost a block cannot be matched this way and is left to report
             /// itself, which is the case worth keeping.
             /// </remarks>
-            private void AlignExtraData(NifItem left_, NifItem right_)
+            /// <param name="whole">
+            /// Whether every entry must match for the alignment to be used. An extra
+            /// data list either holds the same annotations or is a different list, and
+            /// a partial match there would pair unrelated blocks. A palette is a table
+            /// of independent rows, so the ones that do match are worth pairing however
+            /// the rest turn out.
+            /// </param>
+            private void Align(
+                NifItem left_,
+                NifItem right_,
+                Func<NifModel, NifItem, List<string>> key,
+                bool whole)
             {
                 if (left_.Children.Count == 0 || left_.Children.Count != right_.Children.Count)
                     return;
 
-                List<string> wanted = Annotations(left, left_), have = Annotations(right, right_);
+                List<string> wanted = key(left, left_), have = key(right, right_);
 
                 var order = new int[wanted.Count];
                 var taken = new bool[have.Count];
+                var unmatched = new List<int>();
                 bool moved = false;
 
                 for (int i = 0; i < wanted.Count; i++)
@@ -281,11 +362,37 @@ namespace SECmd.Tests
                     }
 
                     if (found < 0)
-                        return;
+                    {
+                        if (whole)
+                            return;
+
+                        unmatched.Add(i);
+                        continue;
+                    }
 
                     taken[found] = true;
                     order[i] = found;
                     moved |= found != i;
+                }
+
+                // Whatever is left over on each side, paired in the order it sits in
+                // and marked as the disagreement it is: the names are reported and
+                // neither block behind them is walked.
+                int spare = 0;
+
+                foreach (int i in unmatched)
+                {
+                    while (spare < taken.Length && taken[spare])
+                        spare++;
+
+                    if (spare >= taken.Length)
+                        return;
+
+                    taken[spare] = true;
+                    order[i] = spare;
+                    moved |= spare != i;
+
+                    _unpaired[left_.Children[i]] = (wanted[i], have[spare]);
                 }
 
                 if (moved)

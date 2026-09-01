@@ -290,6 +290,26 @@ namespace SECmd.Tests
             // adding something. The fixture that flags this is a synthetic model.
             ["Controller"] = "animation gets the manager that runs it, as all 1,274 vanilla files have",
 
+            // A palette entry naming a node the file does not contain.
+            //
+            // `NiDefaultAVObjectPalette` maps a name to the block a sequence means by
+            // it, and a rebuilt palette is written from the blocks the scene actually
+            // has -- every named `NiAVObject` bar the root, which is what the game's
+            // own palettes hold in 211 of 263 sampled.
+            //
+            // Some of the nifly fixtures disagree with themselves: `TestNifFile_Animated_LE`
+            // names `Icicle01_Low02` and `IceGlow` in its palette while the nodes it
+            // holds are called `Low02` and `Glow`. Those entries resolve to nothing, in
+            // this port and in the game, and a rebuilt file cannot reproduce a name no
+            // block has without inventing the block too.
+            //
+            // Only the row is excused, not what stands behind it: the comparison stops
+            // at a row whose two sides name different things rather than walking into
+            // two unrelated blocks, so nothing below is hidden by this. Whether a
+            // sequence can still find its target is a behaviour rather than a field,
+            // and `EveryRebuiltSequenceTargetIsInThePalette` measures it directly.
+            [NifComparer.UnpairedEntry] = "a fixture palette names nodes the file does not have",
+
             ["Unused 01"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
             ["Unused 03"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
 

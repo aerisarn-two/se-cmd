@@ -884,10 +884,51 @@ namespace SECmd.Nif
             NifItem palette = model.InsertBlock("NiDefaultAVObjectPalette");
             model.SetRef(palette, "Scene", root);
 
-            // The root is in the palette too, because a sequence may name it as its
-            // accumulation root.
-            var all = new List<NifItem> { root };
-            all.AddRange(targets.Where(t => t != root));
+            // Every named object in the scene, which is what the game's palettes hold.
+            // Of 263 sampled, 211 are exactly every named `NiAVObject` but the root,
+            // and the 52 others are that less the two classes below.
+            //
+            // Built from the sequence targets instead, ours held a fraction of them:
+            // all 205 palettes in a 3,000-mesh sample differed, with
+            // `dragon_swamp_bloodwingl.nif` missing `NPC LHand` and its neighbours. The
+            // palette is how a sequence finds a track's target by name, so an entry
+            // that is not there is a track that cannot bind -- and the table has to
+            // serve sequences this file does not carry, since an animation in a KF
+            // names its nodes and resolves them here.
+            //
+            // Three exclusions, all of them vanilla's:
+            //
+            // - The root, which is `Scene` above. 196 of 205 leave it out of the list.
+            // - `BSOrderedNode`, the render-ordering marker: absent from all 19.
+            // - `BSValueNode`, the add-on marker -- `AddOnNode05` and its kind --
+            //   absent from every one.
+            var all = new List<NifItem>();
+
+            foreach (NifItem block in model.Blocks)
+            {
+                if (ReferenceEquals(block, root)
+                    || block.Name is "BSOrderedNode" or "BSValueNode"
+                    || !model.BlockInherits(block, "NiAVObject")
+                    || model.GetName(block) is not { Length: > 0 })
+                {
+                    continue;
+                }
+
+                all.Add(block);
+            }
+
+            // ...and anything a sequence names that the rule left out, since a target
+            // the palette cannot resolve is worse than an entry vanilla would not have
+            // written. Empty on a vanilla file, where the rule covers them already.
+            //
+            // The root stays out even here. A handful of vanilla palettes do list it --
+            // 9 of 205 -- and letting a sequence target put it back was tried and
+            // changed nothing, so whatever those files list it for, it is not that.
+            foreach (NifItem target in targets)
+            {
+                if (!ReferenceEquals(target, root) && !all.Contains(target))
+                    all.Add(target);
+            }
 
             if (model.SetArraySize(palette, "Num Objs", "Objs", all.Count) is not { } objects)
                 return palette;
