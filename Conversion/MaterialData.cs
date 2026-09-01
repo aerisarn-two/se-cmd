@@ -258,34 +258,43 @@ namespace SECmd.Conversion
         public float EnvironmentMapScale { get; set; }
 
         /// <summary>
-        /// The shader fields nif.xml gates on the shader type.
+        /// The shader fields nif.xml gates on the shader type, read off the block.
         /// </summary>
         /// <remarks>
         /// A `BSLightingShaderProperty` holds a different set of extra fields for each
-        /// shading path, and nif.xml spells them all out with a `Shader Type == n`
-        /// condition apiece. `Environment Map Scale` is one of these and is carried
-        /// already, by name and on its own; the rest were not carried at all, so an
-        /// envmap shader kept its scale and a hair shader lost its tint.
+        /// shading path, and nif.xml spells every one of them out with a
+        /// `Shader Type == n` condition. They travel as one table rather than as a
+        /// named property apiece, because there is nothing to say about any of them
+        /// individually: each is a number, or two, or three, belonging to a path this
+        /// converter otherwise leaves alone.
         ///
-        /// They travel here rather than as eight more named properties because there is
-        /// nothing to say about any of them individually: each is one number, or two,
-        /// or three, that belongs to a shading path this converter otherwise leaves
-        /// alone.
+        /// Enumerated from the block rather than listed here. Listed, the list was
+        /// wrong: it named eight fields and nif.xml has twelve, so `Skin Tint Color`,
+        /// `Sparkle Parameters` and both eye reflection centres went on being lost
+        /// after the other eight were fixed. A schema this port already reads is a
+        /// better authority than a line of code repeating part of it, and it stays
+        /// right when nif.xml gains a thirteenth.
         ///
-        /// `Environment Map Scale` is deliberately absent -- it has its own carrier,
-        /// and writing it twice would mean two answers to one question.
+        /// `Environment Map Scale` is skipped: it has a carrier of its own, and two
+        /// carriers writing one field is how one of them loses.
         /// </remarks>
-        public static readonly string[] ShaderTypeFields =
-        [
-            "Hair Tint Color",
-            "Max Passes",
-            "Scale",
-            "Parallax Inner Layer Thickness",
-            "Parallax Refraction Scale",
-            "Parallax Inner Layer Texture Scale",
-            "Parallax Envmap Strength",
-            "Eye Cubemap Scale"
-        ];
+        public static IEnumerable<NifItem> ShaderTypeFieldsOf(NifItem shader)
+        {
+            foreach (NifItem child in shader.Children)
+            {
+                if (child.Name != EnvironmentMapScaleField
+                    && child.Def.Cond.Contains(ShaderTypeCondition, StringComparison.Ordinal))
+                {
+                    yield return child;
+                }
+            }
+        }
+
+        /// <summary>The condition nif.xml gates a shading path's fields on.</summary>
+        private const string ShaderTypeCondition = "Shader Type";
+
+        /// <summary>The one such field with a carrier of its own.</summary>
+        private const string EnvironmentMapScaleField = "Environment Map Scale";
 
         /// <summary>The FBX property one of those rides under.</summary>
         public static string ShaderTypeFieldProperty(string field) =>

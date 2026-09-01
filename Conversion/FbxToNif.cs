@@ -3041,12 +3041,12 @@ namespace SECmd.Conversion
 
             // ...and the rest of what this shading path carries. Written after the type
             // above, since that is what makes them exist at all.
-            foreach (string field in MaterialData.ShaderTypeFields)
+            foreach (NifItem field in MaterialData.ShaderTypeFieldsOf(shader).ToList())
             {
-                string text = properties.GetString(MaterialData.ShaderTypeFieldProperty(field));
+                string text = properties.GetString(MaterialData.ShaderTypeFieldProperty(field.Name));
 
                 if (text.Length > 0)
-                    SetShaderField(shader, field, text);
+                    SetShaderField(shader, field.Name, text);
             }
 
             // Lighting-shader only. SetFloat finds nothing on an effect shader and does
@@ -3091,8 +3091,20 @@ namespace SECmd.Conversion
 
             switch (item.Value.Get<object>())
             {
+                case NifColor4 when numbers.Length == 4:
+                    item.Value.Set(new NifColor4(numbers[0], numbers[1], numbers[2], numbers[3]));
+                    break;
+
                 case NifColor3 when numbers.Length == 3:
                     item.Value.Set(new NifColor3(numbers[0], numbers[1], numbers[2]));
+                    break;
+
+                case NifVector4 when numbers.Length == 4:
+                    item.Value.Set(new NifVector4(numbers[0], numbers[1], numbers[2], numbers[3]));
+                    break;
+
+                case NifVector3 when numbers.Length == 3:
+                    item.Value.Set(new NifVector3(numbers[0], numbers[1], numbers[2]));
                     break;
 
                 case NifVector2 when numbers.Length == 2:

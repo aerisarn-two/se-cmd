@@ -1196,7 +1196,10 @@ namespace SECmd.Conversion
 
             return item.Value.Get<object>() switch
             {
+                NifColor4 c => $"{F(c.R)},{F(c.G)},{F(c.B)},{F(c.A)}",
                 NifColor3 c => $"{F(c.R)},{F(c.G)},{F(c.B)}",
+                NifVector4 v => $"{F(v.X)},{F(v.Y)},{F(v.Z)},{F(v.W)}",
+                NifVector3 v => $"{F(v.X)},{F(v.Y)},{F(v.Z)}",
                 NifVector2 v => $"{F(v.X)},{F(v.Y)}",
                 _ => F(item.Value.ToFloat())
             };
@@ -1678,12 +1681,12 @@ namespace SECmd.Conversion
                 ShaderName = _model.GetName(shader)
             };
 
-            // The fields this shading path has and the others do not. FindItem
-            // respects the condition, so only the live ones answer.
-            foreach (string field in MaterialData.ShaderTypeFields)
+            // The fields this shading path has and the others do not, taken off the
+            // block itself so the set cannot drift from nif.xml's.
+            foreach (NifItem item in MaterialData.ShaderTypeFieldsOf(shader))
             {
-                if (_model.FindItem(shader, field) is { } item)
-                    material.ShaderTypeValues[field] = ShaderFieldText(item);
+                if (_model.EvalCondition(item))
+                    material.ShaderTypeValues[item.Name] = ShaderFieldText(item);
             }
 
             // The shader path is stored on the NiObjectNET level, guarded by an
