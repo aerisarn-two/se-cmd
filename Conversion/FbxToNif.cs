@@ -2887,6 +2887,16 @@ namespace SECmd.Conversion
 
             SetFloat(shader, "Environment Map Scale", (float)properties.GetDouble("environment_map_scale"));
 
+            // ...and the rest of what this shading path carries. Written after the type
+            // above, since that is what makes them exist at all.
+            foreach (string field in MaterialData.ShaderTypeFields)
+            {
+                string text = properties.GetString(MaterialData.ShaderTypeFieldProperty(field));
+
+                if (text.Length > 0)
+                    SetShaderField(shader, field, text);
+            }
+
             // Lighting-shader only. SetFloat finds nothing on an effect shader and does
             // nothing, so these are safe to write for either.
             SetFloat(shader, "Lighting Effect 1", (float)properties.GetDouble("lighting_effect_1", 0.3));
@@ -2903,6 +2913,46 @@ namespace SECmd.Conversion
             _model.SetRef(shape, "Shader Property", shader);
 
             BuildAlphaProperty(shape, properties);
+        }
+
+        /// <summary>
+        /// Puts one carried shader field back, whatever shape it is.
+        /// </summary>
+        /// <remarks>
+        /// Does nothing when the field is not live: a shader on a different path than
+        /// the one the text came from has no such field, and nif.xml's condition is
+        /// what decides. The counterpart of `NifToFbx.ShaderFieldText`.
+        /// </remarks>
+        private void SetShaderField(NifItem shader, string field, string text)
+        {
+            if (_model.FindItem(shader, field) is not { } item)
+                return;
+
+            string[] parts = text.Split(',');
+            var numbers = new float[parts.Length];
+
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (!float.TryParse(parts[i], NumberStyles.Float, CultureInfo.InvariantCulture, out numbers[i]))
+                    return;
+            }
+
+            switch (item.Value.Get<object>())
+            {
+                case NifColor3 when numbers.Length == 3:
+                    item.Value.Set(new NifColor3(numbers[0], numbers[1], numbers[2]));
+                    break;
+
+                case NifVector2 when numbers.Length == 2:
+                    item.Value.Set(new NifVector2(numbers[0], numbers[1]));
+                    break;
+
+                default:
+                    if (numbers.Length == 1)
+                        item.Value.SetFloat(numbers[0]);
+
+                    break;
+            }
         }
 
         /// <summary>

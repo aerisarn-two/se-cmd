@@ -117,6 +117,10 @@ namespace SECmd.Fbx
             properties.Set("environment_map_scale", "Number", "", FbxProperties.UserFlags,
                 (double)material.EnvironmentMapScale);
 
+            // The fields belonging to whichever shading path this shader is on.
+            foreach ((string field, string text) in material.ShaderTypeValues)
+                properties.SetUserString(MaterialData.ShaderTypeFieldProperty(field), text);
+
             properties.Set("lighting_effect_1", "Number", "", FbxProperties.UserFlags,
                 (double)material.LightingEffect1);
 

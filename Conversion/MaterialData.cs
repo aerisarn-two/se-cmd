@@ -258,6 +258,43 @@ namespace SECmd.Conversion
         public float EnvironmentMapScale { get; set; }
 
         /// <summary>
+        /// The shader fields nif.xml gates on the shader type.
+        /// </summary>
+        /// <remarks>
+        /// A `BSLightingShaderProperty` holds a different set of extra fields for each
+        /// shading path, and nif.xml spells them all out with a `Shader Type == n`
+        /// condition apiece. `Environment Map Scale` is one of these and is carried
+        /// already, by name and on its own; the rest were not carried at all, so an
+        /// envmap shader kept its scale and a hair shader lost its tint.
+        ///
+        /// They travel here rather than as eight more named properties because there is
+        /// nothing to say about any of them individually: each is one number, or two,
+        /// or three, that belongs to a shading path this converter otherwise leaves
+        /// alone.
+        ///
+        /// `Environment Map Scale` is deliberately absent -- it has its own carrier,
+        /// and writing it twice would mean two answers to one question.
+        /// </remarks>
+        public static readonly string[] ShaderTypeFields =
+        [
+            "Hair Tint Color",
+            "Max Passes",
+            "Scale",
+            "Parallax Inner Layer Thickness",
+            "Parallax Refraction Scale",
+            "Parallax Inner Layer Texture Scale",
+            "Parallax Envmap Strength",
+            "Eye Cubemap Scale"
+        ];
+
+        /// <summary>The FBX property one of those rides under.</summary>
+        public static string ShaderTypeFieldProperty(string field) =>
+            "nif_shader_" + field.Replace(' ', '_').ToLowerInvariant();
+
+        /// <summary>What the source held in them, by field name, as text.</summary>
+        public Dictionary<string, string> ShaderTypeValues { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>
         /// The rim and soft-lighting strengths, and how strongly refraction bends.
         /// </summary>
         /// <remarks>

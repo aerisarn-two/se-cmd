@@ -1167,6 +1167,26 @@ namespace SECmd.Conversion
             Remember(shape, node);
         }
 
+        /// <summary>
+        /// One shader field as round-trippable text, whatever shape it is.
+        /// </summary>
+        /// <remarks>
+        /// These are floats, colours and UV pairs, and they are few enough to spell out
+        /// here rather than reach for a general encoder. Never `ToString()`: that is
+        /// `G6`, and six significant digits is not a round trip.
+        /// </remarks>
+        private static string ShaderFieldText(NifItem item)
+        {
+            string F(float v) => v.ToString("R", CultureInfo.InvariantCulture);
+
+            return item.Value.Get<object>() switch
+            {
+                NifColor3 c => $"{F(c.R)},{F(c.G)},{F(c.B)}",
+                NifVector2 v => $"{F(v.X)},{F(v.Y)}",
+                _ => F(item.Value.ToFloat())
+            };
+        }
+
         /// <summary>Marks a skinned shape that kept its geometry in itself as well.</summary>
         public const string ShapeKeepsGeometryProperty = "nif_shape_keeps_geometry";
 
@@ -1573,6 +1593,14 @@ namespace SECmd.Conversion
                 ShaderFlags2 = _model.FindItem(shader, "Shader Flags 2")?.Value.ToUInt(),
                 ShaderName = _model.GetName(shader)
             };
+
+            // The fields this shading path has and the others do not. FindItem
+            // respects the condition, so only the live ones answer.
+            foreach (string field in MaterialData.ShaderTypeFields)
+            {
+                if (_model.FindItem(shader, field) is { } item)
+                    material.ShaderTypeValues[field] = ShaderFieldText(item);
+            }
 
             // The shader path is stored on the NiObjectNET level, guarded by an
             // onlyT condition, and is written out by name rather than as a number.
