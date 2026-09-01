@@ -444,3 +444,7 @@ Tests/Resources/vanilla/*.nif
 /*.fbx
 /*.nif
 /*.hkx
+
+# Meshes pulled out of the game to look at. Never committed: nothing extracted
+# from the game is a fixture.
+/samples/
