@@ -435,6 +435,21 @@ namespace SECmd.Conversion
         /// </remarks>
         public string AccumRootName { get; set; } = string.Empty;
 
+        /// <summary>
+        /// The sequence's text keys, in order: a time and what it marks.
+        /// </summary>
+        /// <remarks>
+        /// Skyrim finds `start` and `end` by name to know where a sequence runs, and
+        /// those two were all a rebuilt sequence got. The rest are content: a door's
+        /// `Sound: DRSWoodDoubleRough01Open` is what makes it audible, and
+        /// `lastFrame` marks where an effect holds. Dropping them leaves a door that
+        /// opens in silence.
+        ///
+        /// Empty for a sequence out of an FBX that carried none, which then gets the
+        /// two markers it needs and nothing else.
+        /// </remarks>
+        public List<(float Time, string Value)> TextKeys { get; } = [];
+
         public List<AnimTrack> Tracks { get; } = [];
 
         /// <summary>

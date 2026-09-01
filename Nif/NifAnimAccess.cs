@@ -438,6 +438,18 @@ namespace SECmd.Nif
                 AccumRootName = model.GetString(block, "Accum Root Name")
             };
 
+            // Everything the sequence marks, not just the two the engine looks up.
+            if (model.GetRef(block, "Text Keys") is { } text
+                && model.FindItem(text, "Text Keys") is { } marks)
+            {
+                foreach (NifItem mark in marks.Children)
+                {
+                    sequence.TextKeys.Add((
+                        FloatOf(model, mark, "Time"),
+                        model.GetString(mark, "Value")));
+                }
+            }
+
             // One track per node, however many controlled blocks turn out to name it:
             // a node's transform and its properties are separate blocks here and one
             // track there.

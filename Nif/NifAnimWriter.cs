@@ -1021,7 +1021,7 @@ namespace SECmd.Nif
             // the ones meant to play once and stop.
             model.FindItem(block, "Cycle Type")?.Value.SetCount(sequence.CycleType);
 
-            model.SetRef(block, "Text Keys", WriteTextKeys(model, length));
+            model.SetRef(block, "Text Keys", WriteTextKeys(model, sequence, length));
 
             // A node's transform and each of its properties are separate blocks
             // here, though they arrived as one track.
@@ -1266,27 +1266,37 @@ namespace SECmd.Nif
         }
 
         /// <summary>
-        /// The start and end markers every sequence needs.
+        /// Everything the sequence marks, or the two markers it cannot do without.
         /// </summary>
         /// <remarks>
-        /// Skyrim looks these up by name to know where a sequence begins and ends;
-        /// a sequence without them is loaded but never plays.
+        /// Skyrim looks `start` and `end` up by name to know where a sequence begins
+        /// and ends; a sequence without them is loaded but never plays. Those two were
+        /// all this wrote, and they are not all a sequence holds: a door marks
+        /// `Sound: DRSWoodDoubleRough01Open` at the moment it should be heard, and an
+        /// effect marks `lastFrame` where it holds. Over a 1,500-mesh sample 90
+        /// sequences lost at least one such key, and a door that opens in silence is
+        /// the result.
+        ///
+        /// The carried keys are written whole when there are any -- they already
+        /// include `start` and `end`, since they came from a file that plays -- and the
+        /// two are invented only for a sequence that arrived with none.
         /// </remarks>
-        private static NifItem WriteTextKeys(NifModel model, float length)
+        private static NifItem WriteTextKeys(NifModel model, AnimSequence sequence, float length)
         {
             NifItem keys = model.InsertBlock("NiTextKeyExtraData");
 
-            if (model.SetArraySize(keys, "Num Text Keys", "Text Keys", 2) is not { } list
-                || list.Children.Count < 2)
-            {
+            List<(float Time, string Value)> marks = sequence.TextKeys.Count > 0
+                ? sequence.TextKeys
+                : [(0f, "start"), (length, "end")];
+
+            if (model.SetArraySize(keys, "Num Text Keys", "Text Keys", marks.Count) is not { } list)
                 return keys;
+
+            for (int i = 0; i < marks.Count && i < list.Children.Count; i++)
+            {
+                model.FindItem(list.Children[i], "Time")?.Value.SetFloat(marks[i].Time);
+                model.SetString(list.Children[i], "Value", marks[i].Value);
             }
-
-            model.FindItem(list.Children[0], "Time")?.Value.SetFloat(0f);
-            model.SetString(list.Children[0], "Value", "start");
-
-            model.FindItem(list.Children[1], "Time")?.Value.SetFloat(length);
-            model.SetString(list.Children[1], "Value", "end");
 
             return keys;
         }

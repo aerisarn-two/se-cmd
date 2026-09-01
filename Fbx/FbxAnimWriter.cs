@@ -86,6 +86,26 @@ namespace SECmd.Fbx
             if (sequence.AccumRootName.Length > 0)
                 stack.Properties.SetUserString(AccumRootPropertyName, sequence.AccumRootName);
 
+            // Everything the sequence marks. `start` and `end` the rebuild can invent;
+            // a door's sound cue it cannot.
+            if (sequence.TextKeys.Count > 0)
+            {
+                stack.Properties.SetUserString(
+                    TextKeyCountProperty,
+                    sequence.TextKeys.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+                for (int i = 0; i < sequence.TextKeys.Count; i++)
+                {
+                    (float time, string value) = sequence.TextKeys[i];
+
+                    stack.Properties.SetUserString(
+                        $"{TextKeyPrefix}{i}",
+                        time.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+
+                    stack.Properties.SetUserString($"{TextKeyPrefix}{i}_value", value);
+                }
+            }
+
             FbxObject layer = scene.AddObject("AnimationLayer", LayerName, string.Empty);
             scene.Connect(layer, stack);
 
@@ -177,6 +197,12 @@ namespace SECmd.Fbx
 
         /// <summary>Where the node a sequence accumulates against rides.</summary>
         public const string AccumRootPropertyName = "nif_accum_root";
+
+        /// <summary>How many text keys the sequence marks.</summary>
+        public const string TextKeyCountProperty = "nif_text_keys";
+
+        /// <summary>Prefix on one text key's time, with `_value` beside it.</summary>
+        public const string TextKeyPrefix = "nif_text_key_";
 
         /// <summary>Prefix on a stack property carrying a controller's flags.</summary>
         /// <remarks>

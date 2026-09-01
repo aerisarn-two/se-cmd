@@ -368,6 +368,28 @@ namespace SECmd.Fbx
                 AccumRootName = stack.Properties.GetString(FbxAnimWriter.AccumRootPropertyName)
             };
 
+            if (int.TryParse(
+                    stack.Properties.GetString(FbxAnimWriter.TextKeyCountProperty),
+                    System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out int textKeys))
+            {
+                for (int i = 0; i < textKeys; i++)
+                {
+                    if (!float.TryParse(
+                            stack.Properties.GetString($"{FbxAnimWriter.TextKeyPrefix}{i}"),
+                            System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out float time))
+                    {
+                        continue;
+                    }
+
+                    sequence.TextKeys.Add((
+                        time, stack.Properties.GetString($"{FbxAnimWriter.TextKeyPrefix}{i}_value")));
+                }
+            }
+
             // One track per model, however many channels turn out to drive it.
             var tracks = new Dictionary<string, AnimTrack>(StringComparer.Ordinal);
 
