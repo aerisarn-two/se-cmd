@@ -377,6 +377,11 @@ namespace SECmd.Conversion
                 // one, as they do in ck-cmd. The class itself travels alongside.
                 FbxNodeType.Write(node, shape);
 
+                // ...and so does its own material, which is not always the one its
+                // children hold. See ContainerMaterialProperty.
+                if (FbxCollisionMaterial.NameOf(_model, shape) is { Length: > 0 } containerMaterial)
+                    node.Properties.SetUserString(ContainerMaterialProperty, containerMaterial);
+
                 // A MOPP tree just wraps the shape it indexes; the tree itself is
                 // regenerated on import and carries nothing to convert.
                 foreach (NifItem child in ChildShapesOf(shape))
@@ -1189,6 +1194,24 @@ namespace SECmd.Conversion
                 _ => F(item.Value.ToFloat())
             };
         }
+
+        /// <summary>Where a container shape's own Havok material rides.</summary>
+        /// <remarks>
+        /// A list or a transform shape carries a material of its own as well as
+        /// wrapping shapes that carry theirs, and the two need not agree. The import
+        /// takes the first child's, which is right nearly always and not always:
+        ///
+        /// - A list disagrees with its first child in 8 of 141 vanilla lists. A pine
+        ///   tree is `WOOD` while its trunk pieces are `HEAVY_WOOD`; a glass sword is
+        ///   `MATERIAL_BLADE_1HAND` while its blade is `SOLID_METAL`. The list's
+        ///   material is a statement about the whole, not a summary of the parts.
+        /// - A transform shape wrapping a MOPP tree has no child material to take at
+        ///   all -- a `bhkMoppBvTreeShape` has no material field -- so
+        ///   `treepineforestuprooted01` lost its `HEAVY_WOOD` to the default.
+        ///
+        /// Carried, so the fallback is only reached by a container that never had one.
+        /// </remarks>
+        public const string ContainerMaterialProperty = "nif_container_material";
 
         /// <summary>Marks a skinned shape that kept its geometry in itself as well.</summary>
         public const string ShapeKeepsGeometryProperty = "nif_shape_keeps_geometry";

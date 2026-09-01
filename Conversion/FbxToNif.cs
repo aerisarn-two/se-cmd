@@ -1002,12 +1002,7 @@ namespace SECmd.Conversion
                         subShapes.Children[i].Value.SetLink(_model.IndexOf(children[i]));
                 }
 
-                // A list carries the material of what it holds, which the shapes
-                // themselves already know; the first is as good an answer as any and
-                // is what the source has when they agree, which is the only case
-                // ck-cmd accepts without a warning.
-                if (FbxCollisionMaterial.MaterialField(children[0]) is { } material)
-                    FbxCollisionMaterial.MaterialField(container)?.Value.SetCount(material.Value.ToUInt());
+                ApplyContainerMaterial(container, node, children[0]);
             }
             else
             {
@@ -1020,18 +1015,7 @@ namespace SECmd.Conversion
                 if (type is "bhkTransformShape" or "bhkConvexTransformShape")
                     WriteHavokTransform(container, ReadTransform(node));
 
-                // ...and it carries the material of what it wraps, as the list above
-                // does. Nothing wrote that either, so the wrapper kept nif.xml's
-                // default while the shape inside it had the real one -- 149 differences
-                // on bhkConvexTransformShape over a 1,200-mesh sample and 20 on
-                // bhkTransformShape.
-                //
-                // The child's is the right answer and not a guess: across a 2,500-mesh
-                // sample the two agree in every one of the 319 wrappers that have a
-                // child to ask, 280 convex and 39 plain. Where a list disagrees with
-                // its first child 8 times in 141, a transform shape never does.
-                if (FbxCollisionMaterial.MaterialField(children[0]) is { } wrapped)
-                    FbxCollisionMaterial.MaterialField(container)?.Value.SetCount(wrapped.Value.ToUInt());
+                ApplyContainerMaterial(container, node, children[0]);
 
                 if (children.Count > 1)
                 {
@@ -1042,6 +1026,31 @@ namespace SECmd.Conversion
             }
 
             return container;
+        }
+
+        /// <summary>
+        /// Gives a container shape its material: the one it carried, or its child's.
+        /// </summary>
+        /// <remarks>
+        /// A container carries a material as well as wrapping shapes that carry theirs,
+        /// so it is carried -- see `NifToFbx.ContainerMaterialProperty`. The child's is
+        /// the fallback for a scene that has none, and it is a good one: across a
+        /// 2,500-mesh sample a transform shape agrees with its child in all 319 cases
+        /// with a child to ask, and a list in 133 of 141.
+        ///
+        /// The fallback cannot answer at all when the child has no material field --
+        /// a `bhkMoppBvTreeShape` has none -- which is why the carry exists.
+        /// </remarks>
+        private void ApplyContainerMaterial(NifItem container, FbxObject node, NifItem child)
+        {
+            if (node.Properties.GetString(NifToFbx.ContainerMaterialProperty) is { Length: > 0 } carried
+                && FbxCollisionMaterial.Apply(_model, container, carried))
+            {
+                return;
+            }
+
+            if (FbxCollisionMaterial.MaterialField(child) is { } wrapped)
+                FbxCollisionMaterial.MaterialField(container)?.Value.SetCount(wrapped.Value.ToUInt());
         }
 
         /// <summary>
