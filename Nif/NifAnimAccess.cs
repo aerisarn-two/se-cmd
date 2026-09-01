@@ -780,6 +780,9 @@ namespace SECmd.Nif
             const uint XyzRotation = 4;
             const float ToDegrees = 180f / MathF.PI;
 
+            // Which form it was in, so the writer can put it back in the same one.
+            track.RotationType = model.GetUInt(data, "Rotation Type");
+
             if (model.GetUInt(data, "Rotation Type") == XyzRotation)
             {
                 if (model.FindItem(data, "XYZ Rotations") is not { } groups)

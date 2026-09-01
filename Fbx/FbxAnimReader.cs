@@ -314,6 +314,15 @@ namespace SECmd.Fbx
                     track.ControllerFlags = transformFlags;
                 }
 
+                if (uint.TryParse(
+                        stack.Properties.GetString(FbxAnimWriter.RotationTypeKey(nodeName)),
+                        System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out uint rotationType))
+                {
+                    track.RotationType = rotationType;
+                }
+
                 foreach (AnimProperty property in track.Properties)
                 {
                     string text = stack.Properties.GetString(

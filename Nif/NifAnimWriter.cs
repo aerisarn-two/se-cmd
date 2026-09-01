@@ -1390,6 +1390,16 @@ namespace SECmd.Nif
             if (!track.Rotation.Any(c => c.HasKeys))
                 return;
 
+            // Back into quaternion keys when that is the form it came in and the three
+            // axes still agree about their key times, which they do when they were
+            // decomposed from quaternions in the first place.
+            if (track.RotationType is { } form and not XyzRotationKey and not 0
+                && SharedRotationTimes(track) is { } times)
+            {
+                WriteQuaternionRotations(model, data, track, times, form, offset);
+                return;
+            }
+
             // The count field must say one for the XYZ form; the real counts live in
             // the groups themselves.
             model.FindItem(data, "Num Rotation Keys")?.Value.SetCount(1);
@@ -1416,6 +1426,78 @@ namespace SECmd.Nif
                     model.FindItem(keys.Children[i], "Time")?.Value.SetFloat(curve.Keys[i].Time - offset);
                     model.FindItem(keys.Children[i], "Value")?.Value.SetFloat(curve.Keys[i].Value * ToRadians);
                 }
+            }
+        }
+
+        /// <summary>
+        /// The key times all three Euler axes share, or null when they do not.
+        /// </summary>
+        /// <remarks>
+        /// Quaternion keys put every axis on one timeline, so they can only be written
+        /// when there is one. A track decomposed from quaternions has that by
+        /// construction; one authored in a DCC often does not -- 716 vanilla rotation
+        /// blocks keep their axes on separate timelines, and those stay in the XYZ form
+        /// whatever they came from.
+        /// </remarks>
+        private static List<float>? SharedRotationTimes(AnimTrack track)
+        {
+            List<AnimKey> first = track.Rotation[0].Keys;
+
+            if (first.Count == 0)
+                return null;
+
+            for (int axis = 1; axis < 3; axis++)
+            {
+                List<AnimKey> other = track.Rotation[axis].Keys;
+
+                if (other.Count != first.Count)
+                    return null;
+
+                for (int i = 0; i < first.Count; i++)
+                {
+                    if (MathF.Abs(other[i].Time - first[i].Time) > 1e-6f)
+                        return null;
+                }
+            }
+
+            return [.. first.Select(k => k.Time)];
+        }
+
+        /// <summary>Writes the rotation as the quaternion keys the source held.</summary>
+        private static void WriteQuaternionRotations(
+            NifModel model, NifItem data, AnimTrack track, List<float> times, uint form, float offset)
+        {
+            // Set and re-evaluate one at a time, as the XYZ form beside this does.
+            // `Quaternion Keys` is live only for a rotation type that is not the XYZ
+            // one, and sizing the array is what re-applies the schema to the fields
+            // whose condition just changed -- so a type written before that is written
+            // over again.
+            model.FindItem(data, "Num Rotation Keys")?.Value.SetCount((uint)times.Count);
+            data.InvalidateConditionsRecursive();
+
+            if (model.SetArraySize(data, "Num Rotation Keys", "Quaternion Keys", times.Count)
+                is not { } keys)
+            {
+                return;
+            }
+
+            model.FindItem(data, "Rotation Type")?.Value.SetCount(form);
+            data.InvalidateConditionsRecursive();
+
+            for (int i = 0; i < times.Count && i < keys.Children.Count; i++)
+            {
+                // The exact inverse of the read: Euler degrees to a matrix to a
+                // quaternion, by the same pair of helpers.
+                NifQuat value = new NifTransform(
+                    new NifVector3(),
+                    NifTransform.RotationFromEulerDegrees(
+                        track.Rotation[0].Keys[i].Value,
+                        track.Rotation[1].Keys[i].Value,
+                        track.Rotation[2].Keys[i].Value),
+                    1f).ToQuaternion();
+
+                model.FindItem(keys.Children[i], "Time")?.Value.SetFloat(times[i] - offset);
+                model.FindItem(keys.Children[i], "Value")?.Value.Set(value);
             }
         }
 

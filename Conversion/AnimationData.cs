@@ -263,6 +263,26 @@ namespace SECmd.Conversion
         public List<AnimProperty> Properties { get; } = [];
 
         /// <summary>
+        /// Which form the source stored this track's rotation in.
+        /// </summary>
+        /// <remarks>
+        /// A NIF keeps rotation either as quaternion keys -- `LINEAR_KEY`, `TBC_KEY` --
+        /// or as three `XYZ Rotations` groups, one per Euler axis. FBX has only the
+        /// second, so a quaternion track is decomposed on the way out and, without
+        /// this, comes back as the XYZ form: 764 of the 3,000 rotation blocks in a
+        /// 3,000-mesh sample change their storage that way.
+        ///
+        /// The XYZ form is the one that survives everything, and is what a track gets
+        /// when nothing said otherwise: 716 vanilla blocks keep their three axes on
+        /// *different* timelines, which quaternion keys cannot express at all. So this
+        /// only ever restores a form the source actually used, and only when the axes
+        /// still agree about their key times.
+        ///
+        /// Null for a track that came from an FBX with nothing to say about it.
+        /// </remarks>
+        public uint? RotationType { get; set; }
+
+        /// <summary>
         /// The flags of the transform controller that moves this node, when it has one
         /// of its own rather than being run by a manager.
         /// </summary>

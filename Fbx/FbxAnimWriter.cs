@@ -157,6 +157,15 @@ namespace SECmd.Fbx
                         TransformFlagsKey(track.NodeName),
                         transformFlags.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 }
+
+                // Which form the rotation was stored in, so a quaternion track is not
+                // rebuilt as three Euler groups.
+                if (track.RotationType is { } rotation)
+                {
+                    stack.Properties.SetUserString(
+                        RotationTypeKey(track.NodeName),
+                        rotation.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                }
             }
 
             return missing;
@@ -181,6 +190,14 @@ namespace SECmd.Fbx
         public static string ControllerFlagsKey(string nodeName, AnimProperty property) =>
             $"{ControllerFlagsPrefix}{nodeName}{AnimProperty.Separator}"
             + $"{property.ControllerType}{AnimProperty.Separator}{property.ControllerId}";
+
+        /// <summary>The key a track's rotation form rides under.</summary>
+        /// <remarks>
+        /// See <see cref="Conversion.AnimTrack.RotationType"/>. Keyed by the node, as
+        /// the transform flags are: a node has one transform track.
+        /// </remarks>
+        public static string RotationTypeKey(string nodeName) =>
+            $"rotform_{nodeName}";
 
         /// <summary>The key the node's own transform controller's flags ride under.</summary>
         /// <remarks>

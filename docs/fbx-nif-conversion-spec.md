@@ -2437,10 +2437,20 @@ segment happens to be linear.
 
 The NIF side has two forms and they are read differently:
 
-- **Quaternion keys** are decomposed to Euler XYZ, and written back as quaternions.
+- **Quaternion keys** are decomposed to Euler XYZ, and written back as quaternions —
+  but only when the axes still share their key times, which they do when they were
+  decomposed from quaternions in the first place. The form the source used travels with
+  the track, since FBX has no way to say it.
 - **`XYZ Rotations`** (rotation type 4) are three separate float groups, in radians.
   They are read as three curves and always marked cubic, because the three groups can
   disagree about interpolation and a single track cannot.
+
+The XYZ form is what a track gets when nothing says otherwise, and it is the majority
+form in the game: of 4,537 rotation blocks sampled, 2,236 are XYZ against 764
+quaternion. It is also the only one that holds everything — **716** of those XYZ blocks
+keep their three axes on *different* timelines, which quaternion keys cannot express.
+Writing every track as XYZ regardless was what this did, and it changed the storage of
+those 764.
 
 FBX rotation is Euler XYZ in **degrees**, so radians convert on the way out and back.
 
