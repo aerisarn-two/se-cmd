@@ -1810,18 +1810,58 @@ the real targets and stops, which is the same content without the padding.
 
 **`Objs`** maps a name to a block so the engine can resolve a sequence without walking
 the tree. ck-cmd fills it from the multi-target controller's targets plus the conversion
-root (`FBXWrangler.cpp:4312`), which for that fixture is 2 entries against Bethesda's 11.
+root (`FBXWrangler.cpp:4312`), which for one fixture is 2 entries against Bethesda's 11.
+se-cmd followed that and every one of the 205 palettes in a 3,000-mesh sample differed:
+`dragon_swamp_bloodwingl.nif` was missing `NPC LHand` and its neighbours. An entry that
+is not there is a track that cannot bind, and the table must also serve sequences the
+file does not carry, since an animation in a KF names its nodes and resolves them here.
 
-Bethesda's rule was looked for and not found:
+**Bethesda's rule is every named `NiAVObject` except the root, less a family of marker
+nodes.** An earlier pass recorded it as not found, with *every named AV object except the
+root* at 322 of 419; the 97 misses are the family. Over 12,000 files the classes a
+palette leaves out are:
 
-- *Every named AV object* — 35 of 419.
-- *Every named AV object except the root* — **322 of 419 (77%)**, the best of the three.
-- *Every named `NiNode`* — 0 of 419.
+| Class | Left out | Listed |
+| --- | --- | --- |
+| `BSValueNode`, the add-on marker | 122 | 0 |
+| `BSOrderedNode`, render ordering | 41 | 1 |
+| `BSBlastNode` | 4 | 0 |
+| `BSDamageStage` | 2 | 0 |
 
-The 97 that miss exclude more still: `fxgreybeardshoutfaas.nif` leaves out its
-`OrderedRenderingNode` as well as its root. One thing is settled, though — the entry's
-`Name` is the block's own name in **7,811 of 7,811** vanilla palette entries, so only
-*which* blocks are listed is unclear, not how they are named.
+These are markers the engine reads for something other than animation, and never a
+track's target. `BSDamageStage` inherits `BSBlastNode` inherits `BSRangeNode`, so they
+are one branch and are excluded by that ancestor — which takes `BSDebrisNode` with them,
+the fourth of the branch and one no sampled file holds. Excluding by ancestor rather than
+by name is also what survives nif.xml adding a fifth.
+
+With that, **165 of 165 palettes in a 1,200-mesh sample match exactly**, once the root is
+set aside.
+
+*The root is set aside because nothing decides it.* 15 vanilla palettes of 329 list it
+and 314 do not, and seven measurements separate nothing:
+
+| Tested | Result |
+| --- | --- |
+| Named by a controlled block of a sequence | 0 of the 15 |
+| An extra target of the multi-target controller | 0 of the 15 |
+| The sequence's accumulation root | 2 of the 15 — against **279** files that omit it |
+| A different controller chain | identical in both groups |
+| The skin's `Skeleton Root` | 13 of the 15, and of 24 that omit it |
+| A root named after the file | the same 13 against the same 24 |
+| The exporter in `Export Info` | empty in all 329 |
+
+The 15 are all skinned creature and effect overlays — dragon blood decals,
+`fxwerewolftransitionskin`, the vampire lord — so the category is real and decides
+nothing: both behaviours appear within it, from the base game and both add-ons. This
+reads as Bethesda's pipeline disagreeing with itself rather than as something the file
+states. A rebuilt palette omits the root, which is right 314 times in 329, and the
+comparison drops the row from both sides so the remaining 15 do not read as a difference
+in a table that is otherwise identical.
+
+Two things settled earlier still hold: the entry's `Name` is the block's own name in
+**7,811 of 7,811** vanilla entries, and the order is nobody's rule —
+`dlc1protoswingingbridge.nif` lists Bone00, Bone01, Bone05, Bone04, Bone06, Bone03,
+Bone02 — so rows are compared by name rather than by position.
 
 ### 5.6B.1 Controller spans
 
