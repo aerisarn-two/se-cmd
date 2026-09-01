@@ -2507,8 +2507,18 @@ namespace SECmd.Conversion
             foreach ((NifItem shape, SkinData skin, int vertexCount, var triangles,
                       var trianglePartitions, FbxObject geometry) in _pendingSkins)
             {
+                // The node the bind transforms are measured against, which is not
+                // always the file's root: a facegen head names a node one level down.
+                // The root is the fallback for a skin that named none, or named one
+                // this scene does not have.
+                NifItem skeletonRoot =
+                    skin.SkeletonRoot.Length > 0
+                    && _nodesByName.TryGetValue(skin.SkeletonRoot, out NifItem? named)
+                        ? named
+                        : root;
+
                 var missing = _model.WriteSkin(
-                    shape, skin, _nodesByName, root, vertexCount, triangles,
+                    shape, skin, _nodesByName, skeletonRoot, vertexCount, triangles,
                     _options.SkinInstanceType, shared, trianglePartitions);
 
                 foreach (string bone in missing)

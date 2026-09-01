@@ -74,6 +74,17 @@ namespace SECmd.Fbx
         /// </remarks>
         public const string BufferWeightsProperty = "nif_skin_weights_buffer_only";
 
+        /// <summary>Where the node a skin's bones are measured against rides.</summary>
+        /// <remarks>
+        /// `Skeleton Root` names the node the bind transforms are relative to. It was
+        /// read off the skin and then dropped, and every rebuilt skin was pointed at
+        /// the file's own root instead -- right for most meshes and wrong for every
+        /// facegen head, whose skeleton root is a node one level down: 234 skins in a
+        /// 1,500-mesh sample name a `NiNode` where the rebuild names the `BSFadeNode`
+        /// above it.
+        /// </remarks>
+        public const string SkeletonRootProperty = "nif_skeleton_root";
+
         /// <summary>Where the skin's own bind transform rides.</summary>
         /// <remarks>
         /// `NiSkinData` carries one transform for the whole skin as well as one per
@@ -208,6 +219,10 @@ namespace SECmd.Fbx
             // The skin's own bind transform, which has nowhere else to go.
             if (!skin.SkinTransform.Equals(NifTransform.Identity))
                 skinObject.Properties.SetUserString(SkinTransformProperty, Matrix(skin.SkinTransform));
+
+            // ...and the node its bones are measured against.
+            if (skin.SkeletonRoot.Length > 0)
+                skinObject.Properties.SetUserString(SkeletonRootProperty, skin.SkeletonRoot);
 
             // Which skin data it shared, so two shapes that shared one still do.
             if (skin.SkinDataId >= 0)
@@ -347,7 +362,8 @@ namespace SECmd.Fbx
                     out int dataId)
                     ? dataId
                     : -1,
-                SkinTransform = ParseMatrix(skinObject.Properties.GetString(SkinTransformProperty))
+                SkinTransform = ParseMatrix(skinObject.Properties.GetString(SkinTransformProperty)),
+                SkeletonRoot = skinObject.Properties.GetString(SkeletonRootProperty)
             };
 
             if (int.TryParse(
