@@ -782,8 +782,16 @@ namespace SECmd.Tests
                 //
                 // Only for a field actually spelled `Rotation`. A negated normal is not
                 // the same normal -- it is the surface pointing the other way.
-                if (a.Name == "Rotation" && NegatedQuaternion(a.Value.ToString(), b.Value.ToString()))
+                // Any quaternion, not only a field spelled `Rotation`: a rotation key's
+                // is called `Value`, and q and -q are the same rotation wherever they
+                // are written. Keyed on the type rather than the name, which is what
+                // makes it safe -- the concern above is a Vector3 normal, and a negated
+                // normal really is a different normal.
+                if ((a.Name == "Rotation" || a.Value.Type is NifValueType.Quat or NifValueType.QuatXYZW)
+                    && NegatedQuaternion(a.Value.ToString(), b.Value.ToString()))
+                {
                     return true;
+                }
 
                 string sa = a.Value.ToString(), sb = b.Value.ToString();
 
