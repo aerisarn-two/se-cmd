@@ -487,10 +487,13 @@ namespace SECmd.Conversion
                 return;
             }
 
-            string layer = FbxCollisionMaterial.LayerOf(_model, _shapeOwners.GetValueOrDefault(shape));
-
             foreach (NifItem entry in table.Children)
             {
+                // The entry's own filter. Stamping the body's layer on every chunk
+                // material said they all shared one, which is the question the table
+                // exists to answer separately.
+                string layer = FbxCollisionMaterial.LayerOf(_model, entry);
+
                 string material = FbxCollisionMaterial.NameOf(_model, entry);
 
                 if (material.Length == 0)

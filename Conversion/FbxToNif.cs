@@ -1497,6 +1497,7 @@ namespace SECmd.Conversion
             }
 
             List<string> materials = CollisionMaterialsOf(node);
+            List<string> materialLayers = CollisionLayersOf(node);
             List<MoppGeometry> pieces = SplitByMaterial(geometry!, mesh, vertices, materials.Count);
 
             // At least one, matching the table written below. A node with no material at
@@ -1547,7 +1548,7 @@ namespace SECmd.Conversion
             // the code, where it can drift from the first.
             _model.SetRef(shape, "Data", data);
 
-            WriteCompressedMeshData(data, built, materials);
+            WriteCompressedMeshData(data, built, materials, materialLayers);
 
             // Havok reaches the shape through a MOPP tree, never directly.
             NifItem mopp = _model.InsertBlock("bhkMoppBvTreeShape");
@@ -1594,9 +1595,28 @@ namespace SECmd.Conversion
         /// order the chunk table will hold them.
         /// </summary>
         private List<string> CollisionMaterialsOf(FbxObject node) =>
+            [.. CollisionMaterialObjectsOf(node).Select(o => NameEncoding.Unsanitize(o.Name))];
+
+        /// <summary>
+        /// The collision layer each of those materials carries, in the same order.
+        /// </summary>
+        /// <remarks>
+        /// A chunk material is a `bhkMeshMaterial`: a Havok material *and* a filter of
+        /// its own, layer included. The layer was neither read from the entry nor
+        /// written back to it, so every rebuilt chunk took nif.xml's default of
+        /// `SKYL_STATIC` -- 108 differences over a 1,200-mesh sample, with
+        /// `expspidersackrare.nif` holding 12 against our 1.
+        ///
+        /// A collision layer is not decoration: it decides what a thing collides with,
+        /// and it is the input to the body's motion profile.
+        /// </remarks>
+        private List<string> CollisionLayersOf(FbxObject node) =>
+            [.. CollisionMaterialObjectsOf(node)
+                .Select(o => o.Properties.GetString(FbxCollisionMaterial.LayerProperty))];
+
+        private List<FbxObject> CollisionMaterialObjectsOf(FbxObject node) =>
             [.. _scene.ChildrenOf(node.Id)
-                .Where(o => o.Class == "Material" && !FbxLodSizes.IsLevelMaterial(o.Name))
-                .Select(o => NameEncoding.Unsanitize(o.Name))];
+                .Where(o => o.Class == "Material" && !FbxLodSizes.IsLevelMaterial(o.Name))];
 
         /// <summary>
         /// Splits a collision mesh into one piece per material.
@@ -1665,7 +1685,10 @@ namespace SECmd.Conversion
 
         /// <summary>Writes the chunked mesh Havok produced.</summary>
         private void WriteCompressedMeshData(
-            NifItem data, CompressedMeshResult built, IReadOnlyList<string> materials)
+            NifItem data,
+            CompressedMeshResult built,
+            IReadOnlyList<string> materials,
+            IReadOnlyList<string> materialLayers)
         {
             _model.FindItem(data, @"AABB\Min")?.Value.Set(built.BoundsMin);
             _model.FindItem(data, @"AABB\Max")?.Value.Set(built.BoundsMax);
@@ -1710,7 +1733,7 @@ namespace SECmd.Conversion
                 }
             }
 
-            WriteChunkMaterials(data, materials);
+            WriteChunkMaterials(data, materials, materialLayers);
 
             if (_model.SetArraySize(data, "Num Chunks", "Chunks", built.Chunks.Count) is not { } chunks)
                 return;
@@ -1757,7 +1780,8 @@ namespace SECmd.Conversion
         /// One entry per material on the collision node, in the order the FBX connects
         /// them, which is the order the geometry's per-polygon material channel indexes.
         /// </remarks>
-        private void WriteChunkMaterials(NifItem data, IReadOnlyList<string> materials)
+        private void WriteChunkMaterials(
+            NifItem data, IReadOnlyList<string> materials, IReadOnlyList<string> layers)
         {
             if (_model.SetArraySize(data, "Num Materials", "Chunk Materials", Math.Max(materials.Count, 1))
                 is not { Children.Count: > 0 } table)
@@ -1767,6 +1791,11 @@ namespace SECmd.Conversion
 
             for (int i = 0; i < materials.Count && i < table.Children.Count; i++)
             {
+                // The entry's own filter, which is not the body's: a chunk material
+                // carries a layer of its own and nothing else was writing it.
+                if (i < layers.Count && layers[i].Length > 0)
+                    FbxCollisionMaterial.ApplyLayer(_model, table.Children[i], layers[i]);
+
                 if (materials[i].Length == 0)
                     continue;
 
