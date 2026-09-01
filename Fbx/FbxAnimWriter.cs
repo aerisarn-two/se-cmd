@@ -148,6 +148,15 @@ namespace SECmd.Fbx
                             phase.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
                     }
                 }
+
+                // The node's own transform controller, which has no property to hang
+                // its flags on and was rebuilt with a constant without them.
+                if (track.ControllerFlags is { } transformFlags)
+                {
+                    stack.Properties.SetUserString(
+                        TransformFlagsKey(track.NodeName),
+                        transformFlags.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                }
             }
 
             return missing;
@@ -172,6 +181,14 @@ namespace SECmd.Fbx
         public static string ControllerFlagsKey(string nodeName, AnimProperty property) =>
             $"{ControllerFlagsPrefix}{nodeName}{AnimProperty.Separator}"
             + $"{property.ControllerType}{AnimProperty.Separator}{property.ControllerId}";
+
+        /// <summary>The key the node's own transform controller's flags ride under.</summary>
+        /// <remarks>
+        /// A node has at most one of these, so the node names it: there is no class or
+        /// id to tell two apart the way there is for the properties above.
+        /// </remarks>
+        public static string TransformFlagsKey(string nodeName) =>
+            $"{ControllerFlagsPrefix}{nodeName}{AnimProperty.Separator}NiTransformController";
 
         /// <summary>Prefix on a stack property carrying a controller's phase.</summary>
         /// <remarks>

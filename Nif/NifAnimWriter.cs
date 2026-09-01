@@ -551,7 +551,9 @@ namespace SECmd.Nif
             model.SetRef(controller, "Interpolator", WriteInterpolator(model, track, 0f));
             model.SetRef(controller, "Target", node);
 
-            model.FindItem(controller, "Flags")?.Value.SetCount(StandaloneControllerFlags);
+            model.FindItem(controller, "Flags")?.Value
+                .SetCount(track.ControllerFlags ?? StandaloneControllerFlags);
+
             model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
 
             // The controller's span is the span of the keys it holds; a bare

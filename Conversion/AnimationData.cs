@@ -262,6 +262,27 @@ namespace SECmd.Conversion
         /// <summary>Named scalars animated alongside the transform.</summary>
         public List<AnimProperty> Properties { get; } = [];
 
+        /// <summary>
+        /// The flags of the transform controller that moves this node, when it has one
+        /// of its own rather than being run by a manager.
+        /// </summary>
+        /// <remarks>
+        /// A property's controller already carries these; the node's own did not, and
+        /// was rebuilt with the standalone constant -- 76, which is `CYCLE_CLAMP`,
+        /// `Active` and `Compute Scaled Time`, exactly nif.xml's defaults. That is not
+        /// what the files hold. Over a 1,500-mesh sample 150 controllers differ in
+        /// `Anim Type` and `Active` together and 49 in the cycle type alone, against a
+        /// constant that says clamp-and-running for all of them.
+        ///
+        /// Both matter to what the game does. The cycle type decides whether the
+        /// animation loops, reverses or stops at its last key, and `Active` decides
+        /// whether it runs at all -- `benthiclurkerprojectile.nif` holds 72, a looping
+        /// controller, and got a clamping one.
+        ///
+        /// Null when the track came from a sequence, where the manager owns the flags.
+        /// </remarks>
+        public uint? ControllerFlags { get; set; }
+
         /// <summary>The nine transform curves.</summary>
         public IEnumerable<AnimCurve> Curves => Translation.Concat(Rotation).Concat(Scale);
 

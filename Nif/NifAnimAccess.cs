@@ -101,7 +101,13 @@ namespace SECmd.Nif
                         if (model.GetRef(controller, "Interpolator") is { } interpolator
                             && model.BlockInherits(interpolator, "NiTransformInterpolator"))
                         {
-                            ReadTransform(model, interpolator, TrackFor(tracks, name));
+                            AnimTrack track = TrackFor(tracks, name);
+
+                            // Its own, since nothing else on the node carries them and
+                            // the writer would otherwise use a constant.
+                            track.ControllerFlags = FlagsOf(model, controller);
+
+                            ReadTransform(model, interpolator, track);
                             continue;
                         }
 

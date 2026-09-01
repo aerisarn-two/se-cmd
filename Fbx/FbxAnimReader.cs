@@ -305,6 +305,15 @@ namespace SECmd.Fbx
         {
             foreach ((string nodeName, AnimTrack track) in tracks)
             {
+                if (uint.TryParse(
+                        stack.Properties.GetString(FbxAnimWriter.TransformFlagsKey(nodeName)),
+                        System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out uint transformFlags))
+                {
+                    track.ControllerFlags = transformFlags;
+                }
+
                 foreach (AnimProperty property in track.Properties)
                 {
                     string text = stack.Properties.GetString(
