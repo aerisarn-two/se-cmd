@@ -516,10 +516,11 @@ namespace SECmd.Conversion
                 FbxCollisionMaterial.ApplyFilterFlags(
                     _model, phantom, FbxRigidBodyInfo.FilterFlagsOf(bodyNode));
 
-                // Which broad-phase list Havok keeps it in, which follows from what the
-                // block is: all 48 vanilla phantoms sampled say phantom, as all 2,406
-                // rigid bodies say entity. Written nowhere, every rebuilt one took
-                // nif.xml's invalid.
+                // Which broad-phase list Havok keeps it in. A phantom is the one thing
+                // that is not what nif.xml assumes: the field defaults to
+                // BROAD_PHASE_ENTITY, which is right for all 2,406 vanilla rigid bodies
+                // and wrong for all 48 phantoms. So only this one is written, and the
+                // bodies keep the schema's answer rather than being told it again.
                 SetEnum(phantom, @"World Object Info\Broad Phase Type",
                     "BroadPhaseType", "BROAD_PHASE_PHANTOM");
 
@@ -555,13 +556,6 @@ namespace SECmd.Conversion
 
             // A constraint names the bodies it joins by the node they came from.
             _bodiesByName[name] = body;
-
-            // Which broad-phase list Havok keeps it in. It follows from the block: every
-            // one of the 2,406 vanilla rigid bodies sampled is an entity, and the 48
-            // phantoms are phantoms. Nothing wrote it, so every rebuilt body claimed
-            // nif.xml's invalid.
-            SetEnum(body, @"World Object Info\Broad Phase Type",
-                "BroadPhaseType", "BROAD_PHASE_ENTITY");
 
             _model.SetRef(body, "Shape", shape);
 
