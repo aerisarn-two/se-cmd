@@ -74,6 +74,22 @@ namespace SECmd.Fbx
         /// </remarks>
         public const string BufferWeightsProperty = "nif_skin_weights_buffer_only";
 
+        /// <summary>Where the skin's own bind transform rides.</summary>
+        /// <remarks>
+        /// `NiSkinData` carries one transform for the whole skin as well as one per
+        /// bone, and only the per-bone ones have a place in FBX: a cluster's
+        /// `TransformLink` is its bone at bind time and its `Transform` is the mesh.
+        /// The mesh side is written as the identity here, and the bone transforms are
+        /// built against that identity, so putting the skin's transform there instead
+        /// would change what a DCC tool computes for the bind pose.
+        ///
+        /// So it travels beside the other whole-skin facts. Left behind it defaulted to
+        /// the identity, and 485 of 574 remaining `Translation` differences in a
+        /// 1,200-mesh sample were this one field: `akatoshamuletgo.nif` holds
+        /// (0, -82.5534, 71.0324) and got (0, 0, 0).
+        /// </remarks>
+        public const string SkinTransformProperty = "nif_skin_transform";
+
         private const int SkinVersion = 101;
         private const int ClusterVersion = 100;
 
@@ -188,6 +204,10 @@ namespace SECmd.Fbx
             // Which copy of the weights the file kept. Only when it is the unusual one.
             if (!skin.WeightsInBoneList)
                 skinObject.Properties.SetUserString(BufferWeightsProperty, "1");
+
+            // The skin's own bind transform, which has nowhere else to go.
+            if (!skin.SkinTransform.Equals(NifTransform.Identity))
+                skinObject.Properties.SetUserString(SkinTransformProperty, Matrix(skin.SkinTransform));
 
             // Which skin data it shared, so two shapes that shared one still do.
             if (skin.SkinDataId >= 0)
@@ -326,7 +346,8 @@ namespace SECmd.Fbx
                     System.Globalization.CultureInfo.InvariantCulture,
                     out int dataId)
                     ? dataId
-                    : -1
+                    : -1,
+                SkinTransform = ParseMatrix(skinObject.Properties.GetString(SkinTransformProperty))
             };
 
             if (int.TryParse(
@@ -482,6 +503,35 @@ namespace SECmd.Fbx
                         skin.Bones[at].Weights.Add((vertex, (float)weights[i]));
                 }
             }
+        }
+
+        /// <summary>A transform as sixteen round-trippable numbers, for a property.</summary>
+        private static string Matrix(NifTransform transform) =>
+            string.Join(",", ToMatrixArray(transform)
+                .Select(x => x.ToString("R", System.Globalization.CultureInfo.InvariantCulture)));
+
+        /// <summary>The counterpart of <see cref="Matrix"/>, or the identity.</summary>
+        private static NifTransform ParseMatrix(string text)
+        {
+            string[] parts = text.Split(',');
+
+            if (parts.Length != 16)
+                return NifTransform.Identity;
+
+            var m = new float[16];
+
+            for (int i = 0; i < 16; i++)
+            {
+                if (!float.TryParse(parts[i], System.Globalization.NumberStyles.Float,
+                                    System.Globalization.CultureInfo.InvariantCulture, out m[i]))
+                {
+                    return NifTransform.Identity;
+                }
+            }
+
+            return NifTransform.FromMatrix(new System.Numerics.Matrix4x4(
+                m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7],
+                m[8], m[9], m[10], m[11], m[12], m[13], m[14], m[15]));
         }
 
         /// <summary>A transform as the row-major sixteen doubles FBX stores.</summary>
