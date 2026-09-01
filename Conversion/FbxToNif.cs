@@ -2230,19 +2230,30 @@ namespace SECmd.Conversion
                 mesh.RecalculateNormals();
             }
 
-            // Normal maps are read in tangent space, so tangents a shape has are
-            // regenerated here rather than carried: the ones the FBX holds were split
-            // for its own vertex layout, and these have to match the vertices actually
-            // being written.
+            // The tangent frame the shape arrived with is kept. It used to be thrown
+            // away and recomputed here, on the reasoning that the FBX's tangents were
+            // split for its own vertex layout and had to be made to match the vertices
+            // actually being written.
             //
-            // Regenerated, not introduced. A shape whose FBX carries no tangents did
-            // not have them in the NIF it came from, or was authored without them, and
-            // giving it some changes the vertex layout: nif.xml puts `Bitangent X` and
-            // `Unused W` in the same slot and picks between them by the Tangents flag,
-            // so a shape that gains tangents loses whatever that word held. 105 of the
-            // shapes sampled were gaining them.
-            if (mesh.HasUvs && mesh.HasTangents)
-                TangentSpace.Generate(mesh);
+            // They already match. The reader emits one tangent and one bitangent per
+            // vertex it emits, read at the same corner as the position, and it puts
+            // both in the vertex key -- so two corners that disagree on their tangent
+            // never merge, and `Tangents[i]` belongs to `Vertices[i]` however the
+            // welding turned out. There was nothing to correct.
+            //
+            // What the recomputation cost was the whole tangent frame of every skinned
+            // mesh in the game. Measured on four vanilla meshes -- giant01, hmdaedra
+            // and both dragons -- `Vertex`, `UV`, `Normal`, `Vertex Colors`,
+            // `Bone Weights`, `Bone Indices` and `Eye Data` came back exact on every
+            // one of 31,684 vertices, and `Tangent` and `Bitangent X` differed on all
+            // of them. Bethesda's tangents are not NifSkope's, and recomputing threw
+            // away the ones the file shipped in favour of ours.
+            //
+            // Nothing is introduced, as before: a shape whose FBX carries no tangents
+            // did not have them in the NIF it came from, and giving it some changes the
+            // vertex layout -- nif.xml puts `Bitangent X` and `Unused W` in the same
+            // slot and picks between them by the Tangents flag, so a shape that gains
+            // tangents loses whatever that word held.
 
             // Which geometry class this was, when the scene says. The edition only
             // decides when it does not: SE files hold NiTriShape as freely as
