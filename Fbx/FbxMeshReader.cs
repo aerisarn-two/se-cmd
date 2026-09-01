@@ -202,6 +202,9 @@ namespace SECmd.Fbx
             var extra = LayerElement.FindNamed(
                 geometry, "LayerElementUV", "UV", FbxMeshWriter.VertexExtraElementName);
 
+            string extraChannels =
+                geometry.Properties.GetString(FbxMeshWriter.VertexExtraChannelsProperty);
+
             var colors = LayerElement.Find(geometry, "LayerElementColor", "Colors");
 
             // Which partition draws each face, when the scene says the skin is split.
@@ -378,11 +381,17 @@ namespace SECmd.Fbx
 
                 if (extra.Exists)
                 {
+                    // Only the channels the shape said it has. Both when it said
+                    // nothing, which is what an older export looks like.
+                    //
                     // Back to a uint exactly: it went out as one and a double holds it
                     // whole. Rounding first, because a double that came through a file
                     // may be a hair off the integer it stands for.
-                    mesh.UnusedW.Add((uint)Math.Round(spare.X));
-                    mesh.EyeData.Add(spare.Y);
+                    if (extraChannels.Length == 0 || extraChannels.Contains('w'))
+                        mesh.UnusedW.Add((uint)Math.Round(spare.X));
+
+                    if (extraChannels.Length == 0 || extraChannels.Contains('e'))
+                        mesh.EyeData.Add(spare.Y);
                 }
 
 

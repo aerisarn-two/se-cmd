@@ -34,6 +34,16 @@ namespace SECmd.Fbx
         /// Adds a mesh as a <c>Geometry</c> object. UVs are expected already in FBX
         /// convention, i.e. with V flipped relative to NIF.
         /// </summary>
+        /// <summary>
+        /// Which channels the spare UV set carries: <c>w</c>, <c>e</c>, or both.
+        /// </summary>
+        /// <remarks>
+        /// `Unused W` and `Eye Data` travel together in one layer element, and nothing
+        /// in it says which of them is real. Absent, the reader takes both, which is
+        /// what a scene from an older export looks like.
+        /// </remarks>
+        public const string VertexExtraChannelsProperty = "nif_vertex_extra";
+
         public static FbxObject AddGeometry(FbxScene scene, string name, MeshGeometry mesh)
         {
             FbxObject geometry = scene.AddObject("Geometry", name, "Mesh");
@@ -136,6 +146,16 @@ namespace SECmd.Fbx
             // whole rather than as a float that happens to look like it.
             if (mesh.HasUnusedW || mesh.HasEyeData)
             {
+                // Which of the two the shape actually has. They share one carrier --
+                // there is only so much room in a spare UV set -- and a shape with an
+                // `Unused W` and no eye data wrote the layer all the same, so the reader
+                // gave it both and the rebuilt vertex grew an eye-data word the source
+                // never declared: 421 shapes over a 1,500-mesh sample, each with its
+                // `Vertex Data Size` one larger than the file's.
+                geometry.Properties.SetUserString(
+                    VertexExtraChannelsProperty,
+                    (mesh.HasUnusedW ? "w" : string.Empty) + (mesh.HasEyeData ? "e" : string.Empty));
+
                 int count = Math.Max(mesh.UnusedW.Count, mesh.EyeData.Count);
                 var extra = new double[count * 2];
 
