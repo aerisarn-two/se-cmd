@@ -150,7 +150,13 @@ namespace SECmd.Nif
             NifValueType.Color3 => Format(item.Value.Get<NifColor3>()),
             NifValueType.Color4 => Format(item.Value.Get<NifColor4>()),
             NifValueType.Float => Number(item.Value.ToFloat()),
-            _ => item.Value.ToUInt().ToString(CultureInfo.InvariantCulture)
+
+            // Everything else is a whole number, and read as 64 bits because some of
+            // them are. `ToUInt` truncates: a `BSVertexDesc` is a `uint64` whose
+            // attribute flags live at bit 44, so a particle system carried across as
+            // properties came back having lost its UV and full-precision bits and kept
+            // only the offsets in the low half.
+            _ => item.Value.ToUInt64().ToString(CultureInfo.InvariantCulture)
         };
 
         /// <summary>Parses one field's stored text back into its value.</summary>
@@ -196,7 +202,8 @@ namespace SECmd.Nif
                     break;
 
                 default:
-                    if (uint.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out uint count))
+                    // 64 bits on the way back too, for the same reason.
+                    if (ulong.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong count))
                         item.Value.SetCount(count);
 
                     break;
