@@ -64,15 +64,31 @@ namespace SECmd.Fbx
             return null;
         }
 
-        /// <summary>The shape's material as an enum name, or empty if it has none.</summary>
+        /// <summary>
+        /// The shape's material as an enum name, or as its number when it has no name.
+        /// </summary>
+        /// <remarks>
+        /// A Skyrim Havok material is a hashed string, and nif.xml lists the ones the
+        /// game ships. A file may hold one it does not list: a mod defines its own
+        /// materials in its plugin, and the value in the NIF is all that reaches a
+        /// converter -- the name lives in an ESP this has no business reading.
+        ///
+        /// Dropping it to empty, as this did, means the shape is rebuilt on whatever
+        /// the default is: a modded floor of a custom material came back as stone, with
+        /// the footstep sound and impact response of stone. So an unrecognised value
+        /// travels as its own decimal number and comes back unchanged. Only the naming
+        /// is a convenience -- the number is the fact.
+        /// </remarks>
         public static string NameOf(NifModel model, NifItem shape)
         {
             if (MaterialField(shape) is not { } field)
                 return string.Empty;
 
-            return model.Database.TryGetEnumOptionName(MaterialEnum, field.Value.ToUInt(), out string name)
+            uint value = field.Value.ToUInt();
+
+            return model.Database.TryGetEnumOptionName(MaterialEnum, value, out string name)
                 ? name
-                : string.Empty;
+                : value.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 
         /// <summary>The layer a body's filter names, or the static default.</summary>
@@ -87,14 +103,25 @@ namespace SECmd.Fbx
         }
 
         /// <summary>
-        /// Puts a material name back onto a rebuilt shape.
+        /// Puts a material back onto a rebuilt shape, by name or by number.
         /// </summary>
-        /// <returns>Whether the name was recognised and applied.</returns>
+        /// <remarks>
+        /// The counterpart of <see cref="NameOf"/>: a material nif.xml does not name
+        /// arrives as its number, and is written as the number it is. ck-cmd names the
+        /// ones it knows in the same way and this follows it, with the difference that
+        /// a value it cannot name is carried rather than dropped -- there is no reason
+        /// to lose a material for want of a word for it.
+        /// </remarks>
+        /// <returns>Whether the material was recognised and applied.</returns>
         public static bool Apply(NifModel model, NifItem shape, string name)
         {
-            if (name.Length == 0
-                || MaterialField(shape) is not { } field
-                || !model.Database.TryGetEnumOptionValue(MaterialEnum, name, out uint value))
+            if (name.Length == 0 || MaterialField(shape) is not { } field)
+                return false;
+
+            if (!model.Database.TryGetEnumOptionValue(MaterialEnum, name, out uint value)
+                && !uint.TryParse(
+                        name, System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture, out value))
             {
                 return false;
             }
