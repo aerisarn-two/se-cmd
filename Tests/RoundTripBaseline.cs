@@ -95,16 +95,6 @@ namespace SECmd.Tests
             ["Vertices"] = "convex hull refitted from the tessellation, so the order differs",
             ["Normals"] = "convex hull refitted from the tessellation, so the order differs",
 
-            // Regenerated from the geometry rather than carried (spec §5.3.1). A
-            // deliberate departure from ck-cmd, which keeps an FBX's own tangents; §7.3
-            // records why that is the wrong half of the trade for an authored mesh.
-            ["Tangent"] = "tangent space regenerated (§5.3.1)",
-            ["Tangents"] = "tangent space regenerated (§5.3.1)",
-            ["Bitangents"] = "tangent space regenerated (§5.3.1)",
-            ["Bitangent X"] = "tangent space regenerated (§5.3.1)",
-            ["Bitangent Y"] = "tangent space regenerated (§5.3.1)",
-            ["Bitangent Z"] = "tangent space regenerated (§5.3.1)",
-
             // The motion profile is applied from the resulting collision layer rather
             // than carried: the spec's table at §5.7 gives the motion system,
             // deactivation and quality for each layer, and ck-cmd sets them the same
@@ -145,8 +135,11 @@ namespace SECmd.Tests
             // already displaced — but it is deliberate, documented and matched to the
             // reference. Keyed by path for the transform itself, so that a *different*
             // translation going missing somewhere else still fails.
-            ["Vertex"] = "the shape's transform is baked into its vertices (spec §2)",
-            ["Normal"] = "the shape's transform is baked into its vertices (spec §2)",
+            // `Vertex`, `Normal` and the tangent frame are *not* listed here. They are
+            // checked instead: NifComparer applies the transform the exporter bakes in
+            // and requires the result to match exactly, so geometry in the parent's
+            // space passes and geometry that moved for any other reason still fails.
+            // Excusing them by name excused both.
             ["BSTriShape/Translation"] = "zeroed: the transform is baked into the vertices",
             ["BSTriShape/Rotation"] = "zeroed: the transform is baked into the vertices",
             ["BSTriShape/Scale"] = "reset: the transform is baked into the vertices",
@@ -156,6 +149,7 @@ namespace SECmd.Tests
             ["NiTriStrips/Translation"] = "zeroed: the transform is baked into the vertices",
             ["NiTriStrips/Rotation"] = "zeroed: the transform is baked into the vertices",
             ["NiTriStrips/Scale"] = "reset: the transform is baked into the vertices",
+
 
             // nif.xml's KeyType runs 1..5 and has no zero, so a key group carrying one
             // is a field nothing ever set — which is what a model built in a test looks

@@ -769,10 +769,127 @@ namespace SECmd.Tests
                 return names;
             }
 
+            /// <summary>
+            /// The transform the exporter bakes into a block's geometry, if any.
+            /// </summary>
+            /// <remarks>
+            /// An unskinned shape's own transform is baked into its vertices and its
+            /// transform reset, which the spec records at §2 and ck-cmd does the same.
+            /// A skinned shape keeps its transform -- the skin applies it -- so nothing
+            /// is baked and there is nothing to undo.
+            ///
+            /// For LE the geometry is a block of its own and the transform is on the
+            /// `NiTriShape` above it, so the owner is looked up through whoever points
+            /// at it.
+            /// </remarks>
+            private NifTransform? BakedTransform(NifItem owner)
+            {
+                NifItem? shape = owner;
+
+                if (owner.Name is "NiTriShapeData" or "NiTriStripsData")
+                {
+                    shape = left.Blocks.FirstOrDefault(
+                        b => left.BlockInherits(b, "NiGeometry") && left.GetRef(b, "Data") == owner);
+                }
+
+                if (shape is null || !left.BlockInherits(shape, "NiAVObject"))
+                    return null;
+
+                // Skinned: identity, so a difference is a real one.
+                return left.GetRef(shape, "Skin") is not null || left.GetRef(shape, "Skin Instance") is not null
+                    ? null
+                    : left.GetTransform(shape);
+            }
+
+            private static uint SNormToByte(float value) =>
+                (uint)Math.Clamp(MathF.Round((value + 1f) / 2f * 255f), 0f, 255f);
+
+            private static float ByteToSNorm(NifItem? item) =>
+                item is null ? 0f : (float)(item.Value.ToUInt() / 255.0 * 2.0 - 1.0);
+
+            /// <summary>
+            /// Whether the two differ by exactly the shape transform that was baked in.
+            /// </summary>
+            /// <remarks>
+            /// This replaces excusing the fields outright. `Vertex` and `Normal` were
+            /// listed as known gaps, and the tangent frame was covered by a blanket
+            /// "tangent space regenerated" entry that hid the same thing -- so a shape
+            /// that lost its geometry for any *other* reason was excused along with it.
+            ///
+            /// Applying the transform and requiring the result to match exactly says
+            /// what the gap actually is: the geometry is in the parent's space, and
+            /// nothing else about it has moved. On `TestNifFile_OrderedNode_SE` and
+            /// `TestNifFile_DeepGraph_SE` the error is 0 on every vertex of every shape,
+            /// not merely small.
+            ///
+            /// The bitangent is reconstructed from its three lanes before the rotation
+            /// and re-quantised afterwards, since Y and Z travel as bytes.
+            /// </remarks>
+            private bool BakedTransformExplains(NifItem a, NifItem b)
+            {
+                if (_owner is null)
+                    return false;
+
+                bool position = a.Name is "Vertex" or "Vertices";
+                bool direction = a.Name is "Normal" or "Normals" or "Tangent" or "Tangents" or "Bitangents";
+                bool lane = a.Name is "Bitangent X" or "Bitangent Y" or "Bitangent Z";
+
+                if (!position && !direction && !lane)
+                    return false;
+
+                if (BakedTransform(_owner) is not { } transform)
+                    return false;
+
+                if (lane)
+                {
+                    if (a.Parent is not { } row || b.Parent is null)
+                        return false;
+
+                    var bitangent = new NifVector3(
+                        row.Children.FirstOrDefault(c => c.Name == "Bitangent X")?.Value.ToFloat() ?? 0f,
+                        ByteToSNorm(row.Children.FirstOrDefault(c => c.Name == "Bitangent Y")),
+                        ByteToSNorm(row.Children.FirstOrDefault(c => c.Name == "Bitangent Z")));
+
+                    NifVector3 turned = transform.ApplyDirection(bitangent);
+
+                    return a.Name switch
+                    {
+                        "Bitangent X" => turned.X == b.Value.ToFloat(),
+                        "Bitangent Y" => SNormToByte(turned.Y) == b.Value.ToUInt(),
+                        _ => SNormToByte(turned.Z) == b.Value.ToUInt(),
+                    };
+                }
+
+                // A normal and a tangent travel as `ByteVector3`, not `Vector3` -- three
+                // signed bytes rather than three floats. Reading only `Vector3` here is
+                // what made the first attempt at this check silently do nothing for
+                // exactly the two fields it was written for.
+                if (a.Value.Type != b.Value.Type
+                    || a.Value.Type is not (NifValueType.Vector3 or NifValueType.ByteVector3))
+                {
+                    return false;
+                }
+
+                NifVector3 from = a.Value.Get<NifVector3>();
+                NifVector3 expected = position ? transform.Apply(from) : transform.ApplyDirection(from);
+
+                // Put the turned vector through the same encoding before comparing, so a
+                // byte-quantised field is judged on the bytes it would actually be
+                // written as rather than on a float that cannot be stored.
+                var encoded = new NifValue(b.Value.Type);
+                encoded.Set(expected);
+
+                return encoded.Get<NifVector3>().Equals(b.Value.Get<NifVector3>());
+            }
+
             private bool Same(NifItem a, NifItem b)
             {
                 if (a.Name == "Flags" && left.BlockInherits(_owner, "NiAVObject"))
                     return (a.Value.ToUInt() & ~IgnoredAvFlag) == (b.Value.ToUInt() & ~IgnoredAvFlag);
+
+                // Geometry displaced by exactly the transform the exporter bakes in.
+                if (BakedTransformExplains(a, b))
+                    return true;
 
                 // A quaternion and its negation are the same rotation: q and -q turn a
                 // body to exactly the same place, and which one a decomposition hands
