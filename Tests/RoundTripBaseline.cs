@@ -478,12 +478,6 @@ namespace SECmd.Tests
             ["Num Children"] = "Bethesda leaves empty child slots; this writes the real ones",
             ["Children"] = "Bethesda leaves empty child slots; this writes the real ones",
 
-            // Where BSXFlags sits among a node's other extra data. se-cmd appends it,
-            // which is the commonest place -- of the 707 multi-entry lists sampled that
-            // hold one, 402 have it last -- but not a rule: 191 have it first and 114
-            // somewhere in between. Nothing about the block says where it belongs.
-            ["NiIntegerExtraData"] = "BSXFlags is appended; Bethesda puts it last 57% of the time",
-
             // A partition's bone list is padded to a multiple of four by repeating
             // entries, and se-cmd writes the distinct set. Of the 40,626 partitions the
             // game ships, 36,778 have a bone count that is a multiple of four and 30,218
