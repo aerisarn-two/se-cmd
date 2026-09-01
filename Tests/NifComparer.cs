@@ -145,6 +145,8 @@ namespace SECmd.Tests
                     Align(a, b, Annotations, whole: true);
                 else if (a.Name == "Objs")
                     AlignPalette(a, b);
+                else if (a.Name == "Partitions")
+                    AlignPartition(a, b);
 
                 _permuted.TryGetValue(a, out int[]? order);
 
@@ -209,6 +211,70 @@ namespace SECmd.Tests
                     {
                         Differences.Add(new NifDifference(
                             p, ca.Name, ca.Value.ToString(), cb.Value.ToString()));
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Lines a partition's per-vertex rows up by the vertex the map names.
+            /// </summary>
+            /// <remarks>
+            /// A partition holds a `Vertex Map` and, beside it, one row per mapped
+            /// vertex: the weights and the bone indices. The map is the row's name --
+            /// row *n* is about `Vertex Map[n]` -- and its order is the partition's own
+            /// business, which the spec records at §7.3 and the baseline accepts under
+            /// `Vertex Map`.
+            ///
+            /// The rows shift with it, so comparing them by position reports every row
+            /// of a shifted partition as wrong: 14,364 weight differences over a
+            /// 1,500-mesh sample. Six of the 13 files whose *only* difference is this
+            /// hold exactly the same rows, keyed by the vertex each is about.
+            ///
+            /// Matched here rather than excused. `Vertex Map`'s own entry says why the
+            /// weights are not simply forgiven -- they "differ for reasons of their own
+            /// as well" -- and those reasons survive this: the other seven of the 13
+            /// still report, because their rows are genuinely different.
+            /// </remarks>
+            private void AlignPartition(NifItem left_, NifItem right_)
+            {
+                if (left.FindItem(left_, "Vertex Map") is not { Children.Count: > 0 } leftMap
+                    || right.FindItem(right_, "Vertex Map") is not { } rightMap
+                    || leftMap.Children.Count != rightMap.Children.Count)
+                {
+                    return;
+                }
+
+                var at = new Dictionary<uint, int>(rightMap.Children.Count);
+
+                for (int j = 0; j < rightMap.Children.Count; j++)
+                    at.TryAdd(rightMap.Children[j].Value.ToUInt(), j);
+
+                var order = new int[leftMap.Children.Count];
+                bool moved = false;
+
+                for (int i = 0; i < leftMap.Children.Count; i++)
+                {
+                    if (!at.TryGetValue(leftMap.Children[i].Value.ToUInt(), out int j))
+                        return;
+
+                    order[i] = j;
+                    moved |= j != i;
+                }
+
+                if (!moved)
+                    return;
+
+                // The arrays the map indexes. Not `Vertex Map` itself, which is the
+                // statement of the order rather than something ordered by it, and not
+                // the triangles, which index into the map and are renumbered with it.
+                foreach (string field in new[] { "Vertex Weights", "Bone Indices" })
+                {
+                    if (left.FindItem(left_, field) is { } rows
+                        && right.FindItem(right_, field) is { } theirs
+                        && rows.Children.Count == order.Length
+                        && theirs.Children.Count == order.Length)
+                    {
+                        _permuted[rows] = order;
                     }
                 }
             }
