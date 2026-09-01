@@ -293,6 +293,19 @@ namespace SECmd.Tests
             ["Unused 01"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
             ["Unused 03"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
 
+            // The fourth lane of a box's half extents. Havok keeps them in an
+            // `hkVector4` and reads three of it, so nif.xml is right that this is
+            // unused -- but unused is not zero, and every vanilla box has something in
+            // it. Of the 569 boxes in a 2,500-mesh sample, none holds zero and none
+            // holds a number of its own: every value is a copy of another field of the
+            // same block, 442 of `Radius`, 74 of `Dimensions.Z`, 31 of `Dimensions.X`,
+            // 22 of `Dimensions.Y`, and nothing else at all.
+            //
+            // That is the register the extents were built in, keeping whatever went
+            // through its fourth lane last. It is leftover rather than authored, so a
+            // rebuilt box zeroes it as it zeroes the other padding nif.xml names.
+            ["Unused Float"] = "padding nif.xml names Unused; a rebuilt block zeroes it",
+
             // A partition's vertex map holds the right vertices in an order of our own.
             // Accepted in the spec (§7.3): the set is always exact -- 860 of 860
             // partitions in a 600-mesh sample come back holding what they held -- and
