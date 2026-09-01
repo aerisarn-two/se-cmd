@@ -648,6 +648,14 @@ namespace SECmd.Conversion
             FbxCollisionMaterial.ApplyLayer(_model, body, FbxRigidBodyInfo.LayerOf(bodyNode));
             FbxCollisionMaterial.ApplyFilterFlags(_model, body, FbxRigidBodyInfo.FilterFlagsOf(bodyNode));
 
+            // Written only when it is not the schema's own answer, which is what all
+            // but five vanilla bodies hold.
+            if (FbxRigidBodyInfo.ContactDelayOf(bodyNode) is var delay
+                and not FbxRigidBodyInfo.DefaultContactDelay)
+            {
+                SetCount(body, @"Rigid Body Info\Process Contact Callback Delay", delay);
+            }
+
             WriteBodyTransform(body, bodyNode);
             WriteMotionProfile(body, bodyNode);
             WriteMassProperties(body, shape, bodyNode);

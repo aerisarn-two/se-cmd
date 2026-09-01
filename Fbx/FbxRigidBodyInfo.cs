@@ -26,6 +26,16 @@ namespace SECmd.Fbx
         /// <summary>The property the collision layer travels in.</summary>
         public const string LayerProperty = "nif_rb_layer";
 
+        /// <summary>The property the contact callback delay travels in.</summary>
+        /// <remarks>
+        /// How long Havok waits before running a body's contact callbacks. nif.xml
+        /// defaults it to 0xffff, which is what 2,401 of the 2,406 vanilla bodies
+        /// sampled hold -- and five hold zero, which is a body that reports contacts at
+        /// once rather than never. A ushort, so it does not belong with the float
+        /// scalars above.
+        /// </remarks>
+        public const string ContactDelayProperty = "nif_rb_contact_delay";
+
         /// <summary>The property the rest of the collision filter travels in.</summary>
         /// <remarks>
         /// The layer is one field of a `HavokFilter`; this is the byte beside it. See
@@ -192,6 +202,16 @@ namespace SECmd.Fbx
                     scalar.Property, item.Value.ToFloat().ToString("R", CultureInfo.InvariantCulture));
             }
 
+            // Only when it is not the value the schema already gives, so a scene gains
+            // a property for the five bodies that say something and not for the 2,401
+            // that do not.
+            if (model.FindItem(body, @"Rigid Body Info\Process Contact Callback Delay") is { } delay
+                && delay.Value.ToUInt() != DefaultContactDelay)
+            {
+                bodyNode.Properties.SetUserString(
+                    ContactDelayProperty, delay.Value.ToUInt().ToString(CultureInfo.InvariantCulture));
+            }
+
             // How Havok simulates it. Carried by enum name, since the numbers mean
             // different things in the three enums involved.
             foreach ((string field, string property) in MotionFields)
@@ -223,6 +243,17 @@ namespace SECmd.Fbx
                 ? mass
                 : null;
         }
+
+        /// <summary>What nif.xml gives a body that says nothing.</summary>
+        public const uint DefaultContactDelay = 0xffff;
+
+        /// <summary>The contact callback delay carried with a node, or the default.</summary>
+        public static uint ContactDelayOf(FbxObject bodyNode) =>
+            uint.TryParse(
+                bodyNode.Properties.GetString(ContactDelayProperty),
+                NumberStyles.Integer, CultureInfo.InvariantCulture, out uint delay)
+                ? delay
+                : DefaultContactDelay;
 
         /// <summary>The rest of the collision filter carried with a node.</summary>
         public static uint FilterFlagsOf(FbxObject bodyNode) =>
