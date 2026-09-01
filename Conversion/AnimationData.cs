@@ -269,15 +269,28 @@ namespace SECmd.Conversion
         /// <remarks>
         /// A property's controller already carries these; the node's own did not, and
         /// was rebuilt with the standalone constant -- 76, which is `CYCLE_CLAMP`,
-        /// `Active` and `Compute Scaled Time`, exactly nif.xml's defaults. That is not
-        /// what the files hold. Over a 1,500-mesh sample 150 controllers differ in
-        /// `Anim Type` and `Active` together and 49 in the cycle type alone, against a
-        /// constant that says clamp-and-running for all of them.
+        /// `Active` and `Compute Scaled Time`, and so exactly nif.xml's defaults.
         ///
-        /// Both matter to what the game does. The cycle type decides whether the
-        /// animation loops, reverses or stops at its last key, and `Active` decides
-        /// whether it runs at all -- `benthiclurkerprojectile.nif` holds 72, a looping
-        /// controller, and got a clamping one.
+        /// It is the commonest value and it is not the only one. Of the 788 standalone
+        /// transform controllers in a 2,500-mesh sample:
+        ///
+        /// | Flags | Meaning | Count |
+        /// | --- | --- | --- |
+        /// | 76 | clamp, active — nif.xml's default | 447 |
+        /// | 69 | anim type 1, clamp, **inactive** | 210 |
+        /// | 72 | **loop**, active | 95 |
+        /// | 74 | **reverse**, active | 29 |
+        /// | 65 | anim type 1, **loop**, inactive | 7 |
+        ///
+        /// So 341 of them, 43%, held something the constant is wrong about, over five
+        /// distinct values -- which is why this is carried rather than given a better
+        /// constant.
+        ///
+        /// Both halves of the disagreement matter to what the game does. The cycle type
+        /// decides whether the animation loops, reverses or stops at its last key:
+        /// `benthiclurkerprojectile.nif` holds 72, a looping controller, and came back
+        /// clamping. And `Active` decides whether it runs at all -- 217 of the 788 have
+        /// it clear, and the constant switched every one of them on.
         ///
         /// Null when the track came from a sequence, where the manager owns the flags.
         /// </remarks>
