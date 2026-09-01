@@ -76,9 +76,31 @@ namespace SECmd.Fbx
         }
 
         /// <summary>
-        /// The de-duplication key: every attribute a corner carries.
+        /// The de-duplication key: which control point a corner belongs to, and every
+        /// attribute it carries.
         /// </summary>
         /// <remarks>
+        /// **The control point comes first, and is what stops the merge going too far.**
+        /// De-duplication exists for one direction only: FBX keeps a normal, a texture
+        /// coordinate and a colour per polygon *corner*, so the several corners meeting
+        /// at one control point have to become one NIF vertex where they agree and
+        /// several where they do not. That is a question about corners of the same
+        /// point, and it is answered by the attributes below.
+        ///
+        /// Merging across *different* control points answers no question. It is loss.
+        /// The exporter writes one control point per NIF vertex with every layer element
+        /// `ByControlPoint`, so a NIF that made the trip has its vertices and the FBX's
+        /// points in step, one for one -- and two vertices the file kept apart were kept
+        /// apart for a reason the file did not have to explain. Vanilla is full of rows
+        /// identical in all twenty-three factors: over the 81,188 shapes the game ships,
+        /// 458,920 vertices of 36,106,394 on 11,947 shapes. Every one of them used to be
+        /// welded away, taking the triangle numbering with it.
+        ///
+        /// It costs nothing in the other direction either. Two coincident control points
+        /// in a mesh authored in a DCC are two vertices in that file, and keeping them is
+        /// what the author wrote. ck-cmd merges them -- and separately splits vertices a
+        /// NIF held together, so it is not the standard to match here.
+        ///
         /// Compared exactly rather than with a tolerance, matching FBXWrangler.
         /// Values that came from the same source corner are bit-identical, so exact
         /// comparison merges what should merge; a tolerance would risk welding a
@@ -133,6 +155,7 @@ namespace SECmd.Fbx
         /// the whole of what makes it safe.
         /// </remarks>
         private readonly record struct VertexKey(
+            int ControlPoint,
             double PX, double PY, double PZ,
             double NX, double NY, double NZ,
             double TX, double TY, double TZ,
@@ -343,6 +366,7 @@ namespace SECmd.Fbx
                     : string.Empty;
 
                 var key = new VertexKey(
+                    at.ControlPoint,
                     position.X, position.Y, position.Z,
                     normal.X, normal.Y, normal.Z,
                     tangent.X, tangent.Y, tangent.Z,
