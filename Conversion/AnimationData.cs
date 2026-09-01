@@ -286,6 +286,21 @@ namespace SECmd.Conversion
         /// distinct values -- which is why this is carried rather than given a better
         /// constant.
         ///
+        /// Nor can it be worked out from the content, which was tried before carrying
+        /// it. `Active` has no predictor at all: `NiNode` holds 185 inactive against
+        /// 537 active, `NiBillboardNode` 25 against 18, a node with one controller 208
+        /// against 555. The one clean split is one-way -- every controller in a file
+        /// that also has sequences is active, 59 of 59 -- and files without sequences
+        /// hold both, 217 against 512, so it decides nothing.
+        ///
+        /// The cycle type resists the obvious test too. Whether the animation returns
+        /// to where it started says little: of the tracks with translation keys, 28
+        /// looping ones close and 4 do not, against 63 clamping ones that close and 231
+        /// that do not. "Open, therefore clamp" holds 231 times in 235; "closed" is
+        /// 63 clamps against 28 loops, so most closed animations do not loop. And all
+        /// 29 `CYCLE_REVERSE` controllers have no translation keys for the test to look
+        /// at.
+        ///
         /// Both halves of the disagreement matter to what the game does. The cycle type
         /// decides whether the animation loops, reverses or stops at its last key:
         /// `benthiclurkerprojectile.nif` holds 72, a looping controller, and came back
