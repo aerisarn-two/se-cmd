@@ -932,10 +932,23 @@ namespace SECmd.Nif
             // - Carrying a different controller chain: identical in both groups,
             //   `NiControllerManager` and `NiMultiTargetTransformController`.
             //
-            // A root named after the file looked promising -- every one of the 15 but
-            // two is -- and it is not a rule either: 24 files with a `.nif` root name
-            // leave it out. So the root is left out, which is right 314 times in 329,
-            // and the 15 stay a difference rather than a guess.
+            // Three more, since the 15 are all skinned creature and effect overlays --
+            // dragon blood decals, `fxwerewolftransitionskin`, the vampire lord -- and
+            // that looks like a category rather than an accident:
+            //
+            // - The root being the skin's `Skeleton Root`: true of 13 of the 15, and of
+            //   24 files that leave it out. Among the 37 files where it holds, 13 list
+            //   the root and 24 do not.
+            // - A root named after the file: the same 13 against the same 24, since the
+            //   two conditions coincide.
+            // - The exporter that wrote them: `Export Info` is empty in all 329, so the
+            //   header says nothing about either group.
+            //
+            // Seven measurements, no rule. Both behaviours appear in one category of
+            // file, from the base game and both add-ons alike, so this reads as
+            // Bethesda's own pipeline disagreeing with itself rather than something the
+            // file states. The root is left out, which is right 314 times in 329, and
+            // the 15 stay a difference rather than a guess.
             foreach (NifItem target in targets)
             {
                 if (!ReferenceEquals(target, root) && !all.Contains(target))
