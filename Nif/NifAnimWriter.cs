@@ -896,18 +896,34 @@ namespace SECmd.Nif
             // serve sequences this file does not carry, since an animation in a KF
             // names its nodes and resolves them here.
             //
-            // Three exclusions, all of them vanilla's:
+            // The exclusions are vanilla's. Over 12,000 files, the classes a palette
+            // leaves out are a family: markers the engine reads for something other
+            // than animation, and never a track's target.
             //
-            // - The root, which is `Scene` above. 196 of 205 leave it out of the list.
-            // - `BSOrderedNode`, the render-ordering marker: absent from all 19.
-            // - `BSValueNode`, the add-on marker -- `AddOnNode05` and its kind --
-            //   absent from every one.
+            // | Class | Left out | Listed |
+            // | --- | --- | --- |
+            // | `BSValueNode`, the add-on marker | 122 | 0 |
+            // | `BSOrderedNode`, render ordering | 41 | 1 |
+            // | `BSBlastNode` | 4 | 0 |
+            // | `BSDamageStage` | 2 | 0 |
+            //
+            // `BSDamageStage` inherits `BSBlastNode` inherits `BSRangeNode`, so the
+            // three are one branch and are excluded by that ancestor -- which takes
+            // `BSDebrisNode` with them, the fourth of the branch and one this sample
+            // has no instance of.
+            //
+            // The root is left out too, for the different reason recorded below.
+            //
+            // Neither rule is absolute: one `BSOrderedNode` is listed, and six ordinary
+            // nodes of 8,435 are not. Those seven stay differences.
             var all = new List<NifItem>();
 
             foreach (NifItem block in model.Blocks)
             {
                 if (ReferenceEquals(block, root)
-                    || block.Name is "BSOrderedNode" or "BSValueNode"
+                    || model.BlockInherits(block, "BSValueNode")
+                    || model.BlockInherits(block, "BSOrderedNode")
+                    || model.BlockInherits(block, "BSRangeNode")
                     || !model.BlockInherits(block, "NiAVObject")
                     || model.GetName(block) is not { Length: > 0 })
                 {
