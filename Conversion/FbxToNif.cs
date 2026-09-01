@@ -505,6 +505,17 @@ namespace SECmd.Conversion
                 _model.SetRef(phantom, "Shape", shape);
                 _model.SetRef(phantomCollision, "Body", phantom);
 
+                // A phantom is a `bhkWorldObject` and carries a collision filter of its
+                // own, exactly as a rigid body does: the layer is what decides which
+                // objects it notices. The export writes it -- `FbxRigidBodyInfo.Write`
+                // is not guarded against phantoms -- and this branch returned before
+                // anything read it back, so every rebuilt phantom sat on nif.xml's
+                // `SKYL_STATIC` whatever the file said.
+                FbxCollisionMaterial.ApplyLayer(_model, phantom, FbxRigidBodyInfo.LayerOf(bodyNode));
+
+                FbxCollisionMaterial.ApplyFilterFlags(
+                    _model, phantom, FbxRigidBodyInfo.FilterFlagsOf(bodyNode));
+
                 return phantomCollision;
             }
 
