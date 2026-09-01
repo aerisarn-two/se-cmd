@@ -216,8 +216,15 @@ namespace SECmd.Conversion
 
             // Everything hanging off the node that FBX has no place for: behaviour
             // graph paths, string data, bounds. BSXFlags is left out, since the import
-            // recalculates it.
+            // recalculates it -- but whether the source had one at all is recorded,
+            // because that is not a thing the graph can be asked.
             FbxExtraDataWriter.AddExtraData(node, _model, block);
+
+            if (ReferenceEquals(block, FirstRoot()) && BsxOwner(block) is { } owner
+                && !_model.GetRefArray(owner, "Extra Data List").Any(x => x.Name == "BSXFlags"))
+            {
+                node.Properties.SetUserString(NoBsxFlagsProperty, "1");
+            }
 
             // The volume a multi-bound node culls against, which the engine uses in
             // place of one worked out from the geometry.
@@ -1194,6 +1201,57 @@ namespace SECmd.Conversion
                 _ => F(item.Value.ToFloat())
             };
         }
+
+        /// <summary>Marks a root whose file carries no BSXFlags at all.</summary>
+        /// <remarks>
+        /// BSXFlags is recalculated rather than carried, because every bit of it is a
+        /// fact about the graph -- but *whether the file has one* is not. It says the
+        /// mesh is a thing the world places, and a great many of the game's files are
+        /// not that: over 8,000 sampled, 1,919 rooted on `BSFadeNode` have none, every
+        /// one of the 504 facegen heads among them, along with 774 of the 779 rooted on
+        /// a plain `NiNode` and 113 rooted on `BSLeafAnimNode`.
+        ///
+        /// Adding one to those is adding a claim the file does not make. It went
+        /// unnoticed because the baseline forgives it -- "the calculated BSXFlags is
+        /// added to a file that had none" -- so it cost nothing in the sweep and a block
+        /// in every rebuilt file.
+        /// </remarks>
+        public const string NoBsxFlagsProperty = "nif_no_bsx_flags";
+
+        /// <summary>
+        /// The node a file's BSXFlags belongs on, which is not always the footer's root.
+        /// </summary>
+        /// <remarks>
+        /// It is the root in every file but one shape of them. A master particle system
+        /// is a wrapper: the footer names a `BSMasterParticleSystem` called
+        /// `&lt;file&gt;.nif`, and under it sits the node that behaves like the root,
+        /// called `&lt;file&gt;` without the extension, which is where the BSXFlags is.
+        ///
+        /// Of the 3,626 files with a BSXFlags in a 3,000-mesh sample, 3,542 keep it on
+        /// the root and 84 are these -- every one an MPS, and every one with it on the
+        /// child.
+        /// </remarks>
+        public static NifItem? BsxOwnerOf(NifModel model, NifItem root)
+        {
+            if (root.Name != "BSMasterParticleSystem")
+                return root;
+
+            foreach (NifItem child in model.GetRefArray(root, "Children"))
+            {
+                if (child.Name == "NiNode")
+                    return child;
+            }
+
+            return root;
+        }
+
+        private NifItem? BsxOwner(NifItem root) => BsxOwnerOf(_model, root);
+
+        /// <summary>The block the footer names first, which is the file's own root.</summary>
+        private NifItem? FirstRoot() =>
+            _model.FindItem(_model.Footer, "Roots") is { Children.Count: > 0 } roots
+                ? _model.GetBlock(roots.Children[0])
+                : null;
 
         /// <summary>Where a container shape's own Havok material rides.</summary>
         /// <remarks>

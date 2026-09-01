@@ -233,11 +233,15 @@ namespace SECmd.Conversion
 
             // Last, because it is an answer about the finished graph.
             //
-            // Not written at all when the root is a plain `NiNode`. BSXFlags describes
-            // what the engine should expect of a *scene* -- whether it animates, has
-            // collision, is a ragdoll -- and a file rooted on a bare node is a rig or a
-            // fragment that another file places, with nothing to announce.
-            if (root.Name != "NiNode")
+            // Not written at all when the root is a plain `NiNode` -- a rig or a
+            // fragment another file places has nothing to announce -- nor when the
+            // scene came from a file that had none. See `NifToFbx.NoBsxFlagsProperty`:
+            // 1,919 of the game's `BSFadeNode`-rooted files carry no BSXFlags, every
+            // facegen head among them, and adding one states something they do not.
+            bool carriedNone = sceneRoots.Count == 1
+                && sceneRoots[0].Properties.GetString(NifToFbx.NoBsxFlagsProperty).Length > 0;
+
+            if (root.Name != "NiNode" && !carriedNone)
                 AddBsxFlags(root);
 
             _model.SetRoots([root]);
@@ -278,7 +282,10 @@ namespace SECmd.Conversion
             _model.SetString(bsx, "Name", NifBsxFlags.BlockName);
             _model.FindItem(bsx, "Integer Data")?.Value.SetCount(flags);
 
-            FbxExtraDataWriter.Append(_model, root, [bsx]);
+            // Onto the node that carries it, which is the root in all but one shape of
+            // file: a master particle system wraps the node that behaves like the root,
+            // and every one of the game's 84 keeps its BSXFlags on the child.
+            FbxExtraDataWriter.Append(_model, NifToFbx.BsxOwnerOf(_model, root) ?? root, [bsx]);
         }
 
         /// <summary>
