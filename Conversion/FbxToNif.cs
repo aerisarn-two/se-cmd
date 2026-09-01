@@ -126,6 +126,22 @@ namespace SECmd.Conversion
                 ? FbxNodeType.Read(sceneRoots[0], _model, "BSFadeNode")
                 : "BSFadeNode";
 
+            // A rig whose skins bind only to plain nodes under the root is rooted on a
+            // plain node itself -- but only when the scene did not say otherwise. A
+            // scene out of a NIF carries the root's class, and that is the answer; this
+            // decides for one authored elsewhere, which carries nothing.
+            //
+            // Overriding the carried class instead was tried and is wrong: the
+            // condition holds for 977 vanilla files and 402 of them are rooted on
+            // `BSFadeNode`, nearly all facegen heads, whose bones are parented to the
+            // root exactly like a rig's.
+            if (sceneRoots.Count == 1
+                && sceneRoots[0].Properties.GetString(FbxNodeType.Property).Length == 0
+                && IsPlainSkeletonRoot(sceneRoots[0]))
+            {
+                rootType = "NiNode";
+            }
+
             NifItem root = _model.InsertBlock(rootType);
 
             // Named after the file rather than after any node in the scene (§5.2).
@@ -216,7 +232,13 @@ namespace SECmd.Conversion
                 _model.WriteAnimations(root, _scene.ReadAnimations(), _nodesByName, Warnings);
 
             // Last, because it is an answer about the finished graph.
-            AddBsxFlags(root);
+            //
+            // Not written at all when the root is a plain `NiNode`. BSXFlags describes
+            // what the engine should expect of a *scene* -- whether it animates, has
+            // collision, is a ragdoll -- and a file rooted on a bare node is a rig or a
+            // fragment that another file places, with nothing to announce.
+            if (root.Name != "NiNode")
+                AddBsxFlags(root);
 
             _model.SetRoots([root]);
 
@@ -257,6 +279,54 @@ namespace SECmd.Conversion
             _model.FindItem(bsx, "Integer Data")?.Value.SetCount(flags);
 
             FbxExtraDataWriter.Append(_model, root, [bsx]);
+        }
+
+        /// <summary>
+        /// Whether every bone the scene's skins use is a plain node under the root.
+        /// </summary>
+        /// <remarks>
+        /// A file whose skin partitions name nothing but `NiNode`s, each parented to
+        /// the root and to nothing else, is a rig and not a piece of scenery: there is
+        /// no fading, no ordering, no LOD in it, and its root is a plain `NiNode`.
+        ///
+        /// Decided from the scene rather than carried, because the answer is a fact
+        /// about the graph. A skin whose bones sit deeper -- a hand under a forearm
+        /// under an upper arm -- is not this, and neither is one that binds to
+        /// something other than a plain node.
+        /// </remarks>
+        private bool IsPlainSkeletonRoot(FbxObject root)
+        {
+            var bones = new List<FbxObject>();
+
+            foreach (FbxObject skin in _scene.OfClass("Deformer", "Skin"))
+            {
+                foreach (FbxObject cluster in _scene.ChildrenOf(skin.Id))
+                {
+                    if (cluster is not { Class: "Deformer", SubClass: "Cluster" })
+                        continue;
+
+                    bones.AddRange(_scene.ChildrenOf(cluster.Id).Where(o => o.Class == "Model"));
+                }
+            }
+
+            if (bones.Count == 0)
+                return false;
+
+            foreach (FbxObject bone in bones.DistinctBy(o => o.Id))
+            {
+                // A plain node, not a billboard or a marker of some kind.
+                if (FbxNodeType.Read(bone, _model, "NiNode") != "NiNode")
+                    return false;
+
+                // Parented to the root and to nothing else. A cluster is a parent of
+                // the bone in FBX's connection graph, so only Models count here.
+                var parents = _scene.ParentsOf(bone.Id).Where(o => o.Class == "Model").ToList();
+
+                if (parents.Count != 1 || parents[0].Id != root.Id)
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>Appends one block to another's extra data list.</summary>
