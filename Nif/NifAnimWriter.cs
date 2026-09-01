@@ -921,9 +921,21 @@ namespace SECmd.Nif
             // the palette cannot resolve is worse than an entry vanilla would not have
             // written. Empty on a vanilla file, where the rule covers them already.
             //
-            // The root stays out even here. A handful of vanilla palettes do list it --
-            // 9 of 205 -- and letting a sequence target put it back was tried and
-            // changed nothing, so whatever those files list it for, it is not that.
+            // The root stays out even here, and what puts it into the 15 vanilla
+            // palettes of 329 that hold it is not known. Four things were measured and
+            // none of them separates those files from the 314 that leave it out:
+            //
+            // - Being named by a controlled block of a sequence: 0 of the 15.
+            // - Being an extra target of the multi-target controller: 0 of the 15.
+            // - Being a sequence's accumulation root: 2 of the 15, against 279 of the
+            //   files that do *not* list it, so the signal points the other way.
+            // - Carrying a different controller chain: identical in both groups,
+            //   `NiControllerManager` and `NiMultiTargetTransformController`.
+            //
+            // A root named after the file looked promising -- every one of the 15 but
+            // two is -- and it is not a rule either: 24 files with a `.nif` root name
+            // leave it out. So the root is left out, which is right 314 times in 329,
+            // and the 15 stay a difference rather than a guess.
             foreach (NifItem target in targets)
             {
                 if (!ReferenceEquals(target, root) && !all.Contains(target))
