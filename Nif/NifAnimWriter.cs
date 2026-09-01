@@ -41,9 +41,6 @@ namespace SECmd.Nif
         /// <summary>And the array size all of them carry.</summary>
         private const uint BlendArraySize = 2;
 
-        /// <summary>Manager flags: active, and driven by the animation system.</summary>
-        private const uint ManagerFlags = 12 | ComputeScaledTime;
-
         /// <summary>Transform controller flags, as FBXWrangler writes them, plus §5.6A.</summary>
         private const uint TransformControllerFlags = 44 | ComputeScaledTime;
 
@@ -155,7 +152,10 @@ namespace SECmd.Nif
 
             NifItem manager = model.InsertBlock("NiControllerManager");
             model.SetRef(manager, "Target", root);
-            model.FindItem(manager, "Flags")?.Value.SetCount(ManagerFlags);
+
+            // Flags are not written. A manager wants clamp, active and scaled time --
+            // 76 -- and nif.xml's members already default to exactly that, so a fresh
+            // block holds it before anything is said.
             model.FindItem(manager, "Phase")?.Value.SetFloat(0f);
 
             NifItem controller = WriteMultiTargetController(model, root, targets);
@@ -286,7 +286,7 @@ namespace SECmd.Nif
                 controller = model.InsertBlock(property.ControllerType);
 
                 model.SetRef(controller, "Target", host);
-                model.FindItem(controller, "Flags")?.Value.SetCount(property.ControllerFlags ?? StandaloneControllerFlags);
+                SetControllerFlags(model, controller, property.ControllerFlags);
                 SetPhase(model, controller, property);
 
                 // Which of several same-typed controllers this is. nif.xml states
@@ -512,7 +512,7 @@ namespace SECmd.Nif
 
                     if (!existing)
                     {
-                        model.FindItem(controller, "Flags")?.Value.SetCount(FlagsFor(group, StandaloneControllerFlags));
+                        SetControllerFlags(model, controller, FlagsFor(group));
                         model.FindItem(controller, "Phase")?.Value
                             .SetFloat(group.Select(p => p.ControllerPhase).FirstOrDefault(p => p is not null) ?? 0f);
                     }
@@ -551,8 +551,7 @@ namespace SECmd.Nif
             model.SetRef(controller, "Interpolator", WriteInterpolator(model, track, 0f));
             model.SetRef(controller, "Target", node);
 
-            model.FindItem(controller, "Flags")?.Value
-                .SetCount(track.ControllerFlags ?? StandaloneControllerFlags);
+            SetControllerFlags(model, controller, track.ControllerFlags);
 
             model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
 
@@ -603,7 +602,7 @@ namespace SECmd.Nif
 
             controller = model.InsertBlock(property.ControllerType);
 
-            model.FindItem(controller, "Flags")?.Value.SetCount(property.ControllerFlags ?? StandaloneControllerFlags);
+            SetControllerFlags(model, controller, property.ControllerFlags);
             SetPhase(model, controller, property);
 
             WriteControllerId(model, controller, property.ControllerId);
@@ -700,19 +699,8 @@ namespace SECmd.Nif
                 model.SetString(controller, field, id);
         }
 
-        /// <summary>Active, and playing forwards on a loop, which is what a bare controller does.</summary>
-        /// <remarks>
-        /// The fallback only. A controller that came from a file brings its own flags,
-        /// and the game's are as often 72 or 108 -- writing this constant over them left
-        /// every shader controller active and looping whatever it had been.
-        ///
-        /// Carries <see cref="ComputeScaledTime"/> for the same reason the two above
-        /// do: no vanilla controller is without it.
-        /// </remarks>
-        private const uint StandaloneControllerFlags = 0x000C | ComputeScaledTime;
-
-        /// <summary>A group's carried controller flags, or the constant for one with none.</summary>
-        private static uint FlagsFor(IEnumerable<AnimProperty> group, uint fallback)
+        /// <summary>A group's carried controller flags, when any of it carried some.</summary>
+        private static uint? FlagsFor(IEnumerable<AnimProperty> group)
         {
             foreach (AnimProperty property in group)
             {
@@ -720,7 +708,23 @@ namespace SECmd.Nif
                     return flags;
             }
 
-            return fallback;
+            return null;
+        }
+
+        /// <summary>
+        /// Writes a controller's flags, when there are any to write.
+        /// </summary>
+        /// <remarks>
+        /// Nothing is written for a controller that carried none. The fallback used to
+        /// be a constant of 0x000C plus scaled time -- 76 -- and that is exactly what
+        /// nif.xml's own members come to: `Cycle Type` defaults to `CYCLE_CLAMP`,
+        /// `Active` to 1 and `Compute Scaled Time` to 1, so a freshly inserted
+        /// controller already holds 76 and the constant only said it again.
+        /// </remarks>
+        private static void SetControllerFlags(NifModel model, NifItem controller, uint? flags)
+        {
+            if (flags is { } value)
+                model.FindItem(controller, "Flags")?.Value.SetCount(value);
         }
 
         /// <summary>
