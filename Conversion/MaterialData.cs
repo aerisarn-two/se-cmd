@@ -386,6 +386,23 @@ namespace SECmd.Conversion
 
             string normalized = path.Replace('/', '\\');
 
+            // A relative path is left exactly as it is. The rewriting below exists to
+            // turn a DCC's absolute path into one the game can resolve, and it is not
+            // lossless: it drops a leading `data\`, lowercases an extension Bethesda
+            // spells `.DDS` as often as `.dds`, and gives an extension to an entry that
+            // has none. Vanilla carries all three -- `data\Textures\...`,
+            // `BeardShort05.DDS`, `dlc01\build\pc\data\textures\...` from a shipped
+            // build tree, and a bare `NOR` -- across 313 texture entries in a
+            // 1,200-mesh sample. They resolve as they are, and none of them is ours to
+            // tidy.
+            //
+            // A relative path keeps its shape, then: only its extension is corrected,
+            // and only when it names something the game cannot read. `.DDS` is already
+            // a DDS and stays as spelled; an entry with no extension at all -- vanilla
+            // ships a bare `NOR` -- is not a filename to complete.
+            if (!IsRooted(normalized))
+                return ForceDdsExtension(normalized);
+
             int at = normalized.IndexOf("textures", StringComparison.OrdinalIgnoreCase);
 
             if (at < 0)
@@ -401,5 +418,33 @@ namespace SECmd.Conversion
 
             return normalized + ".dds";
         }
+
+        /// <summary>
+        /// A path's extension corrected to <c>.dds</c>, when it has one that is not.
+        /// </summary>
+        private static string ForceDdsExtension(string path)
+        {
+            int dot = path.LastIndexOf('.');
+
+            if (dot <= path.LastIndexOf('\\'))
+                return path;
+
+            return path.AsSpan(dot).Equals(".dds", StringComparison.OrdinalIgnoreCase)
+                ? path
+                : string.Concat(path.AsSpan(0, dot), ".dds");
+        }
+
+        /// <summary>
+        /// Whether a path names a place on a disc rather than one inside the game.
+        /// </summary>
+        /// <remarks>
+        /// Spelled out rather than left to <c>Path.IsPathRooted</c>, which is asked
+        /// about a Windows path on whatever host this runs on: a backslash is not a
+        /// separator to it on Linux, so `\\server\share\x.dds` reads as relative.
+        /// </remarks>
+        private static bool IsRooted(string path) =>
+            path.StartsWith('\\')
+            || path.StartsWith('/')
+            || (path.Length > 1 && path[1] == ':');
     }
 }
