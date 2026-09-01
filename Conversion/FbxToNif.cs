@@ -551,6 +551,7 @@ namespace SECmd.Conversion
             // motion system, the deactivation and the quality with it. Applied before
             // WriteStaticMotion, which reads the layer to decide the profile.
             FbxCollisionMaterial.ApplyLayer(_model, body, FbxRigidBodyInfo.LayerOf(bodyNode));
+            FbxCollisionMaterial.ApplyFilterFlags(_model, body, FbxRigidBodyInfo.FilterFlagsOf(bodyNode));
 
             WriteBodyTransform(body, bodyNode);
             WriteMotionProfile(body, bodyNode);

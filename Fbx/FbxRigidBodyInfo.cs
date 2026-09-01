@@ -26,6 +26,14 @@ namespace SECmd.Fbx
         /// <summary>The property the collision layer travels in.</summary>
         public const string LayerProperty = "nif_rb_layer";
 
+        /// <summary>The property the rest of the collision filter travels in.</summary>
+        /// <remarks>
+        /// The layer is one field of a `HavokFilter`; this is the byte beside it. See
+        /// <see cref="FbxCollisionMaterial.FilterFlagsOf"/> for what is in it and why
+        /// none of it can be worked out instead.
+        /// </remarks>
+        public const string FilterFlagsProperty = "nif_rb_filter_flags";
+
         /// <summary>
         /// One simulation scalar: what it is called, and what a body that arrives
         /// without it should get.
@@ -166,6 +174,15 @@ namespace SECmd.Fbx
 
             bodyNode.Properties.SetUserString(LayerProperty, FbxCollisionMaterial.LayerOf(model, body));
 
+            // Only when there is something in it: 2,965 of 3,071 vanilla filters are
+            // zero, so a scene gains a property per body that says something rather
+            // than one per body.
+            if (FbxCollisionMaterial.FilterFlagsOf(model, body) is var filter and not 0u)
+            {
+                bodyNode.Properties.SetUserString(
+                    FilterFlagsProperty, filter.ToString(CultureInfo.InvariantCulture));
+            }
+
             foreach (Scalar scalar in Scalars)
             {
                 if (model.FindItem(body, $@"Rigid Body Info\{scalar.Field}") is not { } item)
@@ -206,6 +223,14 @@ namespace SECmd.Fbx
                 ? mass
                 : null;
         }
+
+        /// <summary>The rest of the collision filter carried with a node.</summary>
+        public static uint FilterFlagsOf(FbxObject bodyNode) =>
+            uint.TryParse(
+                bodyNode.Properties.GetString(FilterFlagsProperty),
+                NumberStyles.Integer, CultureInfo.InvariantCulture, out uint flags)
+                ? flags
+                : 0u;
 
         /// <summary>The collision layer carried with a node, or the static default.</summary>
         public static string LayerOf(FbxObject bodyNode)

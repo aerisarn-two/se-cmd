@@ -34,6 +34,9 @@ namespace SECmd.Fbx
         /// <summary>The property on the material holding the collision layer.</summary>
         public const string LayerProperty = "CollisionLayer";
 
+        /// <summary>The nif.xml bitfield holding the rest of a collision filter.</summary>
+        public const string FilterFlagsType = "CollisionFilterFlags";
+
         /// <summary>The layer assumed when a material arrives without one.</summary>
         public const string DefaultLayer = "SKYL_STATIC";
 
@@ -136,6 +139,63 @@ namespace SECmd.Fbx
                 // Only the fields this file's version actually has. nif.xml spells the
                 // rigid body info three times over for three Havok generations, and the
                 // two it is not using are present in the tree and absent from the file.
+                if (!model.EvalCondition(field))
+                    continue;
+
+                field.Value.SetCount(value);
+                written++;
+            }
+
+            return written > 0;
+        }
+
+        /// <summary>
+        /// The rest of a body's collision filter: the byte beside the layer.
+        /// </summary>
+        /// <remarks>
+        /// A `HavokFilter` is a layer, a `CollisionFilterFlags` byte and a group, and
+        /// only the layer was carried. The byte is not spare room: it holds
+        /// `No Collision`, which stops the body colliding at all, `Linked Group`,
+        /// `MOPP Scaled`, and the biped part.
+        ///
+        /// Little of it is in use and none of it is derivable. Of 3,071 filters in a
+        /// 2,500-mesh sample 2,965 are zero, and the 106 that are not fall in two
+        /// groups: 84 with `Linked Group` alone, on debris, clutter and animated
+        /// scenery, and 13 naming a biped part, every one of them on `SKYL_BIPED` as
+        /// nif.xml says.
+        ///
+        /// Neither follows from the file. `Linked Group` is set on 9 bodies that are
+        /// the only body in their file and clear on 557 that share theirs with others,
+        /// so a body count does not predict it, and constraints do not either. The
+        /// biped part looks as though it should follow from a `BSDismemberSkinInstance`
+        /// partition, which names body parts too -- but all 26 bodies carrying one are
+        /// in files with no dismember partitions whatever: `skeleton_female.nif` and
+        /// `dlc1skullhawkgo.nif` among them. The partitions are on the mesh, the filter
+        /// is on the skeleton's ragdoll bodies, and Skyrim keeps those in separate
+        /// files, so the file holding one cannot see the other.
+        /// </remarks>
+        public static uint FilterFlagsOf(NifModel model, NifItem? body) =>
+            body is not null && FieldOfType(body, FilterFlagsType) is { } field
+                ? field.Value.ToUInt()
+                : 0u;
+
+        /// <summary>
+        /// Puts that byte back, on every filter this version of the block has.
+        /// </summary>
+        /// <remarks>
+        /// Both of them, as <see cref="ApplyLayer"/> writes both layers: a rigid body
+        /// carries its own filter and another inside `Rigid Body Info`, and filling one
+        /// leaves the other at its default.
+        /// </remarks>
+        public static bool ApplyFilterFlags(NifModel model, NifItem body, uint value)
+        {
+            var fields = new List<NifItem>();
+            CollectFieldsOfType(body, FilterFlagsType, fields);
+
+            int written = 0;
+
+            foreach (NifItem field in fields)
+            {
                 if (!model.EvalCondition(field))
                     continue;
 
