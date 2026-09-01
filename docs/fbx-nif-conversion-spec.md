@@ -1447,6 +1447,22 @@ not NifSkope's. With the frame carried instead, all four round trip with no diff
 vertex component at all. This was the bulk of the field sweep's remaining residue, which
 had been mistaken for vertex welding on the strength of the field names involved.
 
+**The other half: a mesh that arrives without a frame gets one.** Keeping what the FBX
+carries is only half of `pOverwrite = false` — the SDK call also *generates* where nothing
+is there, and so does this now. A mesh with normals and UVs but no tangent layer has a
+frame built from `spTangentSpace`, which is what an FBX authored in a DCC looks like:
+most exporters write no tangent layer at all, and a shape that reaches the game without
+one renders unlit under a normal map.
+
+It cannot simply be generated wherever it is missing. A NIF that never had tangents
+exports to exactly the same FBX as a DCC mesh that never had them, and giving that one a
+frame changes its vertex layout — `Bitangent X` and `Unused W` share a slot, chosen by the
+Tangents flag, so the shape gains a frame and loses whatever that word held; 105 of the
+shapes sampled were gaining one. So the fact travels on the geometry as a
+`nif_shape_no_tangents` user property, the counterpart of the `nif_shape_no_normals` one
+at §5.3, written by the exporter and read on the way in. An FBX from anywhere else carries
+no marker and has its frame completed.
+
 Two departures from the textbook algorithm are deliberate in the original and are kept:
 
 - **The UV determinant is used for its sign only.** The usual method divides by it,
@@ -3137,7 +3153,7 @@ the thing most likely to be stale.
 | What | Where |
 | --- | --- |
 | `BSXFlags` | `bsxflags-spec.md`; every bit is a fact about the block graph |
-| Tangent space | §5.3.1, from NifSkope's algorithm, but only for a mesh whose FBX supplied none — one that supplied a frame keeps it, as ck-cmd's does |
+| Tangent space | §5.3.1, from NifSkope's algorithm, for a mesh whose FBX supplied none and whose NIF did not say it had none — one that supplied a frame keeps it, as ck-cmd's does |
 | Inertia tensors | §5.7.2, from the mass and the shape |
 | Convex hull planes | §5.7.1, from the hull |
 | Collision shape size | §4.8; refitted from the tessellated geometry, so a DCC edit wins |
@@ -3160,7 +3176,7 @@ Real gaps, each with its reason recorded where it bites.
 
 | What | Consequence | Where |
 | --- | --- | --- |
-| A tangent space the FBX arrived with | *Closed.* It was overwritten with NifSkope's where ck-cmd's SDK call would have kept it (`pOverwrite = false`), and it is now kept. The claim recorded here that this was "harmless for anything that came from a NIF" was wrong on its stated grounds — `FbxMeshWriter` does write tangents into the FBX and `FbxMeshReader` reads them back, so the frame survived the trip and was overwritten at the end of it, not regenerated at both ends. It was the bulk of the field sweep's residue: on four vanilla skinned meshes every other vertex component came back exact across 31,684 vertices while `Tangent` and `Bitangent X` differed on all of them. The handedness question the entry left open is answered by the same measurement — a carried frame is written back bit-exact against vanilla, so no swap is needed. Generation is *not* made the fallback for a mesh that arrives without tangents: introducing them moves every offset in `Vertex Desc` and costs the word `Unused W` holds | §5.3.1 |
+| A tangent space the FBX arrived with | *Closed.* It was overwritten with NifSkope's where ck-cmd's SDK call would have kept it (`pOverwrite = false`), and it is now kept. The claim recorded here that this was "harmless for anything that came from a NIF" was wrong on its stated grounds — `FbxMeshWriter` does write tangents into the FBX and `FbxMeshReader` reads them back, so the frame survived the trip and was overwritten at the end of it, not regenerated at both ends. It was the bulk of the field sweep's residue: on four vanilla skinned meshes every other vertex component came back exact across 31,684 vertices while `Tangent` and `Bitangent X` differed on all of them. The handedness question the entry left open is answered by the same measurement — a carried frame is written back bit-exact against vanilla, so no swap is needed. Generation is now the fallback, as ck-cmd's SDK call is: a mesh with normals and UVs but no tangent layer has a frame built for it, since that is what a DCC export looks like and a shape without one renders unlit under a normal map. It is gated on a `nif_shape_no_tangents` marker the exporter writes, because a NIF that never had tangents produces the same FBX as a DCC mesh that never had them, and giving *that* one a frame moves every offset in `Vertex Desc` and costs the word `Unused W` holds — 105 sampled shapes were gaining one that way | §5.3.1 |
 | A controller with no interpolator, outside a particle system | Not recognised as animation, and only particle systems carry these structurally so far | §5A.6, §4.9A |
 | Corners of a convex hull over near-degenerate points | The hull returns every corner for 99.0% of the game's convex shapes and 99.9% of all corners; the rest lose one or two near-coplanar corners each, 78 in 94,219. A corner within a thousand-millionth of the shape of a face it does not form is treated as lying on it | §5.7.0B |
 | Shared key data behind same-named controllers | *Closed.* Two interpolators sharing one data block stay shared when the track's encoded name picks out one controller, which it now does for shader controllers: they carry the variable they drive, so a node's several controllers of one class are no longer all called the same thing. Only 3 of the game's 22,047 meshes share a `NiFloatData` at all | §5A.6 |
