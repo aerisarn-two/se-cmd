@@ -117,6 +117,11 @@ namespace SECmd.Fbx
             properties.Set("environment_map_scale", "Number", "", FbxProperties.UserFlags,
                 (double)material.EnvironmentMapScale);
 
+            // How UVs outside 0..1 behave. Read into the material and then dropped, so
+            // every rebuilt shader wrapped in both directions whatever the file said.
+            properties.Set("texture_clamp_mode", "int", "", FbxProperties.UserFlags,
+                (int)material.TextureClampMode);
+
             // The fields belonging to whichever shading path this shader is on.
             foreach ((string field, string text) in material.ShaderTypeValues)
                 properties.SetUserString(MaterialData.ShaderTypeFieldProperty(field), text);

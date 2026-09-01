@@ -2887,6 +2887,11 @@ namespace SECmd.Conversion
 
             SetFloat(shader, "Environment Map Scale", (float)properties.GetDouble("environment_map_scale"));
 
+            // Defaults to wrapping in both directions, which is nif.xml's default and
+            // the commonest, so a scene that never carried one is unchanged.
+            if (properties.Contains("texture_clamp_mode"))
+                SetCount(shader, "Texture Clamp Mode", (uint)properties.GetInt("texture_clamp_mode"));
+
             // ...and the rest of what this shading path carries. Written after the type
             // above, since that is what makes them exist at all.
             foreach (string field in MaterialData.ShaderTypeFields)
