@@ -1019,6 +1019,19 @@ namespace SECmd.Conversion
                 if (type is "bhkTransformShape" or "bhkConvexTransformShape")
                     WriteHavokTransform(container, ReadTransform(node));
 
+                // ...and it carries the material of what it wraps, as the list above
+                // does. Nothing wrote that either, so the wrapper kept nif.xml's
+                // default while the shape inside it had the real one -- 149 differences
+                // on bhkConvexTransformShape over a 1,200-mesh sample and 20 on
+                // bhkTransformShape.
+                //
+                // The child's is the right answer and not a guess: across a 2,500-mesh
+                // sample the two agree in every one of the 319 wrappers that have a
+                // child to ask, 280 convex and 39 plain. Where a list disagrees with
+                // its first child 8 times in 141, a transform shape never does.
+                if (FbxCollisionMaterial.MaterialField(children[0]) is { } wrapped)
+                    FbxCollisionMaterial.MaterialField(container)?.Value.SetCount(wrapped.Value.ToUInt());
+
                 if (children.Count > 1)
                 {
                     Warnings.Add(
