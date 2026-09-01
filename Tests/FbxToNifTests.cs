@@ -33,6 +33,113 @@ namespace SECmd.Tests
             return NifModel.Load(stream, Db);
         }
 
+        /// <summary>
+        /// An FBX authored elsewhere, with normals and UVs but no tangent layer, has
+        /// its tangent frame completed on the way in.
+        /// </summary>
+        /// <remarks>
+        /// Most DCC exporters write no tangent layer at all. A shape that reaches the
+        /// game without one renders unlit under a normal map, which is what the frame
+        /// is in the vertex buffer for, so a mesh that arrives without one and says
+        /// nothing about why gets a frame built from its positions, normals and UVs.
+        /// </remarks>
+        [Fact]
+        public void AnFbxWithNoTangentsHasItsFrameCompleted()
+        {
+            var scene = new FbxScene(FbxDocument.Load(PathTo("multi_material_cube.fbx")));
+
+            // The fixture is the case under test: normals and UVs, no tangents.
+            foreach (FbxObject geometry in scene.OfClass("Geometry"))
+            {
+                if (FbxMeshReader.Read(geometry) is not { } mesh)
+                    continue;
+
+                Assert.True(mesh.HasNormals);
+                Assert.True(mesh.HasUvs);
+                Assert.False(mesh.HasTangents);
+            }
+
+            NifModel model = FromFbx("multi_material_cube.fbx", out _);
+
+            var datas = model.Blocks.Where(b => b.Name == "NiTriShapeData").ToList();
+            Assert.NotEmpty(datas);
+
+            foreach (NifItem data in datas)
+            {
+                List<NifVector3> tangents = model.GetTangents(data);
+                List<NifVector3> normals = model.GetNormals(data);
+
+                Assert.NotEmpty(tangents);
+                Assert.Equal(model.GetVertices(data).Count, tangents.Count);
+                Assert.Equal(tangents.Count, model.GetBitangents(data).Count);
+
+                // A frame, not a filler: every vector unit length and perpendicular to
+                // its normal, which is what a normal map is sampled against.
+                for (int i = 0; i < tangents.Count; i++)
+                {
+                    NifVector3 t = tangents[i], n = normals[i];
+
+                    Assert.Equal(1f, MathF.Sqrt(t.X * t.X + t.Y * t.Y + t.Z * t.Z), 3);
+                    Assert.Equal(0f, t.X * n.X + t.Y * n.Y + t.Z * n.Z, 3);
+                }
+            }
+        }
+
+        /// <summary>
+        /// A shape whose NIF had no tangent frame does not gain one on a round trip.
+        /// </summary>
+        /// <remarks>
+        /// The same FBX comes out of a NIF that never had tangents as out of a DCC mesh
+        /// that never had them, so the fact has to travel on the geometry. Getting this
+        /// wrong is not cosmetic: `Bitangent X` and `Unused W` share a slot, chosen by
+        /// the Tangents flag, so a shape that gains a frame loses that word and every
+        /// offset in `Vertex Desc` after it moves along.
+        /// </remarks>
+        [Fact]
+        public void AShapeThatHadNoTangentsDoesNotGainThem()
+        {
+            NifModel source = NifModel.Load(PathTo("nifly/TestNifFile_Static_SE.nif"), Db);
+
+            var shapes = source.Blocks
+                .Where(b => b.Name is "BSTriShape" or "NiTriShapeData")
+                .ToList();
+
+            Assert.NotEmpty(shapes);
+
+            FbxDocument document = new NifToFbx(source).Convert();
+
+            // The marker the exporter leaves, which is what the importer reads.
+            var scene = new FbxScene(document);
+
+            NifModel rebuilt = new FbxToNif(scene, new FbxToNifOptions
+            {
+                RootName = "static",
+                Version = source.Version,
+                UserVersion = source.UserVersion,
+                LegendaryEdition = source.BSVersion < 100
+            }).Convert(Db);
+
+            // Whatever the source said about tangents, the rebuild says the same.
+            Assert.Equal(TangentFlags(source), TangentFlags(rebuilt));
+        }
+
+        /// <summary>Which of a model's shapes announce a tangent frame.</summary>
+        private static List<bool> TangentFlags(NifModel model)
+        {
+            var flags = new List<bool>();
+
+            foreach (NifItem shape in model.Blocks)
+            {
+                if (model.FindItem(shape, "Vertex Desc") is not { } desc)
+                    continue;
+
+                ulong attributes = (desc.Value.ToUInt64() >> BSVertexDesc.Member.VertexAttributes) & 0xFFF;
+                flags.Add(((VertexFlags)attributes & VertexFlags.Tangent) != 0);
+            }
+
+            return flags;
+        }
+
         /// <summary>NIF to FBX and back, the full round trip.</summary>
         private static NifModel RoundTrip(string nif)
         {

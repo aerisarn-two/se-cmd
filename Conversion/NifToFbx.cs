@@ -1284,6 +1284,28 @@ namespace SECmd.Conversion
         /// the data block beside it. A shape this cannot read either way is treated as
         /// having them, which leaves it exactly as it was.
         /// </remarks>
+        /// <summary>Whether the shape carries a tangent frame.</summary>
+        /// <remarks>
+        /// Read the way <see cref="HasNormals"/> is: from `Vertex Desc` where the vertex
+        /// buffer is inline, and from the arrays beside the normals where the geometry is
+        /// a data block of its own. A shape this cannot read either way is treated as
+        /// having one, which leaves it exactly as it was.
+        /// </remarks>
+        private bool HasTangents(NifItem shape)
+        {
+            if (_model.FindItem(shape, "Vertex Desc") is { } desc)
+            {
+                var flags = (VertexFlags)((desc.Value.ToUInt64() >> BSVertexDesc.Member.VertexAttributes) & 0xFFF);
+
+                return (flags & VertexFlags.Tangent) != 0;
+            }
+
+            if (_model.GetRef(shape, "Data") is { } data)
+                return _model.GetTangents(data).Count > 0;
+
+            return true;
+        }
+
         private bool HasNormals(NifItem shape)
         {
             if (_model.FindItem(shape, "Vertex Desc") is { } desc)
@@ -1321,6 +1343,23 @@ namespace SECmd.Conversion
         /// behaviour.
         /// </remarks>
         public const string ShapeHasNoNormalsProperty = "nif_shape_no_normals";
+
+        /// <summary>Says the shape the FBX came from carried no tangent frame.</summary>
+        /// <remarks>
+        /// The counterpart of <see cref="ShapeHasNoNormalsProperty"/>, and needed for the
+        /// same reason. A mesh that reaches the importer with normals and UVs but no
+        /// tangents should have a frame computed for it — that is what an FBX authored in
+        /// a DCC looks like, and shipping it without one leaves it unlit under a normal
+        /// map. But a NIF that never had tangents produces exactly the same FBX, and
+        /// giving *that* one a frame changes its vertex layout: nif.xml puts
+        /// `Bitangent X` and `Unused W` in the same slot and picks between them by the
+        /// Tangents flag, so the shape gains a frame and loses whatever that word held.
+        ///
+        /// Nothing in an FBX tells the two apart, so the fact travels, exactly as the
+        /// normals one does. An FBX arriving without the marker — from any other
+        /// exporter — gets the frame completed.
+        /// </remarks>
+        public const string ShapeHasNoTangentsProperty = "nif_shape_no_tangents";
 
         /// <summary>Where a geometry's active material index rides.</summary>
         /// <remarks>
@@ -1417,6 +1456,9 @@ namespace SECmd.Conversion
             // since by the time the mesh is built there is nothing left to tell.
             if (!HasNormals(shape))
                 geometry.Properties.SetUserString(ShapeHasNoNormalsProperty, "1");
+
+            if (!HasTangents(shape))
+                geometry.Properties.SetUserString(ShapeHasNoTangentsProperty, "1");
 
             if (_model.FindItem(shape, @"Material Data\Active Material") is { } active)
             {

@@ -2249,11 +2249,25 @@ namespace SECmd.Conversion
             // of them. Bethesda's tangents are not NifSkope's, and recomputing threw
             // away the ones the file shipped in favour of ours.
             //
-            // Nothing is introduced, as before: a shape whose FBX carries no tangents
-            // did not have them in the NIF it came from, and giving it some changes the
-            // vertex layout -- nif.xml puts `Bitangent X` and `Unused W` in the same
-            // slot and picks between them by the Tangents flag, so a shape that gains
-            // tangents loses whatever that word held.
+            // A mesh that arrives with normals and UVs but *no* tangents has a frame
+            // computed for it. That is what an FBX authored in a DCC looks like -- most
+            // exporters write no tangent layer at all -- and a shape shipped without one
+            // renders unlit under a normal map, which is the whole reason the frame is in
+            // the vertex buffer.
+            //
+            // Unless the shape said it had none. A NIF without tangents produces exactly
+            // the same FBX as a DCC mesh without them, and giving that one a frame moves
+            // every offset in `Vertex Desc`: nif.xml puts `Bitangent X` and `Unused W` in
+            // the same slot and picks between them by the Tangents flag, so the shape
+            // gains a frame and loses whatever that word held. 105 of the shapes sampled
+            // were gaining one that way. So the fact travels on the geometry, exactly as
+            // "this shape has no normals" does, and only an FBX from somewhere else --
+            // carrying no marker -- has its frame completed.
+            if (mesh.HasUvs && mesh.HasNormals && !mesh.HasTangents
+                && geometry.Properties.GetString(NifToFbx.ShapeHasNoTangentsProperty).Length == 0)
+            {
+                TangentSpace.Generate(mesh);
+            }
 
             // Which geometry class this was, when the scene says. The edition only
             // decides when it does not: SE files hold NiTriShape as freely as
