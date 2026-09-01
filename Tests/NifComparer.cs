@@ -882,6 +882,45 @@ namespace SECmd.Tests
                 return encoded.Get<NifVector3>().Equals(b.Value.Get<NifVector3>());
             }
 
+            /// <summary>
+            /// Whether the shape being compared declares a tangent frame at all.
+            /// </summary>
+            /// <remarks>
+            /// nif.xml conditions the three bitangent lanes unevenly, and the middle one
+            /// is the odd one out:
+            ///
+            /// | Field | Condition | Needs |
+            /// | --- | --- | --- |
+            /// | `Bitangent X` | `(ARG &amp; 0x11) == 0x11` | Vertex and Tangent |
+            /// | `Bitangent Z` | `(ARG &amp; 0x18) == 0x18` | Normal and Tangent |
+            /// | `Bitangent Y` | `ARG &amp; 0x8` | Normal alone |
+            ///
+            /// So on a shape with normals and no tangents, `Bitangent Y` stays live while
+            /// everything else about the frame goes away. That is a statement about the
+            /// layout rather than about the data: a normal occupies four bytes, and the
+            /// fourth is this lane whether or not there is a bitangent to put in it.
+            ///
+            /// What the game's files leave there is whatever the exporter had lying
+            /// around. `camcraneup256x200`'s editor marker holds 255 on two of its 296
+            /// vertices and 0 on the rest, with every tangent (0, 0, 0) and both other
+            /// lanes dead. There is nothing to carry and nothing a converter could be
+            /// right about, so the comparison passes over it -- 49 files in a 3,000-mesh
+            /// sample differ in this and nothing else.
+            ///
+            /// Narrow on purpose: only this lane, and only where the shape's own
+            /// `Vertex Desc` says it has no tangents. A shape that declares a frame is
+            /// held to all three lanes as before.
+            /// </remarks>
+            private bool DeclaresTangents()
+            {
+                if (_owner is null || left.FindItem(_owner, "Vertex Desc") is not { } desc)
+                    return true;
+
+                ulong attributes = (desc.Value.ToUInt64() >> BSVertexDesc.Member.VertexAttributes) & 0xFFF;
+
+                return ((VertexFlags)attributes & VertexFlags.Tangent) != 0;
+            }
+
             private bool Same(NifItem a, NifItem b)
             {
                 if (a.Name == "Flags" && left.BlockInherits(_owner, "NiAVObject"))
@@ -889,6 +928,10 @@ namespace SECmd.Tests
 
                 // Geometry displaced by exactly the transform the exporter bakes in.
                 if (BakedTransformExplains(a, b))
+                    return true;
+
+                // A bitangent lane on a shape that declares no tangent frame.
+                if (a.Name == "Bitangent Y" && !DeclaresTangents())
                     return true;
 
                 // A quaternion and its negation are the same rotation: q and -q turn a
