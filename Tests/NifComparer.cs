@@ -165,6 +165,8 @@ namespace SECmd.Tests
                     Align(a, b, Annotations, whole: true);
                 else if (a.Name == "Objs")
                     AlignPalette(a, b);
+                else if (a.Name == "Controlled Blocks")
+                    Align(a, b, ControlledBlocks, whole: true);
                 else if (a.Name == "Partitions")
                     AlignPartition(a, b);
 
@@ -479,6 +481,45 @@ namespace SECmd.Tests
                 {
                     _permuted[listLeft] = order;
                 }
+            }
+
+            /// <summary>
+            /// Each controlled block, by what it drives.
+            /// </summary>
+            /// <remarks>
+            /// A sequence's `Controlled Blocks` say which node, which property of it,
+            /// which controller and which interpolator a track belongs to. Together
+            /// those name the thing being driven, and the row's place in the array names
+            /// nothing: the engine walks the list and binds each entry by what it says.
+            ///
+            /// The rebuild does not preserve the order -- the tracks come back grouped
+            /// the way the scene stores them -- and compared by position that reports
+            /// every field of every row after the first shift. It arrives as neat
+            /// symmetric pairs, which is the giveaway: 442 rows reporting
+            /// `BSEffectShaderProperty vs ''` against 430 reporting `'' vs
+            /// BSEffectShaderProperty`, 327 `NiTransformController vs NiVisController`
+            /// against 318 the other way about.
+            ///
+            /// Matched whole or not at all. A sequence that gained or lost a controlled
+            /// block is a different sequence, and pairing what is left over would say
+            /// one row is wrong where the truth is that a row is missing.
+            /// </remarks>
+            private static List<string> ControlledBlocks(NifModel model, NifItem array)
+            {
+                var keys = new List<string>(array.Children.Count);
+
+                foreach (NifItem entry in array.Children)
+                {
+                    keys.Add(string.Join(
+                        "\u0000",
+                        model.GetString(entry, "Node Name"),
+                        model.GetString(entry, "Property Type"),
+                        model.GetString(entry, "Controller Type"),
+                        model.GetString(entry, "Controller ID"),
+                        model.GetString(entry, "Interpolator ID")));
+                }
+
+                return keys;
             }
 
             /// <summary>
