@@ -155,6 +155,12 @@ namespace SECmd.Fbx
             properties.SetUserString("alpha_test_mode", AlphaSettings.NameOf(alpha.AlphaTestMode));
             properties.Set("no_sorter_flag", "bool", "", FbxProperties.UserFlags, alpha.NoSorter ? 1 : 0);
 
+            // Bethesda's own two bits of the word, which have no GL meaning to name.
+            properties.Set("clone_unique_flag", "bool", "", FbxProperties.UserFlags,
+                alpha.CloneUnique ? 1 : 0);
+            properties.Set("editor_alpha_threshold_flag", "bool", "", FbxProperties.UserFlags,
+                alpha.EditorAlphaThreshold ? 1 : 0);
+
             // Named for Blender, which surfaces a short here.
             properties.Set("alpha_test_threshold", "Short", "", FbxProperties.UserFlags, (int)alpha.Threshold);
         }

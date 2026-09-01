@@ -3161,6 +3161,8 @@ namespace SECmd.Conversion
                 AlphaTestEnable = properties.GetBool("alpha_test_enable"),
                 AlphaTestMode = AlphaSettings.ParseTestMode(properties.GetString("alpha_test_mode")),
                 NoSorter = properties.GetBool("no_sorter_flag"),
+                CloneUnique = properties.GetBool("clone_unique_flag"),
+                EditorAlphaThreshold = properties.GetBool("editor_alpha_threshold_flag"),
                 Threshold = (byte)properties.GetInt("alpha_test_threshold")
             };
 

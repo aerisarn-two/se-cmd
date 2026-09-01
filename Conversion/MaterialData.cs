@@ -58,6 +58,26 @@ namespace SECmd.Conversion
         /// <summary>Disables triangle sorting.</summary>
         public bool NoSorter { get; set; }
 
+        /// <summary>
+        /// Bethesda's bit 14, which nif.xml names <c>Clone Unique</c>.
+        /// </summary>
+        /// <remarks>
+        /// nif.xml: "Bethesda-only. Always true for weapon blood after FO3." Modelling
+        /// the word as the six documented fields and dropping the top two bits meant a
+        /// rebuilt alpha property lost them, and this one is not rare: it is the single
+        /// commonest `Flags` difference left in the sweep, 201 of a 1,500-mesh sample.
+        /// </remarks>
+        public bool CloneUnique { get; set; }
+
+        /// <summary>
+        /// Bethesda's bit 15, which nif.xml names <c>Editor Alpha Threshold</c>.
+        /// </summary>
+        /// <remarks>
+        /// nif.xml: "Bethesda-only. True if the Alpha Threshold is externally
+        /// controlled." Lost the same way, on 38 shapes of the same sample.
+        /// </remarks>
+        public bool EditorAlphaThreshold { get; set; }
+
         public byte Threshold { get; set; }
 
         /// <summary>
@@ -65,7 +85,8 @@ namespace SECmd.Conversion
         /// </summary>
         /// <remarks>
         /// Bit 0 is blending, bits 1-4 the source factor, 5-8 the destination
-        /// factor, 9 the alpha test, 10-12 the test function, 13 the sort flag.
+        /// factor, 9 the alpha test, 10-12 the test function, 13 the sort flag, and
+        /// 14 and 15 Bethesda's two of their own.
         /// </remarks>
         public static AlphaSettings FromFlags(ushort flags, byte threshold) => new()
         {
@@ -75,6 +96,8 @@ namespace SECmd.Conversion
             AlphaTestEnable = (flags >> 9 & 0x1) != 0,
             AlphaTestMode = (GlTestMode)((flags >> 10) & 0x7),
             NoSorter = (flags >> 13 & 0x1) != 0,
+            CloneUnique = (flags >> 14 & 0x1) != 0,
+            EditorAlphaThreshold = (flags >> 15 & 0x1) != 0,
             Threshold = threshold
         };
 
@@ -96,6 +119,12 @@ namespace SECmd.Conversion
 
             if (NoSorter)
                 flags |= 1 << 13;
+
+            if (CloneUnique)
+                flags |= 1 << 14;
+
+            if (EditorAlphaThreshold)
+                flags |= 1 << 15;
 
             return (ushort)flags;
         }
