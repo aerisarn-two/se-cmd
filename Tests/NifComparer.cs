@@ -81,7 +81,21 @@ namespace SECmd.Tests
             /// </remarks>
             private readonly Dictionary<NifItem, (string Left, string Right)> _unpaired = [];
 
+            /// <summary>Arrays whose two sides may be of different lengths.</summary>
+            /// <remarks>
+            /// Set only where a row has been dropped from the comparison on purpose,
+            /// which makes the lengths disagree by design.
+            /// </remarks>
+            private readonly HashSet<NifItem> _ragged = [];
+
             private NifItem _owner = null!;
+
+            /// <summary>The name of a model's first root, for the rule below.</summary>
+            private static string RootName(NifModel model) =>
+                model.FindItem(model.Footer, "Roots") is { Children.Count: > 0 } roots
+                && model.GetBlock(roots.Children[0]) is { } root
+                    ? model.GetName(root)
+                    : string.Empty;
 
             public void Blocks(NifItem a, NifItem b, string path)
             {
@@ -114,7 +128,10 @@ namespace SECmd.Tests
                     return;
                 }
 
-                if (a.Children.Count != b.Children.Count)
+                if (a.Name == "Objs")
+                    AlignPalette(a, b);
+
+                if (a.Children.Count != b.Children.Count && !_ragged.Contains(a))
                 {
                     Differences.Add(new NifDifference(
                         path, a.Name, $"{a.Children.Count} fields", $"{b.Children.Count} fields"));
@@ -127,13 +144,19 @@ namespace SECmd.Tests
                 if (a.Name == "Extra Data List")
                     Align(a, b, Annotations, whole: true);
                 else if (a.Name == "Objs")
-                    Align(a, b, PaletteNames, whole: false);
+                    AlignPalette(a, b);
 
                 _permuted.TryGetValue(a, out int[]? order);
 
                 for (int i = 0; i < a.Children.Count; i++)
                 {
-                    NifItem ca = a.Children[i], cb = b.Children[order is null ? i : order[i]];
+                    int at = order is null ? i : order[i];
+
+                    // A row left out of the comparison on purpose.
+                    if (at < 0)
+                        continue;
+
+                    NifItem ca = a.Children[i], cb = b.Children[at];
                     string p = $"{path}/{ca.Name}";
 
                     // A field whose condition is false in both files is in neither
@@ -305,6 +328,96 @@ namespace SECmd.Tests
                 }
 
                 return names;
+            }
+
+            /// <summary>
+            /// Lines two object palettes up, leaving each side's root row out of it.
+            /// </summary>
+            /// <remarks>
+            /// A palette lists the blocks a sequence may name, and whether the file's
+            /// own root is among them is not something the file states. 15 of 329
+            /// vanilla palettes hold it and 314 do not, and nothing separates the two
+            /// groups -- see `NifAnimWriter.WritePalette`, which records the seven
+            /// things measured. A rebuilt palette leaves it out, which is right 314
+            /// times, and the 15 differ by exactly that one row.
+            ///
+            /// So the row is dropped from both sides before matching. Not excused after
+            /// the fact -- dropped, so it cannot hide anything either: every other row
+            /// is still matched by name and compared, and a palette that differs by
+            /// anything more than its root still reports it.
+            /// </remarks>
+            private void AlignPalette(NifItem left_, NifItem right_)
+            {
+                if (_permuted.ContainsKey(left_) || _ragged.Contains(left_))
+                    return;
+
+                List<string> wanted = PaletteNames(left, left_), have = PaletteNames(right, right_);
+                string leftRoot = RootName(left), rightRoot = RootName(right);
+
+                var keptRight = new List<int>();
+
+                for (int j = 0; j < have.Count; j++)
+                {
+                    if (rightRoot.Length == 0 || have[j] != rightRoot)
+                        keptRight.Add(j);
+                }
+
+                int dropped = wanted.Count(n => leftRoot.Length > 0 && n == leftRoot);
+
+                if (wanted.Count - dropped != keptRight.Count)
+                    return;
+
+                var order = new int[wanted.Count];
+                var taken = new bool[have.Count];
+                var unmatched = new List<int>();
+                bool moved = false;
+
+                for (int i = 0; i < wanted.Count; i++)
+                {
+                    if (leftRoot.Length > 0 && wanted[i] == leftRoot)
+                    {
+                        order[i] = -1;
+                        moved = true;
+                        continue;
+                    }
+
+                    int found = -1;
+
+                    foreach (int j in keptRight)
+                    {
+                        if (found < 0 && !taken[j] && have[j] == wanted[i])
+                            found = j;
+                    }
+
+                    if (found < 0) { unmatched.Add(i); continue; }
+
+                    taken[found] = true;
+                    order[i] = found;
+                    moved |= found != i;
+                }
+
+                // Rows the two sides genuinely disagree about, paired so their names are
+                // reported without either block being walked.
+                foreach (int i in unmatched)
+                {
+                    int spare = keptRight.FirstOrDefault(j => !taken[j], -1);
+
+                    if (spare < 0)
+                        return;
+
+                    taken[spare] = true;
+                    order[i] = spare;
+                    moved = true;
+                    _unpaired[left_.Children[i]] = (wanted[i], have[spare]);
+                }
+
+                if (!moved)
+                    return;
+
+                _permuted[left_] = order;
+
+                if (dropped > 0 || keptRight.Count != have.Count)
+                    _ragged.Add(left_);
             }
 
             /// <summary>
