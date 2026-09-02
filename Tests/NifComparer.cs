@@ -1174,6 +1174,18 @@ namespace SECmd.Tests
                 if (Child(list.Children[bone], "Vertex Weights") is not { } authored)
                     return false;
 
+                // How much of the vertex's authored weight the row can actually hold. A
+                // row has four slots and `NiSkinData` is not bound by that: `falmervampire
+                // feral` authors 141 vertices with five influences apiece, all of them
+                // drawn by a single partition. So the four heaviest are kept and scaled
+                // back up to one -- a derivable answer, and the one this port writes.
+                //
+                // Without this the comparison asked whether our value *equals* the
+                // authored one, which for such a vertex it cannot: vertex 81's five
+                // influences leave 0.93522 after the smallest goes, and every kept weight
+                // is 1.0693 times what was authored.
+                float scale = RenormalisationFor(list, vertex, row.Children.Count);
+
                 foreach (NifItem entry in authored.Children)
                 {
                     if (entry.Children.FirstOrDefault(c => c.Name == "Index") is not { } index
@@ -1181,6 +1193,14 @@ namespace SECmd.Tests
                         || entry.Children.FirstOrDefault(c => c.Name == "Weight") is not { } weight)
                     {
                         continue;
+                    }
+
+                    if (scale != 1f)
+                    {
+                        var scaled = new NifValue(weight.Value.Type);
+                        scaled.SetFloat(weight.Value.ToFloat() * scale);
+
+                        return scaled.ToString() == theirs.Value.ToString();
                     }
 
                     // Ours has to *be* the authored weight. That it merely differs from
@@ -1203,6 +1223,47 @@ namespace SECmd.Tests
                 }
 
                 return false;
+            }
+
+            /// <summary>
+            /// What the kept weights are scaled by when a vertex has more influences than
+            /// a row has slots.
+            /// </summary>
+            /// <remarks>
+            /// One when everything fits, which is the ordinary case. Otherwise the four
+            /// heaviest are kept and the rest dropped, and the total is brought back to
+            /// one -- the same rule `FbxToNif.WriteVertexSkinning` follows, so this asks
+            /// whether the rebuild did what it says it does rather than whether it
+            /// matched the file's own cached answer, which for these vertices is not
+            /// derivable from anything: `falmervampireferal` keeps a slot at weight zero
+            /// in one row while dropping a heavier influence from it.
+            /// </remarks>
+            private float RenormalisationFor(NifItem boneList, uint vertex, int slots)
+            {
+                var weights = new List<float>();
+
+                foreach (NifItem entry in boneList.Children)
+                {
+                    if (Child(entry, "Vertex Weights") is not { } list)
+                        continue;
+
+                    foreach (NifItem row in list.Children)
+                    {
+                        if (row.Children.FirstOrDefault(c => c.Name == "Index") is { } index
+                            && index.Value.ToUInt() == vertex
+                            && row.Children.FirstOrDefault(c => c.Name == "Weight") is { } weight)
+                        {
+                            weights.Add(weight.Value.ToFloat());
+                        }
+                    }
+                }
+
+                if (weights.Count <= slots)
+                    return 1f;
+
+                float kept = weights.OrderByDescending(w => w).Take(slots).Sum();
+
+                return kept > 0f ? 1f / kept : 1f;
             }
 
             /// <summary>The bone a partition's weight slot names, by node name.</summary>
