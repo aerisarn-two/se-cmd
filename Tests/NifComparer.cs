@@ -151,6 +151,11 @@ namespace SECmd.Tests
                 if (a.Name == "Objs")
                     AlignPalette(a, b);
 
+                // A child list one side pads with empty slots. Matched before the
+                // length check, since the lengths are exactly what differ.
+                if (a.Name == "Children" && a.Children.Count != b.Children.Count)
+                    AlignAroundEmptyChildren(a, b);
+
                 if (a.Children.Count != b.Children.Count && !_ragged.Contains(a))
                 {
                     Differences.Add(new NifDifference(
@@ -1015,6 +1020,62 @@ namespace SECmd.Tests
                 ulong attributes = (desc.Value.ToUInt64() >> BSVertexDesc.Member.VertexAttributes) & 0xFFF;
 
                 return ((VertexFlags)attributes & VertexFlags.Tangent) != 0;
+            }
+
+            /// <summary>
+            /// Pairs two child lists that hold the same nodes and differ only in empty
+            /// slots.
+            /// </summary>
+            /// <remarks>
+            /// A `Children` array may carry a link pointing at nothing. 123 of the
+            /// 16,483 `NiNode`s in a 4,000-mesh sample do, 188 slots between them, and
+            /// `treepineforest05`'s multi-bound node is one of them. Nothing reads an
+            /// empty slot -- it is the absence of a child rather than a child -- and a
+            /// rebuilt file writes only the children it has, so the lengths disagree.
+            ///
+            /// Excusing `Children` outright would excuse a node genuinely losing one,
+            /// which is among the worst things this converter could do quietly. So the
+            /// two lists are matched only when the blocks they actually name are the
+            /// same, in the same order; the empty slots are then dropped from the walk
+            /// and everything else is compared as usual. A list that has really lost a
+            /// child still fails on its length.
+            /// </remarks>
+            private void AlignAroundEmptyChildren(NifItem left_, NifItem right_)
+            {
+                var filled = new List<int>();
+
+                for (int i = 0; i < left_.Children.Count; i++)
+                    if (left.GetBlock(left_.Children[i]) is not null)
+                        filled.Add(i);
+
+                var theirs = new List<int>();
+
+                for (int i = 0; i < right_.Children.Count; i++)
+                    if (right.GetBlock(right_.Children[i]) is not null)
+                        theirs.Add(i);
+
+                if (filled.Count != theirs.Count)
+                    return;
+
+                // The same blocks, named in the same order. Compared by class and name,
+                // which is what identifies a block across two files.
+                for (int i = 0; i < filled.Count; i++)
+                {
+                    NifItem mine = left.GetBlock(left_.Children[filled[i]])!;
+                    NifItem yours = right.GetBlock(right_.Children[theirs[i]])!;
+
+                    if (mine.Name != yours.Name || left.GetName(mine) != right.GetName(yours))
+                        return;
+                }
+
+                var order = new int[left_.Children.Count];
+                Array.Fill(order, -1);
+
+                for (int i = 0; i < filled.Count; i++)
+                    order[filled[i]] = theirs[i];
+
+                _permuted[left_] = order;
+                _ragged.Add(left_);
             }
 
             private bool Same(NifItem a, NifItem b)
