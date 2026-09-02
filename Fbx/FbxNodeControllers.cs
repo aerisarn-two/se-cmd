@@ -205,6 +205,93 @@ namespace SECmd.Fbx
             }
         }
 
+
+        /// <summary>The property recording the order of a block's controller chain.</summary>
+        public const string ChainOrderProperty = "nac_order";
+
+        /// <summary>Records the order the controllers sit in on the block.</summary>
+        /// <remarks>
+        /// A controller chain is a linked list, and the two routes that rebuild one --
+        /// the structural carrier and the animation layer -- hang controllers on in
+        /// whatever order they arrive, which is not the order the file had.
+        ///
+        /// A particle system's chain follows a rule and is derived rather than carried
+        /// (`FbxToNif.OrderParticleControllerChains`). A shader's does not. Measured
+        /// over all 22,047 meshes, of 2,660 chains whose every controller names a
+        /// `Controlled Variable`, 2,157 have it descending, 146 ascending and 357
+        /// neither -- `glowdust01` runs 7, 8, 6. That is an authored order, not a
+        /// derivable one, so it travels.
+        ///
+        /// As a list of class and controller id, which is what tells two controllers of
+        /// one class apart, and read back as a sort key. A controller the list does not
+        /// name keeps its place at the end rather than being dropped.
+        /// </remarks>
+        public static void WriteChainOrder(FbxObject node, NifModel model, NifItem block)
+        {
+            var order = new List<string>();
+
+            foreach (NifItem controller in Chain(model, block))
+                order.Add($"{controller.Name}|{NifAnimAccess.ControllerIdOf(model, controller)}");
+
+            if (order.Count > 1)
+                node.Properties.SetUserString(ChainOrderProperty, string.Join("\u001f", order));
+        }
+
+        /// <summary>Puts the chain back in that order, once it has been rebuilt.</summary>
+        public static void ReadChainOrder(FbxObject node, NifModel model, NifItem block)
+        {
+            if (node.Properties.GetString(ChainOrderProperty) is not { Length: > 0 } text)
+                return;
+
+            var wanted = new Dictionary<string, int>(StringComparer.Ordinal);
+            string[] parts = text.Split('\u001f');
+
+            for (int i = 0; i < parts.Length; i++)
+                wanted.TryAdd(parts[i], i);
+
+            var chain = Chain(model, block).ToList();
+
+            if (chain.Count < 2)
+                return;
+
+            var ordered = chain
+                .Select((controller, position) => (
+                    Controller: controller,
+                    Place: wanted.TryGetValue(
+                        $"{controller.Name}|{NifAnimAccess.ControllerIdOf(model, controller)}",
+                        out int found) ? found : int.MaxValue,
+                    position))
+                .OrderBy(x => x.Place)
+                .ThenBy(x => x.position)
+                .Select(x => x.Controller)
+                .ToList();
+
+            if (ordered.SequenceEqual(chain))
+                return;
+
+            model.SetRef(block, "Controller", ordered[0]);
+
+            for (int i = 0; i < ordered.Count; i++)
+                model.SetRef(ordered[i], "Next Controller", i + 1 < ordered.Count ? ordered[i + 1] : null);
+        }
+
+        /// <summary>A block's controllers, in the order they are linked.</summary>
+        private static IEnumerable<NifItem> Chain(NifModel model, NifItem block)
+        {
+            var seen = new List<NifItem>();
+
+            for (NifItem? controller = model.GetRef(block, "Controller");
+                 controller is not null;
+                 controller = model.GetRef(controller, "Next Controller"))
+            {
+                if (seen.Contains(controller))
+                    yield break;
+
+                seen.Add(controller);
+                yield return controller;
+            }
+        }
+
         /// <summary>Rebuilds the controllers that animate nothing, onto the block.</summary>
         public static void Read(
             FbxObject node,

@@ -247,6 +247,10 @@ namespace SECmd.Conversion
             // any other node's -- more, since the multi-target emitter is one of them.
             FbxNodeControllers.WriteAnimatedFields(node, _model, block, SequencedControllers);
 
+            // And the order they sit in, which neither route rebuilds and which a
+            // shader's chain does not follow any rule this could derive.
+            FbxNodeControllers.WriteChainOrder(node, _model, block);
+
             if (FbxParticleWriter.IsParticleSystem(_model, block))
             {
                 FbxParticleWriter.AddParticleSystem(scene, node, _model, block);
@@ -675,6 +679,13 @@ namespace SECmd.Conversion
             {
                 FbxEffectShader.Write(fbxMaterial, _model, shader);
             }
+
+            // A shader property has a controller chain of its own, and its order is
+            // authored rather than derivable (see FbxNodeControllers.WriteChainOrder).
+            // The material is what stands for the property in the scene, so it carries
+            // it.
+            if (_model.GetRef(shape, "Shader Property") is { } shaderProperty)
+                FbxNodeControllers.WriteChainOrder(fbxMaterial, _model, shaderProperty);
 
             // A material belongs to the node carrying the mesh, not the mesh, and the
             // geometry's material element points at index 0.

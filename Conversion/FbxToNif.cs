@@ -242,9 +242,24 @@ namespace SECmd.Conversion
             foreach ((FbxObject source, NifItem block) in _animatedControllerHosts)
                 FbxNodeControllers.ReadAnimatedFields(source, _model, block);
 
-            _animatedControllerHosts.Clear();
-
+            // The derived rule first, for a scene that carries no order -- one authored
+            // in a DCC, or exported before this travelled.
             OrderParticleControllerChains();
+
+            // Then the order the file actually had, which wins where it was carried.
+            foreach ((FbxObject source, NifItem block) in _animatedControllerHosts)
+                FbxNodeControllers.ReadChainOrder(source, _model, block);
+
+            // And the same for the shader properties, whose chains hang off the
+            // property rather than off the node that carries it.
+            foreach ((FbxObject material, NifItem shape) in _pendingChainOrder)
+            {
+                if (_model.GetRef(shape, "Shader Property") is { } shader)
+                    FbxNodeControllers.ReadChainOrder(material, _model, shader);
+            }
+
+            _animatedControllerHosts.Clear();
+            _pendingChainOrder.Clear();
 
             // Last, because it is an answer about the finished graph.
             //
@@ -692,6 +707,9 @@ namespace SECmd.Conversion
         /// the controllers those fields belong to do not exist.
         /// </remarks>
         private readonly List<(FbxObject Node, NifItem Block)> _animatedControllerHosts = [];
+
+        /// <summary>Materials whose shader property's controller chain needs ordering.</summary>
+        private readonly List<(FbxObject Material, NifItem Shape)> _pendingChainOrder = [];
 
         /// <summary>
         /// Puts a particle system's controller chain back in the order the game writes.
@@ -3319,6 +3337,10 @@ namespace SECmd.Conversion
 
             if (material is null)
                 return;
+
+            // The shader's own controller chain is put back in order once the
+            // animation has built it, the same as a node's.
+            _pendingChainOrder.Add((material, shape));
 
             // The material says which shader it came from; only an effect shader
             // records it, since a lighting shader is what everything else rebuilds as.
