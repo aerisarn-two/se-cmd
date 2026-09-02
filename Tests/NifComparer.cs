@@ -176,6 +176,8 @@ namespace SECmd.Tests
                     AlignPartition(a, b);
                 else if (a.Name == "Vertex Weights" && HasVertexIndices(a))
                     Align(a, b, WeightedVertices, whole: true);
+                else if (a.Name == "Extra Targets")
+                    Align(a, b, Annotations, whole: true);
 
                 _permuted.TryGetValue(a, out int[]? order);
 
@@ -798,7 +800,21 @@ namespace SECmd.Tests
                 return keys;
             }
 
-            /// <summary>Each entry of an extra data list, as class and name.</summary>
+            /// <summary>
+            /// Each entry of an extra data list -- or of a controller's extra targets --
+            /// as class and name.
+            /// </summary>
+            /// <remarks>
+            /// `NiMultiTargetTransformController` names the nodes it drives besides its
+            /// own target, and the list is a set: the controller drives all of them, and
+            /// which one it names first changes nothing. Compared by position, a file
+            /// whose targets come back in another order reads as every entry pointing at
+            /// the wrong node -- `intperkskydome` swaps `WarGas` and `CameraPosition` and
+            /// reads as two faults.
+            ///
+            /// Matched whole, so a controller that really drives a different set of nodes
+            /// still fails rather than being paired up somehow.
+            /// </remarks>
             private static List<string> Annotations(NifModel model, NifItem array)
             {
                 var names = new List<string>(array.Children.Count);
