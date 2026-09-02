@@ -126,6 +126,27 @@ namespace SECmd.Tests
             // whether the capsule survived is asked by a test of its own,
             // `ACapsuleKeepsItsAxisAndWhichEndCameFirst`, which checks the axis and which
             // end came first rather than the last digit of either.
+            // A collision shape Skyrim SE does not support.
+            //
+            // `bhkNiTriStripsShape` is the older games' packed-strips collision, and SSE
+            // does not read it: the 31 blocks the game still ships are left over in files
+            // that carry a working shape beside them. So the geometry inside one --
+            // `Material CRC`, `BS Data Flags`, `Has Normals`, the vertex colours, the UV
+            // set, and the per-strips collision filter -- is vestigial, and a rebuild
+            // dropping it costs nothing the engine would have read.
+            //
+            // Measured before excusing, since only one of the fields follows a rule and
+            // the rest genuinely vary: across those 31 blocks `Has Normals` is 1 on every
+            // one, `Material CRC` is 3741512247 on 18 and something else on the rest,
+            // `BS Data Flags` 1 on 24, `Has Vertex Colors` 1 on 18, and the UV set present
+            // on 26. Nothing there could be re-derived; it does not need to be.
+            //
+            // Keyed to the shape, so an `NiTriStripsData` doing an LE mesh's real
+            // geometry is still held to all of it.
+            ["bhkNiTriStripsShape/Strips Data"] = "a collision shape SSE does not support",
+            ["bhkNiTriStripsShape/Filters"] = "a collision shape SSE does not support",
+            ["bhkNiTriStripsShape/Num Filters"] = "a collision shape SSE does not support",
+
             ["bhkCapsuleShape/First Point"] = "capsule refitted from the tessellation (shape checked separately)",
             ["bhkCapsuleShape/Second Point"] = "capsule refitted from the tessellation (shape checked separately)",
 
