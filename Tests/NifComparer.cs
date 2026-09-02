@@ -1259,6 +1259,69 @@ namespace SECmd.Tests
                     _permuted[left_] = order;
             }
 
+            /// <summary>
+            /// Whether a rotation key differs by exactly what the trip through FBX costs.
+            /// </summary>
+            /// <remarks>
+            /// A NIF stores a rotation track either as quaternion keys or as three
+            /// `XYZ Rotations` groups; **FBX has only the second**, as `AnimTrack`
+            /// records. So a quaternion key is decomposed to Euler XYZ degrees on the way
+            /// out and rebuilt from them on the way back, and what returns is the same
+            /// rotation carried to fewer digits: `blacksmithforgemarker` sends
+            /// (0.500559, 0.501334, 0.499604, -0.498498) and gets
+            /// (0.500082, 0.499918, 0.500082, -0.499918).
+            ///
+            /// Checked rather than tolerated. The source's own quaternion is put through
+            /// the same decomposition and recomposition, and the result has to match
+            /// exactly -- so a key that came back as a *different* rotation still fails,
+            /// however close, and no threshold has to be invented for how close is close
+            /// enough. The same technique settles the particle copy's half-float rounding
+            /// and the baked transform's byte-quantised normals.
+            /// </remarks>
+            /// <summary>
+            /// The same question for a node's rotation, which is a matrix rather than a
+            /// quaternion and travels the same way.
+            /// </summary>
+            /// <remarks>
+            /// A node's transform rides on FBX's `Lcl Rotation`, which is Euler XYZ in
+            /// degrees -- `FbxMeshWriter` writes `ToEulerDegrees` and `FbxToNif` reads it
+            /// back through `RotationFromEulerDegrees`. A matrix carrying a component of
+            /// about 1e-4 off the axis loses it there: `boarriekling_varianta` sends
+            /// -9.04376E-05 and gets -4.37114E-08.
+            ///
+            /// Put through the same two conversions, the source's own matrix lands on
+            /// exactly what came back. A node that really turned somewhere else still
+            /// fails.
+            /// </remarks>
+            private static bool MatrixSurvivesTheEulerTrip(NifItem a, NifItem b)
+            {
+                var mine = new NifTransform(new NifVector3(), a.Value.Get<NifMatrix33>(), 1f);
+                NifVector3 euler = mine.ToEulerDegrees();
+
+                NifMatrix33 expected = NifTransform.RotationFromEulerDegrees(euler.X, euler.Y, euler.Z);
+
+                return expected.Equals(b.Value.Get<NifMatrix33>());
+            }
+
+            private static bool SurvivesTheEulerTrip(NifItem a, NifItem b)
+            {
+                var mine = a.Value.Get<NifQuat>();
+                var theirs = b.Value.Get<NifQuat>();
+
+                NifVector3 euler =
+                    new NifTransform(new NifVector3(), NifTransform.RotationFromQuaternion(mine), 1f)
+                        .ToEulerDegrees();
+
+                NifQuat expected =
+                    new NifTransform(
+                            new NifVector3(),
+                            NifTransform.RotationFromEulerDegrees(euler.X, euler.Y, euler.Z),
+                            1f)
+                        .ToQuaternion();
+
+                return expected.Equals(theirs) || NegatedQuaternion(expected.ToString(), theirs.ToString());
+            }
+
             private bool Same(NifItem a, NifItem b)
             {
                 if (a.Name == "Flags" && left.BlockInherits(_owner, "NiAVObject"))
@@ -1294,6 +1357,16 @@ namespace SECmd.Tests
                 {
                     return true;
                 }
+
+                // A rotation that went out as three Euler angles and came back.
+                if (a.Value.Type is NifValueType.Quat or NifValueType.QuatXYZW
+                    && SurvivesTheEulerTrip(a, b))
+                {
+                    return true;
+                }
+
+                if (a.Value.Type is NifValueType.Matrix && MatrixSurvivesTheEulerTrip(a, b))
+                    return true;
 
                 string sa = a.Value.ToString(), sb = b.Value.ToString();
 
