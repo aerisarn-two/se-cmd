@@ -1381,6 +1381,8 @@ namespace SECmd.Nif
                     Sample(track.Translation[0], times[i]),
                     Sample(track.Translation[1], times[i]),
                     Sample(track.Translation[2], times[i])));
+
+                WriteTbc(model, keys.Children[i], track.Translation[0], times[i]);
             }
         }
 
@@ -1435,6 +1437,8 @@ namespace SECmd.Nif
                 {
                     model.FindItem(keys.Children[i], "Time")?.Value.SetFloat(curve.Keys[i].Time - offset);
                     model.FindItem(keys.Children[i], "Value")?.Value.SetFloat(curve.Keys[i].Value * ToRadians);
+
+                    WriteTbc(model, keys.Children[i], curve, curve.Keys[i].Time);
                 }
             }
         }
@@ -1508,6 +1512,8 @@ namespace SECmd.Nif
 
                 model.FindItem(keys.Children[i], "Time")?.Value.SetFloat(times[i] - offset);
                 model.FindItem(keys.Children[i], "Value")?.Value.Set(value);
+
+                WriteTbc(model, keys.Children[i], track.Rotation[0], times[i]);
             }
         }
 
@@ -1527,6 +1533,32 @@ namespace SECmd.Nif
                 // NIF scales uniformly. X is the axis a NIF-sourced file keyed all
                 // three of, and the only sensible pick when they disagree.
                 model.FindItem(keys.Children[i], "Value")?.Value.SetFloat(Sample(track.Scale[0], times[i]));
+
+                WriteTbc(model, keys.Children[i], track.Scale[0], times[i]);
+            }
+        }
+
+        /// <summary>
+        /// Puts a key's tension, bias and continuity back, when the key has them.
+        /// </summary>
+        /// <remarks>
+        /// The field exists only on a key type of 3, so `FindItem` returns nothing for
+        /// every other kind and this costs a lookup. Matched by time rather than by
+        /// index: the times written are the merged times of all three channels, which
+        /// need not be the times any one channel keyed.
+        /// </remarks>
+        private static void WriteTbc(NifModel model, NifItem key, AnimCurve curve, float time)
+        {
+            if (model.FindItem(key, "TBC") is not { } field)
+                return;
+
+            foreach (AnimKey source in curve.Keys)
+            {
+                if (source.Time != time)
+                    continue;
+
+                field.Value.Set(source.Tbc);
+                return;
             }
         }
 
@@ -1564,7 +1596,17 @@ namespace SECmd.Nif
         /// </remarks>
         private static uint KeyTypeOf(IReadOnlyList<AnimCurve> curves)
         {
-            const uint Linear = 1, Quadratic = 2, Const = 5;
+            const uint Linear = 1, Quadratic = 2, Tbc = 3, Const = 5;
+
+            // A channel carrying handles was written with them, and only a key type of
+            // 3 has anywhere to put them back. FBX has no tension/bias/continuity of its
+            // own, so the interpolation on the way in says only "a curve" -- the handles
+            // are what remembers which kind, which is why they are carried at all.
+            if (curves.SelectMany(c => c.Keys).Any(
+                    k => k.Tbc.X != 0f || k.Tbc.Y != 0f || k.Tbc.Z != 0f))
+            {
+                return Tbc;
+            }
 
             uint best = Const;
 

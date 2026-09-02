@@ -186,6 +186,14 @@ namespace SECmd.Fbx
                         RotationTypeKey(track.NodeName),
                         rotation.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 }
+
+                // And the handles of a tension/bias/continuity track, for the same
+                // reason and in the same place. The curve itself travels as curves like
+                // every other -- what cannot is the three numbers a TBC key shapes its
+                // spline with, since FBX describes a spline by its tangents instead.
+                WriteTbc(stack, track.NodeName, "Translations", track.Translation[0]);
+                WriteTbc(stack, track.NodeName, "Rotations", track.Rotation[0]);
+                WriteTbc(stack, track.NodeName, "Scales", track.Scale[0]);
             }
 
             return missing;
@@ -216,6 +224,32 @@ namespace SECmd.Fbx
         public static string ControllerFlagsKey(string nodeName, AnimProperty property) =>
             $"{ControllerFlagsPrefix}{nodeName}{AnimProperty.Separator}"
             + $"{property.ControllerType}{AnimProperty.Separator}{property.ControllerId}";
+
+        /// <summary>The key a channel's TBC handles ride under.</summary>
+        /// <remarks>
+        /// Beside the rotation form and for the same reason: the values make the trip as
+        /// ordinary curves, and what a property has to say is how to put them back. A
+        /// NIF key type of 3 shapes its spline with tension, bias and continuity where
+        /// FBX uses tangents, so the shape survives the trip and the three numbers only
+        /// survive if they are carried.
+        ///
+        /// One triple per key, in key order, keyed by node and channel -- a node has one
+        /// transform track, and its three channels keep their own key lists.
+        /// </remarks>
+        public static string TbcKey(string nodeName, string channel) =>
+            $"tbc_{nodeName}{AnimProperty.Separator}{channel}";
+
+        /// <summary>Records a channel's TBC handles, when it has any.</summary>
+        private static void WriteTbc(FbxObject stack, string nodeName, string channel, AnimCurve curve)
+        {
+            if (!curve.Keys.Any(k => k.Tbc.X != 0f || k.Tbc.Y != 0f || k.Tbc.Z != 0f))
+                return;
+
+            stack.Properties.SetUserString(
+                TbcKey(nodeName, channel),
+                string.Join(';', curve.Keys.Select(k => FormattableString.Invariant(
+                    $"{k.Tbc.X:R} {k.Tbc.Y:R} {k.Tbc.Z:R}"))));
+        }
 
         /// <summary>The key a track's rotation form rides under.</summary>
         /// <remarks>

@@ -678,13 +678,19 @@ namespace SECmd.Nif
                 {
                     NifVector3 point = value?.Value.Get<NifVector3>() ?? new NifVector3();
 
-                    property.Curves[0].Keys.Add(new AnimKey(time, point.X, interpolation));
-                    property.Curves[1].Keys.Add(new AnimKey(time, point.Y, interpolation));
-                    property.Curves[2].Keys.Add(new AnimKey(time, point.Z, interpolation));
+                    NifVector3 handles = TbcOf(model, key);
+
+                    property.Curves[0].Keys.Add(new AnimKey(time, point.X, interpolation) { Tbc = handles });
+                    property.Curves[1].Keys.Add(new AnimKey(time, point.Y, interpolation) { Tbc = handles });
+                    property.Curves[2].Keys.Add(new AnimKey(time, point.Z, interpolation) { Tbc = handles });
                 }
                 else
                 {
-                    property.Curve.Keys.Add(new AnimKey(time, value?.Value.ToFloat() ?? 0f, interpolation));
+                    property.Curve.Keys.Add(
+                        new AnimKey(time, value?.Value.ToFloat() ?? 0f, interpolation)
+                        {
+                            Tbc = TbcOf(model, key),
+                        });
                 }
             }
 
@@ -771,9 +777,11 @@ namespace SECmd.Nif
                 float time = FloatOf(model, key, "Time");
                 NifVector3 value = model.FindItem(key, "Value")?.Value.Get<NifVector3>() ?? new NifVector3();
 
-                track.Translation[0].Keys.Add(new AnimKey(time, value.X, interpolation));
-                track.Translation[1].Keys.Add(new AnimKey(time, value.Y, interpolation));
-                track.Translation[2].Keys.Add(new AnimKey(time, value.Z, interpolation));
+                NifVector3 handles = TbcOf(model, key);
+
+                track.Translation[0].Keys.Add(new AnimKey(time, value.X, interpolation) { Tbc = handles });
+                track.Translation[1].Keys.Add(new AnimKey(time, value.Y, interpolation) { Tbc = handles });
+                track.Translation[2].Keys.Add(new AnimKey(time, value.Z, interpolation) { Tbc = handles });
             }
         }
 
@@ -850,9 +858,13 @@ namespace SECmd.Nif
 
                 // NIF scales uniformly; FBX has three axes and wants all of them.
                 for (int axis = 0; axis < 3; axis++)
-                    track.Scale[axis].Keys.Add(new AnimKey(time, value, interpolation));
+                    track.Scale[axis].Keys.Add(new AnimKey(time, value, interpolation) { Tbc = TbcOf(model, key) });
             }
         }
+
+        /// <summary>A key's tension, bias and continuity, or zero when it has none.</summary>
+        private static NifVector3 TbcOf(NifModel model, NifItem key) =>
+            model.FindItem(key, "TBC")?.Value.Get<NifVector3>() ?? new NifVector3();
 
         private static IEnumerable<NifItem> KeysOf(NifModel model, NifItem group) =>
             model.FindItem(group, "Keys")?.Children ?? Enumerable.Empty<NifItem>();

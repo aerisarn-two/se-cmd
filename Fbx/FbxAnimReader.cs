@@ -323,6 +323,11 @@ namespace SECmd.Fbx
                     track.RotationType = rotationType;
                 }
 
+                // The handles a TBC channel was shaped with, back onto its keys.
+                ReadTbc(stack, nodeName, "Translations", track.Translation);
+                ReadTbc(stack, nodeName, "Rotations", track.Rotation);
+                ReadTbc(stack, nodeName, "Scales", track.Scale);
+
                 foreach (AnimProperty property in track.Properties)
                 {
                     string text = stack.Properties.GetString(
@@ -565,6 +570,47 @@ namespace SECmd.Fbx
                     i < interpolations.Count ? interpolations[i] : AnimInterpolation.Linear));
             }
         }
+
+        /// <summary>Puts a channel's TBC handles back on its keys.</summary>
+        /// <remarks>
+        /// Written once for the channel and applied to all three of its curves, which is
+        /// how they were read: a transform key holds one triple however many scalars the
+        /// key carries.
+        /// </remarks>
+        private static void ReadTbc(FbxObject stack, string nodeName, string channel, AnimCurve[] curves)
+        {
+            string text = stack.Properties.GetString(FbxAnimWriter.TbcKey(nodeName, channel));
+
+            if (text.Length == 0)
+                return;
+
+            string[] triples = text.Split(';');
+
+            foreach (AnimCurve curve in curves)
+            {
+                for (int i = 0; i < curve.Keys.Count && i < triples.Length; i++)
+                {
+                    string[] parts = triples[i].Split(' ');
+
+                    if (parts.Length < 3)
+                        continue;
+
+                    curve.Keys[i] = curve.Keys[i] with
+                    {
+                        Tbc = new NifVector3(Number(parts[0]), Number(parts[1]), Number(parts[2])),
+                    };
+                }
+            }
+        }
+
+        private static float Number(string text) =>
+            float.TryParse(
+                text,
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out float value)
+                ? value
+                : 0f;
 
         private static List<AnimInterpolation> ExpandFlags(int[] flags, int[] refCounts, int keyCount)
         {

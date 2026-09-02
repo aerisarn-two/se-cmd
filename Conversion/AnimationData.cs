@@ -22,7 +22,24 @@ namespace SECmd.Conversion
     }
 
     /// <summary>One key on one curve. Time is in seconds.</summary>
-    public readonly record struct AnimKey(float Time, float Value, AnimInterpolation Interpolation);
+    public readonly record struct AnimKey(float Time, float Value, AnimInterpolation Interpolation)
+    {
+        /// <summary>
+        /// Tension, bias and continuity, for a key written in that form.
+        /// </summary>
+        /// <remarks>
+        /// A NIF key type of 3 shapes its spline with three numbers instead of with
+        /// tangents, and FBX has no equivalent -- so the curve travelled and the three
+        /// numbers did not, and every rebuilt TBC key came back with zeroes. Vanilla
+        /// means them: `dlc01sebf_blastroof` scales with tensions of 0.388, 1 and 0.468,
+        /// and a tension of zero is a different curve through the same points.
+        ///
+        /// Carried beside the curve rather than derived, because nothing about the
+        /// sampled values says what the handles were. Zero for every other key type,
+        /// which is what the field holds in a file that does not use them.
+        /// </remarks>
+        public NifVector3 Tbc { get; init; }
+    }
 
     /// <summary>A single animated scalar over time.</summary>
     public sealed class AnimCurve
