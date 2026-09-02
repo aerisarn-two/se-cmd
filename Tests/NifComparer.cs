@@ -169,6 +169,8 @@ namespace SECmd.Tests
                     Align(a, b, ControlledBlocks, whole: true);
                 else if (a.Name == "Partitions")
                     AlignPartition(a, b);
+                else if (a.Name == "Vertex Weights" && HasVertexIndices(a))
+                    Align(a, b, WeightedVertices, whole: true);
 
                 _permuted.TryGetValue(a, out int[]? order);
 
@@ -741,6 +743,54 @@ namespace SECmd.Tests
 
                 if (moved)
                     _permuted[left_] = order;
+            }
+
+            /// <summary>
+            /// Whether this is the `NiSkinData` kind of `Vertex Weights` -- the kind
+            /// whose rows name the vertex they weight.
+            /// </summary>
+            /// <remarks>
+            /// `NiSkinPartition` has a field of the same name holding four weights per
+            /// vertex, addressed by position and with no index in it. That one is not
+            /// a list addressed by name and must not be realigned.
+            /// </remarks>
+            private static bool HasVertexIndices(NifItem array) =>
+                array.Children.Count > 0
+                && array.Children[0].Children.Any(c => c.Name == "Index");
+
+            /// <summary>Which vertex each of a bone's weights is for.</summary>
+            /// <remarks>
+            /// A bone's weight list is addressed by the vertex it names, not by where
+            /// the entry sits: `NiSkinData` says "this bone moves vertex 412 by 0.6",
+            /// and it says the same thing wherever in the list it says it. Compared by
+            /// position, a list holding the same weights in another order reads as every
+            /// entry being wrong.
+            ///
+            /// This is the seventh list in this format to need it, after the skin bones,
+            /// the extra data, the object palette, the partition rows and the controlled
+            /// blocks. The shape of the mistake does not change: a list whose entries
+            /// carry their own identity is being compared by index.
+            ///
+            /// Measured before assuming it: on `0000282d` and `hair13`, every bone whose
+            /// list differed held exactly the same (vertex, weight) pairs in a different
+            /// order -- 6 bones reordered, 11 identical, none actually different.
+            ///
+            /// Keyed on the vertex alone, and matched whole, so a bone that really does
+            /// weight a different set of vertices still fails rather than being paired
+            /// up somehow.
+            /// </remarks>
+            private static List<string> WeightedVertices(NifModel model, NifItem array)
+            {
+                var keys = new List<string>(array.Children.Count);
+
+                foreach (NifItem row in array.Children)
+                {
+                    keys.Add(row.Children.FirstOrDefault(c => c.Name == "Index") is { } index
+                        ? index.Value.ToUInt().ToString(System.Globalization.CultureInfo.InvariantCulture)
+                        : string.Empty);
+                }
+
+                return keys;
             }
 
             /// <summary>Each entry of an extra data list, as class and name.</summary>
