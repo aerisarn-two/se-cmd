@@ -283,6 +283,14 @@ namespace SECmd.Tests
             // Excused on the same terms and for the same reason: what matters is
             // whether the shape survived, and `EveryVanillaCollisionMeshKeepsItsShape`
             // asks that of the decoded surface rather than of the encoding.
+            // The per-chunk transform table, which the chunking decides as surely as it
+            // decides the chunks: `arwhalldeadend02` has four transforms where a mesh cut
+            // into a different number of chunks needs one. Listed with the rest of the
+            // family rather than left to be found separately, which is how the big-vert
+            // arrays and these came to be reported one at a time.
+            ["bhkCompressedMeshShapeData/Num Transforms"] = "Havok chunks the mesh its own way (shape checked separately)",
+            ["bhkCompressedMeshShapeData/Chunk Transforms"] = "Havok chunks the mesh its own way (shape checked separately)",
+
             ["bhkCompressedMeshShapeData/Big Verts"] = "the leftover of Havok's own chunking (shape checked separately)",
             ["bhkCompressedMeshShapeData/Big Tris"] = "the leftover of Havok's own chunking (shape checked separately)",
             ["bhkCompressedMeshShapeData/Num Big Verts"] = "the leftover of Havok's own chunking (shape checked separately)",
