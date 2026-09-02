@@ -181,6 +181,15 @@ namespace SECmd.Nif
             /// cuirass stops hiding the torso it covers.
             /// </remarks>
             public int SourceSlot { get; set; } = -1;
+
+            /// <summary>Which level of detail this partition draws at.</summary>
+            /// <remarks>
+            /// Carried from the scene rather than derived: only a tree has one, and
+            /// which slice is which LOD is not visible in the geometry. A partition
+            /// split again to fit sixty bones keeps its parent's level, for the same
+            /// reason it keeps its body slot -- both halves are still the same slice.
+            /// </remarks>
+            public uint LodLevel { get; set; }
         }
 
         /// <summary>
@@ -214,7 +223,7 @@ namespace SECmd.Nif
             var groups = new List<PartitionGroup>(skin.Partitions.Count);
 
             for (int p = 0; p < skin.Partitions.Count; p++)
-                groups.Add(new PartitionGroup { SourceSlot = p });
+                groups.Add(new PartitionGroup { SourceSlot = p, LodLevel = skin.Partitions[p].LodLevel });
 
             for (int i = 0; i < triangles.Count; i++)
             {
@@ -334,7 +343,11 @@ namespace SECmd.Nif
 
                     if (at < 0)
                     {
-                        pieces.Add(new PartitionGroup { SourceSlot = group.SourceSlot });
+                        pieces.Add(new PartitionGroup
+                        {
+                            SourceSlot = group.SourceSlot,
+                            LodLevel = group.LodLevel,
+                        });
                         boneSets.Add([]);
                         at = pieces.Count - 1;
                     }
@@ -626,6 +639,7 @@ namespace SECmd.Nif
             model.FindItem(entry, "Num Bones")?.Value.SetCount((uint)group.Bones.Count);
             model.FindItem(entry, "Num Weights Per Vertex")?.Value.SetCount(MaxInfluences);
             model.FindItem(entry, "Num Strips")?.Value.SetCount(0);
+            model.FindItem(entry, "LOD Level")?.Value.SetCount(group.LodLevel);
             model.FindItem(entry, "Has Vertex Map")?.Value.SetCount(1);
             model.FindItem(entry, "Has Vertex Weights")?.Value.SetCount(1);
             model.FindItem(entry, "Has Bone Indices")?.Value.SetCount(1);

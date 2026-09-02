@@ -127,7 +127,10 @@ namespace SECmd.Nif
 
             foreach (NifItem block in blocks.Children)
             {
-                var info = new SkinPartitionInfo();
+                var info = new SkinPartitionInfo
+                {
+                    LodLevel = model.FindItem(block, "LOD Level")?.Value.ToUInt() ?? 0,
+                };
 
                 if (model.FindItem(block, "Bones") is { } bones)
                 {

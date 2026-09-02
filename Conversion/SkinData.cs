@@ -43,6 +43,20 @@ namespace SECmd.Conversion
 
         /// <summary>Indices into the shape's vertex array.</summary>
         public List<ushort> Vertices { get; } = [];
+
+        /// <summary>
+        /// Which level of detail this partition draws at.
+        /// </summary>
+        /// <remarks>
+        /// A tree is skinned once and partitioned per LOD: `treepineforest05` has three
+        /// partitions at levels 1, 2 and 0, holding 52, 56 and 166 vertices. Nothing
+        /// carried the level, so every rebuilt tree came back with all three at 0 and the
+        /// engine drew the wrong slice at distance.
+        ///
+        /// Only trees use it -- of the 26,940 skins the game ships, the 72 with a level
+        /// above zero are exactly the 72 that list a bone more than once.
+        /// </remarks>
+        public uint LodLevel { get; set; }
     }
 
     /// <summary>

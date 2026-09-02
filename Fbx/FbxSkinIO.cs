@@ -66,6 +66,15 @@ namespace SECmd.Fbx
         /// <summary>Which partition a skin deformer stands for, in the file's order.</summary>
         public const string PartitionProperty = "nif_skin_partition";
 
+        /// <summary>Which level of detail a partition draws at.</summary>
+        /// <remarks>
+        /// A per-partition fact, so it rides on the deformer that stands for the
+        /// partition rather than with the whole-skin facts on the first one. Written
+        /// only when it is not zero, which is every skin in the game but the 72 that
+        /// belong to trees.
+        /// </remarks>
+        public const string PartitionLodProperty = "nif_partition_lod";
+
         /// <summary>Set when the source kept its weights out of `NiSkinData`.</summary>
         /// <remarks>
         /// Written only for the shapes that did, so a scene that came from anywhere else
@@ -198,6 +207,14 @@ namespace SECmd.Fbx
             // rather than the order the objects happen to come back in.
             skinObject.Properties.SetUserString(
                 PartitionProperty, index.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+            // The level this slice draws at, which is a fact about the slice.
+            if (part is { LodLevel: > 0 })
+            {
+                skinObject.Properties.SetUserString(
+                    PartitionLodProperty,
+                    part.LodLevel.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
 
             // The whole-skin facts go on the first deformer only. They describe the
             // skin, not the slice, and repeating them on every partition would invite
@@ -406,7 +423,17 @@ namespace SECmd.Fbx
 
             for (int p = 0; p < skinObjects.Count; p++)
             {
-                var info = new SkinPartitionInfo();
+                var info = new SkinPartitionInfo
+                {
+                    LodLevel = uint.TryParse(
+                        skinObjects[p].Properties.GetString(PartitionLodProperty),
+                        System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out uint level)
+                        ? level
+                        : 0,
+                };
+
                 var covered = new SortedSet<ushort>();
 
                 ReadOnePartition(scene, skinObjects[p], skin, boneAt, seen, info, covered);
