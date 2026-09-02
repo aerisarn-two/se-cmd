@@ -875,13 +875,48 @@ namespace SECmd.Tests
             /// The bitangent is reconstructed from its three lanes before the rotation
             /// and re-quantised afterwards, since Y and Z travel as bytes.
             /// </remarks>
+            /// <summary>
+            /// For a particle array entry, the shape vertex it was copied from.
+            /// </summary>
+            /// <remarks>
+            /// `Particle Vertices` and `Particle Normals` sit beside the vertex buffer
+            /// and hold the same geometry at half precision, one entry per vertex, in
+            /// the same order (§5A). So entry *i* answers to `Vertex Data[i]`.
+            /// </remarks>
+            private NifVector3? ParticleSource(NifItem item)
+            {
+                if (item.Name is not ("Particle Vertices" or "Particle Normals"))
+                    return null;
+
+                if (item.Parent is not { } array || _owner is null)
+                    return null;
+
+                int at = array.Children.IndexOf(item);
+
+                if (at < 0 || left.FindItem(_owner, "Vertex Data") is not { } vertices
+                    || at >= vertices.Children.Count)
+                {
+                    return null;
+                }
+
+                string field = item.Name == "Particle Vertices" ? "Vertex" : "Normal";
+
+                return left.FindItem(vertices.Children[at], field) is { } source
+                    ? source.Value.Get<NifVector3>()
+                    : null;
+            }
+
             private bool BakedTransformExplains(NifItem a, NifItem b)
             {
                 if (_owner is null)
                     return false;
 
-                bool position = a.Name is "Vertex" or "Vertices";
-                bool direction = a.Name is "Normal" or "Normals" or "Tangent" or "Tangents" or "Bitangents";
+                // `Particle Vertices` and `Particle Normals` are the second, plainer
+                // copy of the same geometry that a mesh emitter scatters over, so the
+                // transform baked into the first is baked into them too.
+                bool position = a.Name is "Vertex" or "Vertices" or "Particle Vertices";
+                bool direction = a.Name is "Normal" or "Normals" or "Particle Normals"
+                                        or "Tangent" or "Tangents" or "Bitangents";
                 bool lane = a.Name is "Bitangent X" or "Bitangent Y" or "Bitangent Z";
 
                 if (!position && !direction && !lane)
@@ -910,17 +945,28 @@ namespace SECmd.Tests
                     };
                 }
 
-                // A normal and a tangent travel as `ByteVector3`, not `Vector3` -- three
-                // signed bytes rather than three floats. Reading only `Vector3` here is
-                // what made the first attempt at this check silently do nothing for
-                // exactly the two fields it was written for.
+                // Every spelling of a three-vector, which is four of them: a position is
+                // a `Vector3`, a normal and a tangent are `ByteVector3`, and a particle
+                // copy's positions and normals are `HalfVector3`. Each has been added
+                // here only after a field went silently unchecked for want of it, so the
+                // set is taken from `NifValue` itself -- these are exactly the types
+                // `Get<NifVector3>` reads.
                 if (a.Value.Type != b.Value.Type
-                    || a.Value.Type is not (NifValueType.Vector3 or NifValueType.ByteVector3))
+                    || a.Value.Type is not (NifValueType.Vector3 or NifValueType.HalfVector3
+                                            or NifValueType.UshortVector3 or NifValueType.ByteVector3))
                 {
                     return false;
                 }
 
-                NifVector3 from = a.Value.Get<NifVector3>();
+                // A particle copy is compared against the geometry it is a copy of, not
+                // against itself. The emitter's arrays are `HalfVector3`, and vanilla
+                // rounded them from the authoring data once; a rebuild can only round
+                // what the vertex buffer holds. Comparing half against half would be
+                // comparing one rounding with two, and the shapes disagree in the last
+                // digit for no reason either side could fix. Taking the source's own
+                // vertex -- the full-precision one the copy came from -- rounds once on
+                // each side and lands exactly.
+                NifVector3 from = ParticleSource(a) ?? a.Value.Get<NifVector3>();
                 NifVector3 expected = position ? transform.Apply(from) : transform.ApplyDirection(from);
 
                 // Put the turned vector through the same encoding before comparing, so a
