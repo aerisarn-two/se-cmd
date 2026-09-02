@@ -184,6 +184,27 @@ namespace SECmd.Tests
             ["NiTriStrips/Rotation"] = "zeroed: the transform is baked into the vertices",
             ["NiTriStrips/Scale"] = "reset: the transform is baked into the vertices",
 
+            // And the other geometry classes, which bake it exactly the same way. Three
+            // were listed and the rest were not, so a mesh built on any of them reported
+            // its own reset transform as a difference: `floracreepcluster02` and
+            // `treepineforestlog01mshrm` on `BSLODTriShape`, while the `BSTriShape`s
+            // beside them in the same files said nothing.
+            //
+            // Listed from the classes this writes rather than the ones that happened to
+            // come up, so the next mesh built on a fourth is not a new line here.
+            ["BSLODTriShape/Translation"] = "zeroed: the transform is baked into the vertices",
+            ["BSLODTriShape/Rotation"] = "zeroed: the transform is baked into the vertices",
+            ["BSLODTriShape/Scale"] = "reset: the transform is baked into the vertices",
+            ["BSDynamicTriShape/Translation"] = "zeroed: the transform is baked into the vertices",
+            ["BSDynamicTriShape/Rotation"] = "zeroed: the transform is baked into the vertices",
+            ["BSDynamicTriShape/Scale"] = "reset: the transform is baked into the vertices",
+            ["BSSubIndexTriShape/Translation"] = "zeroed: the transform is baked into the vertices",
+            ["BSSubIndexTriShape/Rotation"] = "zeroed: the transform is baked into the vertices",
+            ["BSSubIndexTriShape/Scale"] = "reset: the transform is baked into the vertices",
+            ["BSMeshLODTriShape/Translation"] = "zeroed: the transform is baked into the vertices",
+            ["BSMeshLODTriShape/Rotation"] = "zeroed: the transform is baked into the vertices",
+            ["BSMeshLODTriShape/Scale"] = "reset: the transform is baked into the vertices",
+
 
             // nif.xml's KeyType runs 1..5 and has no zero, so a key group carrying one
             // is a field nothing ever set — which is what a model built in a test looks
