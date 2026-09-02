@@ -74,8 +74,66 @@ namespace SECmd.Fbx
                 (name, value) => node.Properties.SetUserString(name, value));
         }
 
+
+        /// <summary>Takes the volume's placement and size off the mesh standing for it.</summary>
+        private static void RefitFromMesh(FbxScene scene, FbxObject node, NifModel model, NifItem data)
+        {
+            FbxObject? holder = scene.ChildrenOf(node.Id)
+                .FirstOrDefault(o => o.Class == "Model" && IsVolumeMesh(o.Name));
+
+            if (holder is null)
+                return;
+
+            FbxObject? geometry = scene.ChildrenOf(holder.Id)
+                .FirstOrDefault(o => o.Class == "Geometry");
+
+            if (geometry is null || FbxMeshReader.Read(geometry) is not { Vertices.Count: > 0 } mesh)
+                return;
+
+            // Where it sits and which way it faces, from the holder's own transform --
+            // the same two numbers the export put there.
+            (double tx, double ty, double tz) = holder.Properties.GetVector3("Lcl Translation");
+            (double rx, double ry, double rz) = holder.Properties.GetVector3("Lcl Rotation");
+
+            var centre = new NifVector3((float)tx, (float)ty, (float)tz);
+
+            model.FindItem(data, "Center")?.Value.Set(centre);
+
+            model.FindItem(data, "Rotation")?.Value.Set(
+                NifTransform.RotationFromEulerDegrees((float)rx, (float)ry, (float)rz));
+
+            // And how big it is, from the geometry in its own space. `Size` is the full
+            // length of each side where the fit gives half of it, which is the same
+            // doubling the export halves.
+            (NifVector3 _, NifVector3 half) = SECmd.Conversion.ShapeFitter.FitBox(mesh.Vertices);
+
+            model.FindItem(data, "Size")?.Value.Set(
+                new NifVector3(half.X * 2f, half.Y * 2f, half.Z * 2f));
+
+            // A sphere states one number instead, and the fit's largest half-extent is it.
+            model.FindItem(data, "Radius")?.Value
+                .SetFloat(MathF.Max(half.X, MathF.Max(half.Y, half.Z)));
+        }
+
         /// <summary>Rebuilds the bound and hangs it back on the node.</summary>
-        public static void Read(FbxObject node, NifModel model, NifItem block, List<string> warnings)
+        /// <remarks>
+        /// The volume is taken from the mesh, the way a collision shape is. The `_multibound`
+        /// mesh is exported at the volume's centre, turned by its rotation, and built to its
+        /// size, so all three are readable back off it: the holder's transform gives the
+        /// centre and the rotation and the geometry's own extents give the size. Editing the
+        /// box in a DCC now moves the volume, which is what someone doing that expects, and
+        /// it is what makes the visible half worth having rather than decoration.
+        ///
+        /// ck-cmd is no guide here -- `FBXWrangler.cpp` has no occurrence of `MultiBound` in
+        /// either direction, and its only mention of the class anywhere is commented-out
+        /// viewer code.
+        ///
+        /// The carried fields remain as a fallback for a scene with no such mesh, which is
+        /// a data class this build tessellates nothing for. Where the mesh is there, it
+        /// wins.
+        /// </remarks>
+        public static void Read(
+            FbxScene scene, FbxObject node, NifModel model, NifItem block, List<string> warnings)
         {
             if (!model.BlockInherits(block, "BSMultiBoundNode"))
                 return;
@@ -106,6 +164,9 @@ namespace SECmd.Fbx
             NifFieldCodec.Read(
                 model, data, Prefix,
                 name => node.Properties.GetString(name) is { Length: > 0 } value ? value : null);
+
+            // ...and then the mesh, which overrides them where it exists.
+            RefitFromMesh(scene, node, model, data);
 
             NifItem bound = model.InsertBlock("BSMultiBound");
 

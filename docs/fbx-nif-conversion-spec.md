@@ -1670,14 +1670,25 @@ in either direction, and ck-cmd's only mention of it anywhere is `geometry.cpp` 
 The class survives on its own (§5.2); this is the payload, and it is written **twice**,
 as the collision material (§4.8) and the effect shader (§5.3.2) are:
 
-- The **exact half** is `multi_bound_type` naming the data class, one `mb_` property per
-  field, and the node's own `Culling Mode`. This is the authoritative copy and the only
-  thing the import reads. A class the schema does not know, or one that is not
-  `BSMultiBoundData`, is reported and dropped.
+- The **named half** is `multi_bound_type` naming the data class, one `mb_` property per
+  field, and the node's own `Culling Mode`. A class the schema does not know, or one that
+  is not `BSMultiBoundData`, is reported and dropped.
 - The **visible half** is a tessellated mesh under the node, suffixed `_multibound`,
   positioned at the volume's centre and rotated by its matrix. An oriented box becomes a
   box of half its stated size — `Size` is the full length of each side — and a sphere
   becomes a sphere.
+
+**The mesh is what the import reads**, the way a collision shape's is. Everything the
+volume is can be recovered from it: the holder's transform gives the centre and the
+rotation, and the geometry's own extents give the size — the same three numbers the
+export put there, in the same places. The `mb_` fields stay as a fallback for a data
+class this build tessellates nothing for, and where the mesh exists it wins.
+
+That makes the visible half worth having rather than decoration: moving or resizing the
+box in a DCC moves the volume, which is what anyone doing it expects, and it is how the
+collision shapes already behave. It costs the exactness of a carried number — a rotation
+makes the trip as Euler degrees like every other (§4.2j) — for a volume the engine culls
+against rather than draws.
 
 The import recognises the suffix and skips it, exactly as it skips `_rb` and `_sp`, so
 the mesh never becomes geometry in the rebuilt file. Without that it would come back as

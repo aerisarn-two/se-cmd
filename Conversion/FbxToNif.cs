@@ -159,7 +159,7 @@ namespace SECmd.Conversion
                 FbxNodeType.ReadFields(sceneRoots[0], _model, root, "NiNode");
                 FbxNodeType.ReadFlags(sceneRoots[0], _model, root);
                 FbxExtraDataWriter.ReadExtraData(sceneRoots[0], _model, root, Warnings);
-                FbxMultiBound.Read(sceneRoots[0], _model, root, Warnings);
+                FbxMultiBound.Read(_scene, sceneRoots[0], _model, root, Warnings);
                 FbxNodeControllers.Read(sceneRoots[0], _model, root, Warnings, AimAt);
 
                 // The root is a tree node in every tree the game ships, so leaving this
@@ -500,7 +500,7 @@ namespace SECmd.Conversion
 
 
             FbxExtraDataWriter.ReadExtraData(model, _model, node, Warnings);
-            FbxMultiBound.Read(model, _model, node, Warnings);
+            FbxMultiBound.Read(_scene, model, _model, node, Warnings);
             FbxTreeNode.Read(model, _model, node, AimAt);
 
             // Controllers that animate nothing. A particle system rebuilds its own
