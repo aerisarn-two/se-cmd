@@ -323,11 +323,6 @@ namespace SECmd.Fbx
                     track.RotationType = rotationType;
                 }
 
-                // The handles a TBC channel was shaped with, back onto its keys.
-                ReadTbc(stack, nodeName, "Translations", track.Translation);
-                ReadTbc(stack, nodeName, "Rotations", track.Rotation);
-                ReadTbc(stack, nodeName, "Scales", track.Scale);
-
                 foreach (AnimProperty property in track.Properties)
                 {
                     string text = stack.Properties.GetString(
@@ -562,55 +557,55 @@ namespace SECmd.Fbx
 
             int count = Math.Min(times.Length, values.Length);
 
+            // The three numbers a Kochanek-Bartels key is shaped with, which FBX keeps
+            // in the key's own data slots. Expanded by the same run counts as the flags,
+            // since both are stored per run of like keys rather than per key.
+            List<NifVector3> handles = ExpandTcb(
+                ReadInts(curve.Child("KeyAttrFlags")),
+                ReadFloats(curve.Child("KeyAttrDataFloat")),
+                ReadInts(curve.Child("KeyAttrRefCount")),
+                times.Length);
+
             for (int i = 0; i < count; i++)
             {
                 into.Keys.Add(new AnimKey(
                     FbxAnimWriter.FromFbxTime(times[i]),
                     values[i],
-                    i < interpolations.Count ? interpolations[i] : AnimInterpolation.Linear));
-            }
-        }
-
-        /// <summary>Puts a channel's TBC handles back on its keys.</summary>
-        /// <remarks>
-        /// Written once for the channel and applied to all three of its curves, which is
-        /// how they were read: a transform key holds one triple however many scalars the
-        /// key carries.
-        /// </remarks>
-        private static void ReadTbc(FbxObject stack, string nodeName, string channel, AnimCurve[] curves)
-        {
-            string text = stack.Properties.GetString(FbxAnimWriter.TbcKey(nodeName, channel));
-
-            if (text.Length == 0)
-                return;
-
-            string[] triples = text.Split(';');
-
-            foreach (AnimCurve curve in curves)
-            {
-                for (int i = 0; i < curve.Keys.Count && i < triples.Length; i++)
+                    i < interpolations.Count ? interpolations[i] : AnimInterpolation.Linear)
                 {
-                    string[] parts = triples[i].Split(' ');
-
-                    if (parts.Length < 3)
-                        continue;
-
-                    curve.Keys[i] = curve.Keys[i] with
-                    {
-                        Tbc = new NifVector3(Number(parts[0]), Number(parts[1]), Number(parts[2])),
-                    };
-                }
+                    Tbc = i < handles.Count ? handles[i] : new NifVector3(),
+                });
             }
         }
 
-        private static float Number(string text) =>
-            float.TryParse(
-                text,
-                System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out float value)
-                ? value
-                : 0f;
+        /// <summary>
+        /// The TCB numbers of each key, from the runs the curve stores them in.
+        /// </summary>
+        /// <remarks>
+        /// Only for a run whose flags say the key is shaped that way; every other run
+        /// leaves zeroes, which is what a key without them holds. Returned in nif.xml's
+        /// order -- tension, bias, continuity -- where FBX's slots are tension,
+        /// continuity, bias.
+        /// </remarks>
+        private static List<NifVector3> ExpandTcb(int[] flags, float[] data, int[] refCounts, int keyCount)
+        {
+            var result = new List<NifVector3>(keyCount);
+
+            for (int i = 0; i < flags.Length && result.Count < keyCount; i++)
+            {
+                int run = i < refCounts.Length ? Math.Max(1, refCounts[i]) : 1;
+
+                var handles = new NifVector3();
+
+                if ((flags[i] & FbxAnimWriter.KeyFlags.TangentTcb) != 0 && (i * 4) + 2 < data.Length)
+                    handles = new NifVector3(data[i * 4], data[(i * 4) + 2], data[(i * 4) + 1]);
+
+                for (int k = 0; k < run && result.Count < keyCount; k++)
+                    result.Add(handles);
+            }
+
+            return result;
+        }
 
         private static List<AnimInterpolation> ExpandFlags(int[] flags, int[] refCounts, int keyCount)
         {

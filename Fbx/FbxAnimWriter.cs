@@ -39,7 +39,7 @@ namespace SECmd.Fbx
         public const string LayerName = "Default";
 
         /// <summary>Interpolation and tangent bits, as the FBX SDK defines them.</summary>
-        private static class KeyFlags
+        internal static class KeyFlags
         {
             public const int Constant = 0x00000002;
             public const int Linear = 0x00000004;
@@ -48,6 +48,21 @@ namespace SECmd.Fbx
             /// <summary>Let the importer choose tangents; NIF quadratic keys carry
             /// tangents FBX cannot express directly, so this reproduces the shape.</summary>
             public const int TangentAuto = 0x00000100;
+
+            /// <summary>
+            /// Tension, continuity and bias, which FBX describes a spline with too.
+            /// </summary>
+            /// <remarks>
+            /// A NIF key type of 3 is a Kochanek-Bartels key, and so is this: FBX keeps
+            /// the three numbers in the key's own data slots rather than deriving
+            /// tangents from them, so the curve travels in the form it was authored in
+            /// and comes back the same way. There is nothing to approximate and nothing
+            /// to carry beside it.
+            ///
+            /// The order differs. nif.xml's `TBC` struct is tension, bias, continuity;
+            /// FBX's data slots are tension, continuity, bias -- the middle two swap.
+            /// </remarks>
+            public const int TangentTcb = 0x00000200;
         }
 
         /// <summary>Converts seconds to FBX's integer time.</summary>
@@ -187,13 +202,7 @@ namespace SECmd.Fbx
                         rotation.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 }
 
-                // And the handles of a tension/bias/continuity track, for the same
-                // reason and in the same place. The curve itself travels as curves like
-                // every other -- what cannot is the three numbers a TBC key shapes its
-                // spline with, since FBX describes a spline by its tangents instead.
-                WriteTbc(stack, track.NodeName, "Translations", track.Translation[0]);
-                WriteTbc(stack, track.NodeName, "Rotations", track.Rotation[0]);
-                WriteTbc(stack, track.NodeName, "Scales", track.Scale[0]);
+
             }
 
             return missing;
@@ -224,32 +233,6 @@ namespace SECmd.Fbx
         public static string ControllerFlagsKey(string nodeName, AnimProperty property) =>
             $"{ControllerFlagsPrefix}{nodeName}{AnimProperty.Separator}"
             + $"{property.ControllerType}{AnimProperty.Separator}{property.ControllerId}";
-
-        /// <summary>The key a channel's TBC handles ride under.</summary>
-        /// <remarks>
-        /// Beside the rotation form and for the same reason: the values make the trip as
-        /// ordinary curves, and what a property has to say is how to put them back. A
-        /// NIF key type of 3 shapes its spline with tension, bias and continuity where
-        /// FBX uses tangents, so the shape survives the trip and the three numbers only
-        /// survive if they are carried.
-        ///
-        /// One triple per key, in key order, keyed by node and channel -- a node has one
-        /// transform track, and its three channels keep their own key lists.
-        /// </remarks>
-        public static string TbcKey(string nodeName, string channel) =>
-            $"tbc_{nodeName}{AnimProperty.Separator}{channel}";
-
-        /// <summary>Records a channel's TBC handles, when it has any.</summary>
-        private static void WriteTbc(FbxObject stack, string nodeName, string channel, AnimCurve curve)
-        {
-            if (!curve.Keys.Any(k => k.Tbc.X != 0f || k.Tbc.Y != 0f || k.Tbc.Z != 0f))
-                return;
-
-            stack.Properties.SetUserString(
-                TbcKey(nodeName, channel),
-                string.Join(';', curve.Keys.Select(k => FormattableString.Invariant(
-                    $"{k.Tbc.X:R} {k.Tbc.Y:R} {k.Tbc.Z:R}"))));
-        }
 
         /// <summary>The key a track's rotation form rides under.</summary>
         /// <remarks>
@@ -605,17 +588,37 @@ namespace SECmd.Fbx
             var flags = new List<int>();
             var refCounts = new List<int>();
 
+            // Four floats an entry, and the entries are runs of like keys rather than
+            // keys -- which is why the data has to be built alongside the flags and
+            // broken into a new run whenever either changes.
+            var attributes = new List<float>();
+
             foreach (AnimKey key in curve.Keys)
             {
-                int flag = FlagsOf(key.Interpolation);
+                bool tcb = key.Tbc.X != 0f || key.Tbc.Y != 0f || key.Tbc.Z != 0f;
 
-                if (flags.Count > 0 && flags[^1] == flag)
-                    refCounts[^1]++;
-                else
+                int flag = tcb ? KeyFlags.Cubic | KeyFlags.TangentTcb : FlagsOf(key.Interpolation);
+
+                // Tension, continuity, bias -- FBX's order, not nif.xml's.
+                float tension = tcb ? key.Tbc.X : 0f;
+                float continuity = tcb ? key.Tbc.Z : 0f;
+                float bias = tcb ? key.Tbc.Y : 0f;
+
+                bool same = flags.Count > 0
+                    && flags[^1] == flag
+                    && attributes[^4] == tension
+                    && attributes[^3] == continuity
+                    && attributes[^2] == bias;
+
+                if (same)
                 {
-                    flags.Add(flag);
-                    refCounts.Add(1);
+                    refCounts[^1]++;
+                    continue;
                 }
+
+                flags.Add(flag);
+                refCounts.Add(1);
+                attributes.AddRange([tension, continuity, bias, 0f]);
             }
 
             node.Nodes.Add(new FbxNode("Default", (double)(values.Length > 0 ? values[0] : 0f)));
@@ -624,10 +627,11 @@ namespace SECmd.Fbx
             node.Nodes.Add(new FbxNode("KeyValueFloat", values));
             node.Nodes.Add(new FbxNode("KeyAttrFlags", flags.ToArray()));
 
-            // Four floats per attribute entry: the slopes and weights of the
-            // tangents. Zero means "work them out", which is what auto tangents ask
-            // for and the only honest answer for keys that arrived without any.
-            node.Nodes.Add(new FbxNode("KeyAttrDataFloat", new float[flags.Count * 4]));
+            // Four floats per attribute entry: the slopes and weights of a tangent, or
+            // the three TCB numbers for a key shaped that way. Zero means "work them
+            // out", which is what auto tangents ask for and the only honest answer for
+            // keys that arrived without any.
+            node.Nodes.Add(new FbxNode("KeyAttrDataFloat", attributes.ToArray()));
 
             node.Nodes.Add(new FbxNode("KeyAttrRefCount", refCounts.ToArray()));
 
