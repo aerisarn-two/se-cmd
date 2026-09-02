@@ -230,6 +230,11 @@ namespace SECmd.Tests
             // nif.xml's KeyType runs 1..5 and has no zero, so a key group carrying one
             // is a field nothing ever set — which is what a model built in a test looks
             // like. Writing LINEAR_KEY for it is normalisation, not loss.
+            //
+            // Guarded, because that sentence is about the value 0 and the entry is
+            // keyed on the field: unguarded it excused every key type turning into
+            // every other, which is the loss this whole sweep exists to find. It hid
+            // five real ones on `dlc01sebf_blastroof` for as long as it stood.
             ["Interpolation"] = "0 is not a KeyType; an unset one becomes LINEAR_KEY",
 
 
@@ -747,6 +752,26 @@ namespace SECmd.Tests
         private static bool Excused(NifDifference difference) =>
             Matches(ByDesign, difference) || Matches(Open, difference);
 
+        /// <summary>
+        /// The extra condition an entry carries, where its reason is about a value
+        /// rather than about a field.
+        /// </summary>
+        /// <remarks>
+        /// An entry is keyed on a field name or a path, and most of the reasons above
+        /// are true of the field wherever it appears. A few are true only of one
+        /// value: "an unset key type becomes LINEAR_KEY" says something about 0, and
+        /// keyed on the field alone it also said that a TBC key coming back cubic was
+        /// meant to happen.
+        ///
+        /// So an entry may name a guard, and the excuse holds only where the guard
+        /// does. Anything unguarded behaves as it did.
+        /// </remarks>
+        private static readonly Dictionary<string, Func<NifDifference, bool>> Guards =
+            new(StringComparer.Ordinal)
+            {
+                ["Interpolation"] = d => d.Left is "0" or "" || d.Left.EndsWith(" (0)", StringComparison.Ordinal),
+            };
+
         /// <summary>Whether one entry key covers a difference, by the rule above.</summary>
         public static bool Covers(string key, NifDifference difference) =>
             key.Contains('/', StringComparison.Ordinal)
@@ -762,7 +787,7 @@ namespace SECmd.Tests
                     : key == difference.Field;
 
                 if (matched)
-                    return true;
+                    return !Guards.TryGetValue(key, out var guard) || guard(difference);
             }
 
             return false;
