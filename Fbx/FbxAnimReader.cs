@@ -579,6 +579,12 @@ namespace SECmd.Fbx
                     values[i],
                     i < interpolations.Count ? interpolations[i] : AnimInterpolation.Linear)
                 {
+                    // The tangent mode, which is what says whether this key was
+                    // written with TBC handles or with its own slopes. Read from the
+                    // flag rather than from whether the numbers under it are zero:
+                    // both forms are allowed to be all zeroes and they are not the
+                    // same curve.
+                    Handles = HandlesOf(attrFlags, attrRuns, i),
                     Tbc = i < handles.Count ? handles[i] : new NifVector3(),
                     Forward = i < slopes.Count ? slopes[i].Forward : 0f,
                     Backward = i < slopes.Count ? slopes[i].Backward : 0f,
@@ -586,6 +592,31 @@ namespace SECmd.Fbx
             }
 
             ScaleSlopes(into);
+        }
+
+        /// <summary>The tangent mode flagged on one key's run.</summary>
+        private static AnimHandles HandlesOf(int[] flags, int[] refCounts, int key)
+        {
+            int at = 0;
+
+            for (int run = 0; run < flags.Length; run++)
+            {
+                int span = run < refCounts.Length ? refCounts[run] : 1;
+
+                if (key < at + span)
+                {
+                    if ((flags[run] & FbxAnimWriter.KeyFlags.TangentTcb) != 0)
+                        return AnimHandles.Tcb;
+
+                    return (flags[run] & FbxAnimWriter.KeyFlags.TangentUser) != 0
+                        ? AnimHandles.Slopes
+                        : AnimHandles.Auto;
+                }
+
+                at += span;
+            }
+
+            return AnimHandles.Auto;
         }
 
         /// <summary>The slopes of each key, from the runs the curve stores them in.</summary>

@@ -604,16 +604,22 @@ namespace SECmd.Fbx
             // broken into a new run whenever either changes.
             var attributes = new List<float>();
 
-            // Whether the curve states its own slopes anywhere. Asked of the whole
-            // curve, not of each key: the slope entering a key is stored beside the key
-            // before it, so one key's tangents are two keys' business.
-            bool tangents = curve.Keys.Any(k => k.Forward != 0f || k.Backward != 0f);
+            // Whether the curve states its own slopes. Asked of the whole curve, not
+            // of each key: the slope entering a key is stored beside the key before it,
+            // so one key's tangents are two keys' business.
+            //
+            // From the form the keys were written in rather than from whether any of
+            // the numbers is non-zero. A key group is allowed to state a slope of zero
+            // -- that is a flat handle, not an absent one -- and reading the form off
+            // the values made an all-zero group indistinguishable from a group that
+            // never had handles at all.
+            bool tangents = curve.Keys.Any(k => k.Handles == AnimHandles.Slopes);
 
             for (int index = 0; index < curve.Keys.Count; index++)
             {
                 AnimKey key = curve.Keys[index];
 
-                bool tcb = key.Tbc.X != 0f || key.Tbc.Y != 0f || key.Tbc.Z != 0f;
+                bool tcb = key.Handles == AnimHandles.Tcb;
 
                 int flag = tcb
                     ? KeyFlags.Cubic | KeyFlags.TangentTcb

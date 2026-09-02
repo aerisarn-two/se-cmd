@@ -21,9 +21,42 @@ namespace SECmd.Conversion
         Cubic
     }
 
+    /// <summary>What shapes a key's curve, where a curve is what it is.</summary>
+    /// <remarks>
+    /// A NIF states the form of its keys and does not derive it: a key group is
+    /// linear, quadratic, TBC, XYZ or constant, and quadratic and TBC are two ways
+    /// of writing a curve that are not the same curve through the same points.
+    ///
+    /// This was inferred from the numbers instead -- a key with tension, bias or
+    /// continuity that was not zero was TBC, a key with a slope that was not zero was
+    /// quadratic, anything else was neither. That reads the form off values that are
+    /// allowed to be zero, so a TBC group whose handles are all zero came back
+    /// quadratic: five of them on `dlc01sebf_blastroof`'s scale channels, which is
+    /// where this was found.
+    ///
+    /// FBX has the distinction and always did — <c>eTangentTCB</c> and
+    /// <c>eTangentUser</c> are different tangent modes on a cubic key, and a mode is
+    /// set whether or not the numbers under it are zero. So the form travels as the
+    /// mode, and nothing has to guess it back.
+    /// </remarks>
+    public enum AnimHandles
+    {
+        /// <summary>Nothing stated: FBX picks the tangents, as it does for linear and constant keys.</summary>
+        Auto,
+
+        /// <summary>Tension, bias and continuity, as NIF key type 3.</summary>
+        Tcb,
+
+        /// <summary>Its own two slopes, as NIF key type 2.</summary>
+        Slopes
+    }
+
     /// <summary>One key on one curve. Time is in seconds.</summary>
     public readonly record struct AnimKey(float Time, float Value, AnimInterpolation Interpolation)
     {
+        /// <summary>Which of the two handle forms this key was written in, if either.</summary>
+        public AnimHandles Handles { get; init; }
+
         /// <summary>
         /// Tension, bias and continuity, for a key written in that form.
         /// </summary>

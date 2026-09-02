@@ -668,6 +668,7 @@ namespace SECmd.Nif
             }
 
             AnimInterpolation interpolation = InterpolationOf(model, group);
+            AnimHandles form = HandlesOf(model, group);
 
             foreach (NifItem key in KeysOf(model, group))
             {
@@ -682,17 +683,18 @@ namespace SECmd.Nif
                     (NifVector3 ahead, NifVector3 behind) = VectorTangentsOf(model, key);
 
                     property.Curves[0].Keys.Add(new AnimKey(time, point.X, interpolation)
-                        { Tbc = handles, Forward = ahead.X, Backward = behind.X });
+                        { Handles = form, Tbc = handles, Forward = ahead.X, Backward = behind.X });
                     property.Curves[1].Keys.Add(new AnimKey(time, point.Y, interpolation)
-                        { Tbc = handles, Forward = ahead.Y, Backward = behind.Y });
+                        { Handles = form, Tbc = handles, Forward = ahead.Y, Backward = behind.Y });
                     property.Curves[2].Keys.Add(new AnimKey(time, point.Z, interpolation)
-                        { Tbc = handles, Forward = ahead.Z, Backward = behind.Z });
+                        { Handles = form, Tbc = handles, Forward = ahead.Z, Backward = behind.Z });
                 }
                 else
                 {
                     property.Curve.Keys.Add(
                         new AnimKey(time, value?.Value.ToFloat() ?? 0f, interpolation)
                         {
+                            Handles = form,
                             Tbc = TbcOf(model, key),
                             Forward = ScalarOf(model, key, "Forward"),
                             Backward = ScalarOf(model, key, "Backward"),
@@ -777,6 +779,7 @@ namespace SECmd.Nif
                 return;
 
             AnimInterpolation interpolation = InterpolationOf(model, group);
+            AnimHandles form = HandlesOf(model, group);
 
             foreach (NifItem key in KeysOf(model, group))
             {
@@ -787,11 +790,11 @@ namespace SECmd.Nif
                 (NifVector3 ahead, NifVector3 behind) = VectorTangentsOf(model, key);
 
                 track.Translation[0].Keys.Add(new AnimKey(time, value.X, interpolation)
-                    { Tbc = handles, Forward = ahead.X, Backward = behind.X });
+                    { Handles = form, Tbc = handles, Forward = ahead.X, Backward = behind.X });
                 track.Translation[1].Keys.Add(new AnimKey(time, value.Y, interpolation)
-                    { Tbc = handles, Forward = ahead.Y, Backward = behind.Y });
+                    { Handles = form, Tbc = handles, Forward = ahead.Y, Backward = behind.Y });
                 track.Translation[2].Keys.Add(new AnimKey(time, value.Z, interpolation)
-                    { Tbc = handles, Forward = ahead.Z, Backward = behind.Z });
+                    { Handles = form, Tbc = handles, Forward = ahead.Z, Backward = behind.Z });
             }
         }
 
@@ -822,6 +825,7 @@ namespace SECmd.Nif
                 {
                     NifItem group = groups.Children[axis];
                     AnimInterpolation interpolation = InterpolationOf(model, group);
+                    AnimHandles form = HandlesOf(model, group);
 
                     foreach (NifItem key in KeysOf(model, group))
                     {
@@ -830,6 +834,7 @@ namespace SECmd.Nif
                             FloatOf(model, key, "Value") * ToDegrees,
                             interpolation)
                         {
+                            Handles = form,
                             Tbc = TbcOf(model, key),
 
                             // In degrees, as the value beside them is. A tangent is a
@@ -869,6 +874,7 @@ namespace SECmd.Nif
                 return;
 
             AnimInterpolation interpolation = InterpolationOf(model, group);
+            AnimHandles form = HandlesOf(model, group);
 
             foreach (NifItem key in KeysOf(model, group))
             {
@@ -879,7 +885,8 @@ namespace SECmd.Nif
                 for (int axis = 0; axis < 3; axis++)
                     track.Scale[axis].Keys.Add(new AnimKey(time, value, interpolation)
                     {
-                        Tbc = TbcOf(model, key),
+                        Handles = form,
+                            Tbc = TbcOf(model, key),
                         Forward = ScalarOf(model, key, "Forward"),
                         Backward = ScalarOf(model, key, "Backward"),
                     });
@@ -904,6 +911,22 @@ namespace SECmd.Nif
 
         private static AnimInterpolation InterpolationOf(NifModel model, NifItem group) =>
             FromKeyType(model.GetUInt(group, "Interpolation"));
+
+        /// <summary>
+        /// Which handle form the group's key type is written in.
+        /// </summary>
+        /// <remarks>
+        /// Read from the key type rather than from the handles, so a group that says
+        /// it is TBC stays TBC when its tensions are all zero -- which is a curve, and
+        /// a different one from the quadratic it used to come back as.
+        /// </remarks>
+        private static AnimHandles HandlesOf(NifModel model, NifItem group) =>
+            model.GetUInt(group, "Interpolation") switch
+            {
+                2 => AnimHandles.Slopes,
+                3 => AnimHandles.Tcb,
+                _ => AnimHandles.Auto
+            };
 
         /// <summary>Maps a NIF key type onto the interpolation FBX understands.</summary>
         private static AnimInterpolation FromKeyType(uint keyType) => keyType switch

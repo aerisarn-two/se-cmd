@@ -1662,15 +1662,20 @@ namespace SECmd.Nif
         {
             const uint Linear = 1, Quadratic = 2, Tbc = 3, Const = 5;
 
-            // A channel carrying handles was written with them, and only a key type of
-            // 3 has anywhere to put them back. FBX has no tension/bias/continuity of its
-            // own, so the interpolation on the way in says only "a curve" -- the handles
-            // are what remembers which kind, which is why they are carried at all.
-            if (curves.SelectMany(c => c.Keys).Any(
-                    k => k.Tbc.X != 0f || k.Tbc.Y != 0f || k.Tbc.Z != 0f))
-            {
+            // The form the keys were written in, which FBX carries as the key's tangent
+            // mode. Asked before anything else, because only key type 3 has anywhere to
+            // put TBC handles back and only key type 2 has anywhere to put slopes.
+            //
+            // This used to ask whether any handle was non-zero instead, which is a
+            // different question: a group is allowed to state a tension of zero, and one
+            // that did was rebuilt as quadratic -- a curve of the same points and a
+            // different shape between them. It was five key groups on
+            // `dlc01sebf_blastroof` and the comparison was excusing them.
+            if (curves.SelectMany(c => c.Keys).Any(k => k.Handles == AnimHandles.Tcb))
                 return Tbc;
-            }
+
+            if (curves.SelectMany(c => c.Keys).Any(k => k.Handles == AnimHandles.Slopes))
+                return Quadratic;
 
             uint best = Const;
 
