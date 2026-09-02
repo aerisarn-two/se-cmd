@@ -210,6 +210,29 @@ namespace SECmd.Tests
             ["bhkCompressedMeshShapeData/Chunks"] = "Havok chunks the mesh its own way (shape checked separately)",
             ["Num Chunks"] = "Havok cuts its own number of chunks (shape checked separately)",
 
+            // And the geometry that did not go into a chunk, which is the same fact
+            // about the same decision. A triangle Havok cannot fit into a chunk is
+            // written whole into `Big Tris`, with its vertices in `Big Verts` -- so
+            // where the chunk boundaries fall decides what is left over, and a mesh cut
+            // into a different number of chunks has a different remainder by
+            // construction. `dockstrent03` has four chunks and nothing left over where
+            // this build has two chunks and eleven big triangles; `inn01` has 28 and 12
+            // against 12 and 242.
+            //
+            // These were left out when the chunk entries went in, so a re-chunked mesh
+            // stopped reporting `Chunks` and went on reporting `Num Big Tris` -- 108 of
+            // the 192 meshes still differing in a 2,000-mesh sample, and 85 of them
+            // differing in nothing else. Recording a fact for one field of a family and
+            // not its siblings is the mistake this codebase makes most often.
+            //
+            // Excused on the same terms and for the same reason: what matters is
+            // whether the shape survived, and `EveryVanillaCollisionMeshKeepsItsShape`
+            // asks that of the decoded surface rather than of the encoding.
+            ["bhkCompressedMeshShapeData/Big Verts"] = "the leftover of Havok's own chunking (shape checked separately)",
+            ["bhkCompressedMeshShapeData/Big Tris"] = "the leftover of Havok's own chunking (shape checked separately)",
+            ["bhkCompressedMeshShapeData/Num Big Verts"] = "the leftover of Havok's own chunking (shape checked separately)",
+            ["bhkCompressedMeshShapeData/Num Big Tris"] = "the leftover of Havok's own chunking (shape checked separately)",
+
             // A strips shape's strips, written one triangle each.
             //
             // A strip is a compression of an index list and nothing reads it back as
