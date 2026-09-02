@@ -1197,12 +1197,25 @@ namespace SECmd.Conversion
                 // sized this array, so every rebuilt list shape wrote a count of zero
                 // and no filters at all, against a file that had one per sub shape.
                 //
-                // Left at the schema's own default rather than given a value. Of the
-                // 134 list and strips shapes in a 3,000-mesh sample every one has
-                // exactly one filter per sub shape, and every `bhkListShape` among them
-                // has all of them zero; the only two non-zero filters in the sample are
-                // on a `bhkNiTriStripsShape`, which is not a block this writes.
-                _model.SetArraySize(container, "Num Filters", "Filters", children.Count);
+                // Zeroed, which the schema's own default does not do. `HavokFilter`
+                // declares `Layer` with `default="SKYL_STATIC"`, and that is right for a
+                // body's filter and wrong here: of the 134 list and strips shapes in a
+                // 3,000-mesh sample every one has exactly one filter per sub shape, and
+                // every `bhkListShape` among them holds `SKYL_UNIDENTIFIED` with no
+                // flags and no group. The only two non-zero filters in the sample are on
+                // a `bhkNiTriStripsShape`, which is not a block this writes.
+                //
+                // So this is a constant written against the schema rather than from it,
+                // which is worth stating plainly: the default is not wrong in general,
+                // it is wrong for this array. Sizing the array and leaving the entries
+                // alone traded 163 files differing in `Filters` for 153 differing in
+                // `Layer`, which is how the difference was found.
+                if (_model.SetArraySize(container, "Num Filters", "Filters", children.Count)
+                    is { } filters)
+                {
+                    foreach (NifItem filter in filters.Children)
+                        ZeroFields(filter);
+                }
 
                 ApplyContainerMaterial(container, node, children[0]);
             }
@@ -1228,6 +1241,21 @@ namespace SECmd.Conversion
             }
 
             return container;
+        }
+
+        /// <summary>Sets every field this version of a struct has to zero.</summary>
+        private void ZeroFields(NifItem item)
+        {
+            foreach (NifItem field in item.Children)
+            {
+                if (!_model.EvalCondition(field))
+                    continue;
+
+                if (field.Children.Count > 0)
+                    ZeroFields(field);
+                else
+                    field.Value.SetCount(0);
+            }
         }
 
         /// <summary>
