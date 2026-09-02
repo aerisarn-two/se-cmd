@@ -244,6 +244,8 @@ namespace SECmd.Conversion
 
             _animatedControllerHosts.Clear();
 
+            OrderParticleControllerChains();
+
             // Last, because it is an answer about the finished graph.
             //
             // Not written at all when the root is a plain `NiNode` -- a rig or a
@@ -690,6 +692,82 @@ namespace SECmd.Conversion
         /// the controllers those fields belong to do not exist.
         /// </remarks>
         private readonly List<(FbxObject Node, NifItem Block)> _animatedControllerHosts = [];
+
+        /// <summary>
+        /// Puts a particle system's controller chain back in the order the game writes.
+        /// </summary>
+        /// <remarks>
+        /// A particle system's controllers are a linked list, and the two routes that
+        /// build them -- the structural carrier and the animation layer -- hang them on
+        /// in the order they happen to arrive. Vanilla's order is not arbitrary, and
+        /// measured over all 22,047 meshes the game ships it has no exceptions at all.
+        /// Of the 1,704 systems carrying a chain of two or more:
+        ///
+        /// - the modifier each controller drives **descends** along the chain, on all
+        ///   1,704 -- the chain is the modifier stack read backwards;
+        /// - the controller driving no modifier, which is the update switch, is last, on
+        ///   all 1,704.
+        ///
+        /// One ordering satisfies both: sort by the modifier's place in the stack,
+        /// descending, and a controller naming no modifier sorts below every one that
+        /// does. Ties keep the order they arrived in, so a file with two controllers on
+        /// one modifier is left as it was rather than shuffled.
+        ///
+        /// This showed up as `NiPSysModifierActiveCtlr` and `NiPSysEmitterCtlr` reading
+        /// as the wrong class at a path -- the chain held the same five controllers in a
+        /// different sequence, so every position after the first disagreed.
+        /// </remarks>
+        private void OrderParticleControllerChains()
+        {
+            foreach (NifItem system in _model.Blocks
+                         .Where(b => _model.BlockInherits(b, "NiParticleSystem")).ToList())
+            {
+                var chain = new List<NifItem>();
+
+                for (NifItem? c = _model.GetRef(system, "Controller");
+                     c is not null;
+                     c = _model.GetRef(c, "Next Controller"))
+                {
+                    // A chain that loops back on itself would hang this; it cannot
+                    // happen from a well-formed file, and the cost of checking is one
+                    // comparison.
+                    if (chain.Contains(c))
+                        break;
+
+                    chain.Add(c);
+                }
+
+                if (chain.Count < 2)
+                    continue;
+
+                var place = new Dictionary<string, int>(StringComparer.Ordinal);
+                int at = 0;
+
+                foreach (NifItem modifier in _model.GetRefArray(system, "Modifiers"))
+                    place[_model.GetString(modifier, "Name")] = at++;
+
+                int PlaceOf(NifItem controller) =>
+                    _model.GetString(controller, "Modifier Name") is { Length: > 0 } name
+                    && place.TryGetValue(name, out int index)
+                        ? index
+                        : -1;
+
+                var ordered = chain
+                    .Select((controller, position) => (Controller: controller, Place: PlaceOf(controller), position))
+                    .OrderByDescending(x => x.Place)
+                    .ThenBy(x => x.position)
+                    .Select(x => x.Controller)
+                    .ToList();
+
+                if (ordered.SequenceEqual(chain))
+                    continue;
+
+                _model.SetRef(system, "Controller", ordered[0]);
+
+                for (int i = 0; i < ordered.Count; i++)
+                    _model.SetRef(ordered[i], "Next Controller", i + 1 < ordered.Count ? ordered[i + 1] : null);
+            }
+        }
 
         private void ResolveParticleLinks()
         {
