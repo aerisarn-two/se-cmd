@@ -1119,55 +1119,60 @@ namespace SECmd.Tests
             /// </remarks>
             private bool AuthoredWeightExplains(NifItem slot, NifItem theirs)
             {
-                // slot -> row -> array -> partition
+                // slot -> row -> array -> partition, on our side and theirs alike.
                 if (slot.Parent is not { } row
                     || row.Parent is not { } array
                     || array.Parent is not { } partition
-                    || array.Name != "Vertex Weights")
+                    || array.Name != "Vertex Weights"
+                    || theirs.Parent is not { } theirRow
+                    || theirRow.Parent is not { } theirArray
+                    || theirArray.Parent is not { } theirPartition)
                 {
                     return false;
                 }
 
                 int at = array.Children.IndexOf(row);
                 int which = row.Children.IndexOf(slot);
+                int theirAt = theirArray.Children.IndexOf(theirRow);
 
-                if (at < 0 || which < 0)
+                if (at < 0 || which < 0 || theirAt < 0)
                     return false;
 
-                // Which bone this slot names, in the shape's own numbering.
-                if (Child(partition, "Bone Indices") is not { } indices
-                    || at >= indices.Children.Count
-                    || which >= indices.Children[at].Children.Count
-                    || Child(partition, "Bones") is not { } bones)
-                {
-                    return false;
-                }
-
-                int local = (int)indices.Children[at].Children[which].Value.ToUInt();
-
-                if (local >= bones.Children.Count)
-                    return false;
-
-                int bone = (int)bones.Children[local].Value.ToUInt();
-
-                // And which vertex.
+                // The vertex, which the rows have already been paired on.
                 if (Child(partition, "Vertex Map") is not { } map || at >= map.Children.Count)
                     return false;
 
                 uint vertex = map.Children[at].Value.ToUInt();
 
-                // The authored weight for that pair, from the skin data beside this
-                // partition. `_owner` is the NiSkinPartition the walk is inside.
+                // **The bone is read from the side the weight came from.** Reading it
+                // from the source instead was the flaw here: the four slots of a row are
+                // not ordered, so slot 2 on one side need not be the bone slot 2 names on
+                // the other, and the lookup then asked about a bone this weight was never
+                // for. That is the same mistake as comparing partition rows in place, one
+                // level further down.
+                if (BoneNameOf(right, theirPartition, theirAt, which) is not { } name)
+                    return false;
+
+                // What the file itself says was authored for that bone and vertex. Only
+                // when the skin names the bone once: a list naming it twice -- a tree's
+                // does, one set per level of detail -- cannot say which entry is meant.
                 if (_owner is null
                     || left.Blocks.FirstOrDefault(
                            b => left.GetRef(b, "Skin Partition") == _owner) is not { } instance
                     || left.GetRef(instance, "Data") is not { } skinData
-                    || Child(skinData, "Bone List") is not { } list
-                    || bone >= list.Children.Count
-                    || Child(list.Children[bone], "Vertex Weights") is not { } authored)
+                    || Child(skinData, "Bone List") is not { } list)
                 {
                     return false;
                 }
+
+                var bones = left.GetRefArray(instance, "Bones").Select(left.GetName).ToList();
+                int bone = bones.IndexOf(name);
+
+                if (bone < 0 || bones.LastIndexOf(name) != bone || bone >= list.Children.Count)
+                    return false;
+
+                if (Child(list.Children[bone], "Vertex Weights") is not { } authored)
+                    return false;
 
                 foreach (NifItem entry in authored.Children)
                 {
@@ -1180,10 +1185,57 @@ namespace SECmd.Tests
 
                     // Ours has to *be* the authored weight. That it merely differs from
                     // the cache is not enough.
+                    //
+                    // Compared as `NifValue` prints them, which is `G6` -- six
+                    // significant digits, the same comparison the walk uses for every
+                    // other field. Tightening this to the float itself, or to within one
+                    // unit in the last place, was tried and is wrong: the weight makes
+                    // the trip as a double and comes back through a renormalisation, so
+                    // it agrees with the authored value to about six digits and not to
+                    // the bit. The sample went from 20 divergent meshes to 27.
+                    //
+                    // The cost of the crude comparison is the odd weight sitting on a
+                    // rounding boundary, which prints either side of it from a one-bit
+                    // difference: `hair13`'s vertex 921 is authored 0.790237606 and
+                    // rebuilt a shade below, and reads as 0.790238 against 0.790237.
+                    // One mesh in the sample keeps a difference for that reason.
                     return weight.Value.ToString() == theirs.Value.ToString();
                 }
 
                 return false;
+            }
+
+            /// <summary>The bone a partition's weight slot names, by node name.</summary>
+            private static string? BoneNameOf(NifModel model, NifItem partition, int row, int slot)
+            {
+                if (partition.Children.FirstOrDefault(
+                        c => c.Name == "Bone Indices" && model.EvalCondition(c)) is not { } indices
+                    || row >= indices.Children.Count
+                    || slot >= indices.Children[row].Children.Count
+                    || partition.Children.FirstOrDefault(
+                        c => c.Name == "Bones" && model.EvalCondition(c)) is not { } bones)
+                {
+                    return null;
+                }
+
+                int local = (int)indices.Children[row].Children[slot].Value.ToUInt();
+
+                if (local >= bones.Children.Count)
+                    return null;
+
+                int index = (int)bones.Children[local].Value.ToUInt();
+
+                if (partition.Parent?.Parent is not { } block)
+                    return null;
+
+                NifItem? instance = model.Blocks.FirstOrDefault(b => model.GetRef(b, "Skin Partition") == block);
+
+                if (instance is null)
+                    return null;
+
+                var list = model.GetRefArray(instance, "Bones").ToList();
+
+                return index < list.Count ? model.GetName(list[index]) : null;
             }
 
             /// <summary>A block's live child of that name.</summary>
