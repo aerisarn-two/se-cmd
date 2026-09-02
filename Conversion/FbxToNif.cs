@@ -1105,6 +1105,18 @@ namespace SECmd.Conversion
                         subShapes.Children[i].Value.SetLink(_model.IndexOf(children[i]));
                 }
 
+                // One collision filter per sub shape, which is what nif.xml says the
+                // count is -- `Num Filters` carries `calc="#LEN[Sub Shapes]#"`. Nothing
+                // sized this array, so every rebuilt list shape wrote a count of zero
+                // and no filters at all, against a file that had one per sub shape.
+                //
+                // Left at the schema's own default rather than given a value. Of the
+                // 134 list and strips shapes in a 3,000-mesh sample every one has
+                // exactly one filter per sub shape, and every `bhkListShape` among them
+                // has all of them zero; the only two non-zero filters in the sample are
+                // on a `bhkNiTriStripsShape`, which is not a block this writes.
+                _model.SetArraySize(container, "Num Filters", "Filters", children.Count);
+
                 ApplyContainerMaterial(container, node, children[0]);
             }
             else
