@@ -145,11 +145,28 @@ namespace SECmd.Nif
                 or NifValueType.SizedString or NifValueType.ShortString => model.ResolveString(item),
 
             NifValueType.Vector4 => Format(item.Value.Get<NifVector4>()),
-            NifValueType.Vector3 => Format(item.Value.Get<NifVector3>()),
-            NifValueType.Vector2 => Format(item.Value.Get<NifVector2>()),
+            NifValueType.Vector2 or NifValueType.HalfVector2 => Format(item.Value.Get<NifVector2>()),
             NifValueType.Color3 => Format(item.Value.Get<NifColor3>()),
-            NifValueType.Color4 => Format(item.Value.Get<NifColor4>()),
-            NifValueType.Float => Number(item.Value.ToFloat()),
+            NifValueType.Color4 or NifValueType.ByteColor4 => Format(item.Value.Get<NifColor4>()),
+            NifValueType.Float or NifValueType.Hfloat => Number(item.Value.ToFloat()),
+
+            // Every spelling of a three-vector, not only the one made of floats. A
+            // normal is a `ByteVector3` and a particle copy's positions are
+            // `HalfVector3`, and both used to fall past this into the whole-number case
+            // below and come back as zero.
+            NifValueType.Vector3 or NifValueType.HalfVector3
+                or NifValueType.UshortVector3 or NifValueType.ByteVector3
+                => Format(item.Value.Get<NifVector3>()),
+
+            // A rotation, in either shape it is written in.
+            //
+            // These fell through as well, and a matrix read as a whole number is not a
+            // near miss -- it is nothing at all. `BSMultiBoundOBB` is the one the game
+            // exercises: 37 of its meshes, most of Markarth among them, carried an
+            // oriented box whose orientation came back as the identity, which is an
+            // oriented box that is not oriented.
+            NifValueType.Matrix => Format(item.Value.Get<NifMatrix33>()),
+            NifValueType.Quat or NifValueType.QuatXYZW => Format(item.Value.Get<NifQuat>()),
 
             // Everything else is a whole number, and read as 64 bits because some of
             // them are. `ToUInt` truncates: a `BSVertexDesc` is a `uint64` whose
@@ -182,11 +199,29 @@ namespace SECmd.Nif
                     break;
 
                 case NifValueType.Vector3:
+                case NifValueType.HalfVector3:
+                case NifValueType.UshortVector3:
+                case NifValueType.ByteVector3:
                     item.Value.Set(new NifVector3(At(parts, 0), At(parts, 1), At(parts, 2)));
                     break;
 
                 case NifValueType.Vector2:
+                case NifValueType.HalfVector2:
                     item.Value.Set(new NifVector2(At(parts, 0), At(parts, 1)));
+                    break;
+
+                case NifValueType.Matrix:
+                    item.Value.Set(new NifMatrix33
+                    {
+                        M11 = At(parts, 0), M12 = At(parts, 1), M13 = At(parts, 2),
+                        M21 = At(parts, 3), M22 = At(parts, 4), M23 = At(parts, 5),
+                        M31 = At(parts, 6), M32 = At(parts, 7), M33 = At(parts, 8),
+                    });
+                    break;
+
+                case NifValueType.Quat:
+                case NifValueType.QuatXYZW:
+                    item.Value.Set(new NifQuat(At(parts, 0), At(parts, 1), At(parts, 2), At(parts, 3)));
                     break;
 
                 case NifValueType.Color3:
@@ -194,10 +229,12 @@ namespace SECmd.Nif
                     break;
 
                 case NifValueType.Color4:
+                case NifValueType.ByteColor4:
                     item.Value.Set(new NifColor4(At(parts, 0), At(parts, 1), At(parts, 2), At(parts, 3)));
                     break;
 
                 case NifValueType.Float:
+                case NifValueType.Hfloat:
                     item.Value.SetFloat(At(parts, 0));
                     break;
 
@@ -217,6 +254,15 @@ namespace SECmd.Nif
         private static string Number(float value) => value.ToString("R", CultureInfo.InvariantCulture);
 
         private static string Format(NifVector4 v) => string.Join(' ', Number(v.X), Number(v.Y), Number(v.Z), Number(v.W));
+
+        private static string Format(NifQuat q) => string.Join(' ', Number(q.W), Number(q.X), Number(q.Y), Number(q.Z));
+
+        /// <summary>Nine numbers, row by row, in the order the reader puts them back.</summary>
+        private static string Format(NifMatrix33 m) => string.Join(
+            ' ',
+            Number(m.M11), Number(m.M12), Number(m.M13),
+            Number(m.M21), Number(m.M22), Number(m.M23),
+            Number(m.M31), Number(m.M32), Number(m.M33));
 
         private static string Format(NifVector3 v) => string.Join(' ', Number(v.X), Number(v.Y), Number(v.Z));
 
