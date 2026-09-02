@@ -614,13 +614,8 @@ namespace SECmd.Nif
             PartitionGroup group,
             Dictionary<ushort, List<(int Bone, float Weight)>> byVertex)
         {
-            // Everything inside a partition is addressed locally, so build the two
-            // translations from global indices first.
-            var localVertex = new Dictionary<ushort, ushort>();
-
-            for (int i = 0; i < group.Vertices.Count; i++)
-                localVertex[group.Vertices[i]] = (ushort)i;
-
+            // The bones inside a partition are addressed locally, so build that
+            // translation first. The vertices are not: see the triangles below.
             var localBone = new Dictionary<int, int>();
 
             for (int i = 0; i < group.Bones.Count; i++)
@@ -651,17 +646,28 @@ namespace SECmd.Nif
                     map.Children[i].Value.SetCount(group.Vertices[i]);
             }
 
-            var local = group.Triangles.Select(t => new NifTriangle(
-                localVertex.GetValueOrDefault(t.V1),
-                localVertex.GetValueOrDefault(t.V2),
-                localVertex.GetValueOrDefault(t.V3))).ToList();
-
-            WriteTriangles(model, entry, "Triangles", local);
+            // In the shape's own numbering, not the partition's. `Vertex Map` is for
+            // the weights -- nif.xml says it "maps the weight/influence lists in this
+            // submesh to the vertices in the shape being skinned" -- and the triangles
+            // go on naming the shape's vertices directly. `NifToFbx.ReadSkinnedGeometry`
+            // reads them that way already; this wrote them the other way, and the two
+            // halves of the trip disagreed.
+            //
+            // Measured on vanilla, where a partition's triangles reach indices far past
+            // its own map: `0000282d`'s first partition maps 108 vertices and its
+            // triangles reach 878 of the shape's 996, and `hair13`'s reach 963 of 964.
+            // Written locally they addressed the map instead, so a rebuilt multi-part
+            // mesh drew the wrong vertices -- not a fidelity difference, a broken mesh.
+            //
+            // Nothing caught it because every skinned fixture has a single partition
+            // whose map covers the whole shape, and there local numbering and the
+            // shape's are the same numbering.
+            WriteTriangles(model, entry, "Triangles", group.Triangles);
 
             // Special Edition repeats the triangles at the end of the partition,
             // both counted by the same Num Triangles. Filling only the first leaves
             // the copy a run of degenerate triangles rather than the mesh.
-            WriteTriangles(model, entry, "Triangles Copy", local);
+            WriteTriangles(model, entry, "Triangles Copy", group.Triangles);
 
             // Both of these are two-dimensional: one row per vertex, each holding
             // Num Weights Per Vertex slots. Sizing the outer array creates the rows

@@ -157,11 +157,26 @@ namespace SECmd.Tests
 
                 foreach (NifItem item in fixture.Model.FindItem(part, "Triangles")!.Children)
                 {
-                    NifTriangle local = item.Value.Get<NifTriangle>();
+                    NifTriangle triangle = item.Value.Get<NifTriangle>();
 
-                    // Indices inside a partition are local; the vertex map is the
-                    // only way back to the shape's own numbering.
-                    seen.Add(new NifTriangle(map[local.V1], map[local.V2], map[local.V3]));
+                    // A partition's triangles are in the shape's own numbering, not the
+                    // partition's. This used to put them through the vertex map, on the
+                    // reading that they were local to the partition -- and nif.xml says
+                    // what the map is for in as many words: it "maps the weight/influence
+                    // lists in this submesh to the vertices in the shape being skinned".
+                    // The weights, not the faces.
+                    //
+                    // Vanilla settles it. `0000282d`'s first partition maps 108 vertices
+                    // and its triangles reach index 878 of the shape's 996; `hair13`'s
+                    // reach 963 of 964. Neither is a local index into a map that small.
+                    //
+                    // Every vertex a triangle names is still one this partition lists,
+                    // which is what the map is checked for below.
+                    Assert.Contains(triangle.V1, map);
+                    Assert.Contains(triangle.V2, map);
+                    Assert.Contains(triangle.V3, map);
+
+                    seen.Add(triangle);
                 }
             }
 
