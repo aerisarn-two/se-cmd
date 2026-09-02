@@ -84,6 +84,15 @@ namespace SECmd.Tests
             ["Num Shape Keys in Contact Point"] = "uninitialised in the source file (0xCD)",
             ["Force Collided Onto PPU"] = "uninitialised in the source file (0xCD)",
 
+            // The MOPP's build type, where the file holds something that is not one.
+            //
+            // Rebuilt as 1, which is what 8,217 of the 8,222 MOPP codes the game ships
+            // say. The other five say 205, 46, 24, 130 and 0 -- 205 on 78 files, every
+            // one of them a Creation Club Ayleid ruin, and 205 is 0xCD, the same
+            // uninitialised memory as the entries above it here. None of the five is a
+            // build type; they are what was in the buffer.
+            ["MOPP Code/Build Type"] = "uninitialised in the source file (205 is 0xCD)",
+
             ["Consistency Flags"] = "not carried",
             ["Bounding Sphere"] = "recomputed from the vertices",
             ["Center"] = "recomputed from the vertices",
@@ -94,6 +103,19 @@ namespace SECmd.Tests
             // ConvexHullPlaneTests.
             ["Vertices"] = "convex hull refitted from the tessellation, so the order differs",
             ["Normals"] = "convex hull refitted from the tessellation, so the order differs",
+
+            // And the counts beside them, for the hulls that come back a corner or two
+            // short. That gap is recorded at §5.7.0B and measured there -- the hull
+            // returns every corner for 99.0% of the game's convex shapes and 99.9% of all
+            // corners, and what the rest lose is a corner within a thousand-millionth of
+            // a face it does not form. The arrays were excused for it and the counts were
+            // not, so a shape losing one reported `Num Vertices` and nothing else:
+            // daedricdagger 10 against 9, wheat01 8 against 7, torsognd 50 against 49.
+            //
+            // Keyed to the block, not the field name. `Num Vertices` means something on
+            // half the blocks in the format and this excuses it on one of them.
+            ["bhkConvexVerticesShape/Num Vertices"] = "a hull may lose a near-coplanar corner (§5.7.0B)",
+            ["bhkConvexVerticesShape/Num Normals"] = "a hull may lose a near-coplanar corner (§5.7.0B)",
 
             // The motion profile is applied from the resulting collision layer rather
             // than carried: the spec's table at §5.7 gives the motion system,
