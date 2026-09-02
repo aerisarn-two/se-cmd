@@ -235,6 +235,10 @@ namespace SECmd.Conversion
             if (_options.ImportAnimation)
                 _model.WriteAnimations(root, _scene.ReadAnimations(), _nodesByName, Warnings);
 
+            // After the animation, because the emitter controller this wires up is one
+            // the animation route builds.
+            WireMasterParticleSystems();
+
             // Last, because it is an answer about the finished graph.
             //
             // Not written at all when the root is a plain `NiNode` -- a rig or a
@@ -598,6 +602,74 @@ namespace SECmd.Conversion
             {
                 for (int i = 0; i < triangleCount && i < particleTriangles.Children.Count; i++)
                     particleTriangles.Children[i].Value.Set(triangles.Children[i].Value.Get<NifTriangle>());
+            }
+        }
+
+        /// <summary>
+        /// Wires a master particle system to the systems under it, and back again.
+        /// </summary>
+        /// <remarks>
+        /// A `BSMasterParticleSystem` is a `NiNode` that also lists the particle systems
+        /// it governs, and a `BSPSysMultiTargetEmitterCtlr` points back at it. Both are
+        /// links, so neither survives as a carried field, and every rebuilt MPS file came
+        /// back with an empty list and a null pointer -- 83 of a 3,000-mesh sample, all
+        /// of them under `meshes/mps/`.
+        ///
+        /// Neither needs carrying, because the graph already says it. Measured over all
+        /// 22,047 meshes the game ships:
+        ///
+        /// - a master's `Particle Systems` is every `NiParticleSystem` below it, in the
+        ///   order the tree walks them: 93 masters of 93, no exceptions;
+        /// - a `BSPSysMultiTargetEmitterCtlr` points at the file's master: 142 of 142,
+        ///   and no file in the game has two masters to choose between.
+        ///
+        /// So both are derived here rather than carried, and a file with more than one
+        /// master is left alone rather than guessed at.
+        /// </remarks>
+        private void WireMasterParticleSystems()
+        {
+            var masters = _model.Blocks.Where(b => b.Name == "BSMasterParticleSystem").ToList();
+
+            if (masters.Count == 0)
+                return;
+
+            foreach (NifItem master in masters)
+            {
+                var systems = new List<NifItem>();
+                CollectParticleSystems(master, systems, []);
+
+                if (_model.SetArraySize(master, "Num Particle Systems", "Particle Systems", systems.Count)
+                    is { } list)
+                {
+                    for (int i = 0; i < systems.Count && i < list.Children.Count; i++)
+                        list.Children[i].Value.SetLink(_model.IndexOf(systems[i]));
+                }
+            }
+
+            // Only when there is one to point at. The game has no file with two, so a
+            // scene that does is one this has never seen and should not guess about.
+            if (masters.Count != 1)
+                return;
+
+            foreach (NifItem controller in _model.Blocks
+                         .Where(b => b.Name == "BSPSysMultiTargetEmitterCtlr").ToList())
+            {
+                _model.SetRef(controller, "Master Particle System", masters[0]);
+            }
+        }
+
+        /// <summary>Every particle system below a node, in the order the tree walks.</summary>
+        private void CollectParticleSystems(NifItem node, List<NifItem> into, HashSet<NifItem> seen)
+        {
+            foreach (NifItem child in _model.GetRefArray(node, "Children"))
+            {
+                if (!seen.Add(child))
+                    continue;
+
+                if (_model.BlockInherits(child, "NiParticleSystem"))
+                    into.Add(child);
+
+                CollectParticleSystems(child, into, seen);
             }
         }
 
