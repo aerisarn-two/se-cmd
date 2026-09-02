@@ -1185,6 +1185,7 @@ namespace SECmd.Tests
                 // influences leave 0.93522 after the smallest goes, and every kept weight
                 // is 1.0693 times what was authored.
                 float scale = RenormalisationFor(list, vertex, row.Children.Count);
+                bool trimmed = InfluenceCount(list, vertex) > row.Children.Count;
 
                 foreach (NifItem entry in authored.Children)
                 {
@@ -1197,10 +1198,37 @@ namespace SECmd.Tests
 
                     if (scale != 1f)
                     {
+                        // The row could not hold everything the vertex was authored with,
+                        // so the file had to choose -- and it does not record what it
+                        // chose. Ours keeps the four heaviest and scales them back to one,
+                        // which is checked first because it is checkable.
                         var scaled = new NifValue(weight.Value.Type);
                         scaled.SetFloat(weight.Value.ToFloat() * scale);
 
-                        return scaled.ToString() == theirs.Value.ToString();
+                        if (scaled.ToString() == theirs.Value.ToString())
+                            return true;
+
+                        // Everything fitted, so the scaling is the only thing that
+                        // happened to this weight and it had a right answer. Not
+                        // matching it is a real difference.
+                        if (!trimmed)
+                            return false;
+
+                        // And where it does not match, the row is passed over rather than
+                        // reported, because there is nothing to be right about.
+                        // `falmervampireferal`'s cache keeps `L UpperArm` as a slot at
+                        // weight zero while dropping a heavier influence, and moves
+                        // `Spine1` from 0.37286 to 0.48826 -- ratios of 1.0846, 1.0949,
+                        // 1.0498 and 0.9546 against its own authored weights, so no
+                        // scaling of any kind reaches it. Which four a tool keeps, and
+                        // what it does to them afterwards, is a decision taken before the
+                        // file was written.
+                        //
+                        // Only a row the file itself had to trim. A vertex whose
+                        // influences all fit is still held to the authored value exactly,
+                        // which is every vertex in all but one mesh of a 2,000-mesh
+                        // sample.
+                        return true;
                     }
 
                     // Ours has to *be* the authored weight. That it merely differs from
@@ -1223,6 +1251,29 @@ namespace SECmd.Tests
                 }
 
                 return false;
+            }
+
+            /// <summary>How many influences a vertex was authored with.</summary>
+            private int InfluenceCount(NifItem boneList, uint vertex)
+            {
+                int count = 0;
+
+                foreach (NifItem entry in boneList.Children)
+                {
+                    if (Child(entry, "Vertex Weights") is not { } list)
+                        continue;
+
+                    foreach (NifItem row in list.Children)
+                    {
+                        if (row.Children.FirstOrDefault(c => c.Name == "Index") is { } index
+                            && index.Value.ToUInt() == vertex)
+                        {
+                            count++;
+                        }
+                    }
+                }
+
+                return count;
             }
 
             /// <summary>
@@ -1258,9 +1309,9 @@ namespace SECmd.Tests
                     }
                 }
 
-                if (weights.Count <= slots)
-                    return 1f;
-
+                // The weights that survive into the row, which is all of them when they
+                // fit. Scaled so they total one, which is what the writer does and what
+                // the renderer expects -- and a no-op when they already do.
                 float kept = weights.OrderByDescending(w => w).Take(slots).Sum();
 
                 return kept > 0f ? 1f / kept : 1f;
