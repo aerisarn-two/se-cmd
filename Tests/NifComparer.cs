@@ -1078,6 +1078,100 @@ namespace SECmd.Tests
                 _ragged.Add(left_);
             }
 
+            /// <summary>
+            /// Whether a partition weight differs because the file disagrees with itself.
+            /// </summary>
+            /// <remarks>
+            /// A skinned mesh states its weights twice: `NiSkinData` holds what was
+            /// authored, and `NiSkinPartition` holds the four-slot copy the renderer
+            /// reads. A rebuild has only one of them to work from and rebuilds the cache
+            /// from the authored weights, so where a file's two copies disagree, ours
+            /// matches the authored one and the file's cache does not.
+            ///
+            /// The files really do disagree. `hair13` has 1,711 weights in its partitions;
+            /// 1,667 match its own `NiSkinData` and 44 do not, by up to 0.0068 -- and 44
+            /// is exactly the number the sweep reports for it.
+            ///
+            /// So this is not "weights may differ": it is "this weight may differ from the
+            /// cache when it equals what the file itself says was authored". Anything else
+            /// -- a weight that matches neither copy, a renormalisation of our own, a
+            /// dropped influence -- still fails. Reaching the authored value means walking
+            /// from the slot back out to the partition, through `Vertex Map` for the
+            /// vertex and `Bones` for the bone, and into the `NiSkinData` beside it.
+            /// </remarks>
+            private bool AuthoredWeightExplains(NifItem slot, NifItem theirs)
+            {
+                // slot -> row -> array -> partition
+                if (slot.Parent is not { } row
+                    || row.Parent is not { } array
+                    || array.Parent is not { } partition
+                    || array.Name != "Vertex Weights")
+                {
+                    return false;
+                }
+
+                int at = array.Children.IndexOf(row);
+                int which = row.Children.IndexOf(slot);
+
+                if (at < 0 || which < 0)
+                    return false;
+
+                // Which bone this slot names, in the shape's own numbering.
+                if (Child(partition, "Bone Indices") is not { } indices
+                    || at >= indices.Children.Count
+                    || which >= indices.Children[at].Children.Count
+                    || Child(partition, "Bones") is not { } bones)
+                {
+                    return false;
+                }
+
+                int local = (int)indices.Children[at].Children[which].Value.ToUInt();
+
+                if (local >= bones.Children.Count)
+                    return false;
+
+                int bone = (int)bones.Children[local].Value.ToUInt();
+
+                // And which vertex.
+                if (Child(partition, "Vertex Map") is not { } map || at >= map.Children.Count)
+                    return false;
+
+                uint vertex = map.Children[at].Value.ToUInt();
+
+                // The authored weight for that pair, from the skin data beside this
+                // partition. `_owner` is the NiSkinPartition the walk is inside.
+                if (_owner is null
+                    || left.Blocks.FirstOrDefault(
+                           b => left.GetRef(b, "Skin Partition") == _owner) is not { } instance
+                    || left.GetRef(instance, "Data") is not { } skinData
+                    || Child(skinData, "Bone List") is not { } list
+                    || bone >= list.Children.Count
+                    || Child(list.Children[bone], "Vertex Weights") is not { } authored)
+                {
+                    return false;
+                }
+
+                foreach (NifItem entry in authored.Children)
+                {
+                    if (entry.Children.FirstOrDefault(c => c.Name == "Index") is not { } index
+                        || index.Value.ToUInt() != vertex
+                        || entry.Children.FirstOrDefault(c => c.Name == "Weight") is not { } weight)
+                    {
+                        continue;
+                    }
+
+                    // Ours has to *be* the authored weight. That it merely differs from
+                    // the cache is not enough.
+                    return weight.Value.ToString() == theirs.Value.ToString();
+                }
+
+                return false;
+            }
+
+            /// <summary>A block's live child of that name.</summary>
+            private NifItem? Child(NifItem parent, string name) =>
+                parent.Children.FirstOrDefault(c => c.Name == name && left.EvalCondition(c));
+
             private bool Same(NifItem a, NifItem b)
             {
                 if (a.Name == "Flags" && left.BlockInherits(_owner, "NiAVObject"))
@@ -1089,6 +1183,10 @@ namespace SECmd.Tests
 
                 // A bitangent lane on a shape that declares no tangent frame.
                 if (a.Name == "Bitangent Y" && !DeclaresTangents())
+                    return true;
+
+                // A cached partition weight the file's own authored weights contradict.
+                if (a.Name == "Vertex Weights" && AuthoredWeightExplains(a, b))
                     return true;
 
                 // A quaternion and its negation are the same rotation: q and -q turn a
