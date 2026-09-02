@@ -83,7 +83,7 @@ namespace SECmd.Fbx
         }
 
         /// <summary>What a class declares that its base does not.</summary>
-        private static IEnumerable<NifFieldDef> OwnFields(NifModel model, string blockName, string baseClass)
+        internal static IEnumerable<NifFieldDef> OwnFields(NifModel model, string blockName, string baseClass)
         {
             if (!model.KnowsBlock(blockName) || blockName == baseClass)
                 return [];

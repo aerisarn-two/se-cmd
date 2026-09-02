@@ -239,6 +239,11 @@ namespace SECmd.Conversion
             // the animation route builds.
             WireMasterParticleSystems();
 
+            foreach ((FbxObject source, NifItem block) in _animatedControllerHosts)
+                FbxNodeControllers.ReadAnimatedFields(source, _model, block);
+
+            _animatedControllerHosts.Clear();
+
             // Last, because it is an answer about the finished graph.
             //
             // Not written at all when the root is a plain `NiNode` -- a rig or a
@@ -478,6 +483,10 @@ namespace SECmd.Conversion
             if (!NifParticleWriter.HasParticleSystem(model))
                 FbxNodeControllers.Read(model, _model, node, Warnings, AimAt);
 
+            // The sequenced ones' own fields have to wait for the animation to build
+            // them, so the pairing is remembered and applied at the end.
+            _animatedControllerHosts.Add((model, node));
+
             // Collision found under this node attaches to it rather than becoming a
             // child, so collect it before recursing into the real children.
             int collisionMark = _pendingCollision.Count;
@@ -672,6 +681,15 @@ namespace SECmd.Conversion
                 CollectParticleSystems(child, into, seen);
             }
         }
+
+        /// <summary>
+        /// Nodes whose sequenced controllers still need their own fields put back.
+        /// </summary>
+        /// <remarks>
+        /// Collected during the walk and applied after the animation, since until then
+        /// the controllers those fields belong to do not exist.
+        /// </remarks>
+        private readonly List<(FbxObject Node, NifItem Block)> _animatedControllerHosts = [];
 
         private void ResolveParticleLinks()
         {

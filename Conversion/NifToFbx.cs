@@ -241,6 +241,12 @@ namespace SECmd.Conversion
             if (!FbxParticleWriter.IsParticleSystem(_model, block))
                 FbxNodeControllers.Write(node, _model, block, SequencedControllers);
 
+            // And the class-specific fields of the ones a sequence drives, which the
+            // line above leaves to the animation route and the animation route knows
+            // only by their keys. A particle system's controllers need this as much as
+            // any other node's -- more, since the multi-target emitter is one of them.
+            FbxNodeControllers.WriteAnimatedFields(node, _model, block, SequencedControllers);
+
             if (FbxParticleWriter.IsParticleSystem(_model, block))
             {
                 FbxParticleWriter.AddParticleSystem(scene, node, _model, block);

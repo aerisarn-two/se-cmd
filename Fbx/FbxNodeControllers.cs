@@ -126,6 +126,85 @@ namespace SECmd.Fbx
             }
         }
 
+
+        /// <summary>The prefix for a sequenced controller's own fields.</summary>
+        public const string AnimatedFieldPrefix = "nac_";
+
+        /// <summary>
+        /// Records the class-specific fields of the controllers the animation route
+        /// rebuilds.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="Write"/> deliberately skips a controller a sequence drives, since
+        /// the animation layer builds that one. But the animation layer knows a
+        /// controller by its keys, and a class that declares fields of its own beyond
+        /// `NiTimeController` loses them: a `BSPSysMultiTargetEmitterCtlr` came back
+        /// with `Max Emitters` zero against files holding anything from 2 to 99, on 83
+        /// meshes of a 3,000-mesh sample.
+        ///
+        /// `NifAnimWriter` already expects this to be somebody's job -- it looks for a
+        /// controller "rebuilt by a carrier that owns more of it than its keys" before
+        /// making one -- but only the flipbook had such a carrier. This is that carrier
+        /// for every other class.
+        ///
+        /// Which fields, asked of the schema rather than listed: everything the class
+        /// declares that `NiTimeController` does not. Links are left out, since a link
+        /// means nothing outside the file it was written in and the ones that matter are
+        /// derived instead; so are the fields the animation layer owns, which is the
+        /// whole of the base class -- flags, frequency, phase and the span.
+        ///
+        /// Keyed by class and by the same controller id `NifAnimWriter` uses to tell two
+        /// controllers of one class apart, so a node with several is unambiguous.
+        /// </remarks>
+        public static void WriteAnimatedFields(
+            FbxObject node, NifModel model, NifItem block, IReadOnlySet<NifItem>? sequenced = null)
+        {
+            for (NifItem? controller = model.GetRef(block, "Controller");
+                 controller is not null;
+                 controller = model.GetRef(controller, "Next Controller"))
+            {
+                // The ones Write already carries whole are not this carrier's business.
+                if (IsStructural(model, controller) && sequenced?.Contains(controller) != true)
+                    continue;
+
+                foreach ((NifItem item, string key) in AnimatedFieldsOf(model, controller))
+                    node.Properties.SetUserString(key, NifFieldCodec.Format(model, item));
+            }
+        }
+
+        /// <summary>Puts those fields back, once the animation has built the chain.</summary>
+        public static void ReadAnimatedFields(FbxObject node, NifModel model, NifItem block)
+        {
+            for (NifItem? controller = model.GetRef(block, "Controller");
+                 controller is not null;
+                 controller = model.GetRef(controller, "Next Controller"))
+            {
+                foreach ((NifItem item, string key) in AnimatedFieldsOf(model, controller))
+                {
+                    if (node.Properties.GetString(key) is { Length: > 0 } text)
+                        NifFieldCodec.Assign(model, item, text);
+                }
+            }
+        }
+
+        /// <summary>A controller's own scalar fields, with the name each travels under.</summary>
+        private static IEnumerable<(NifItem Item, string Key)> AnimatedFieldsOf(
+            NifModel model, NifItem controller)
+        {
+            string id = NifAnimAccess.ControllerIdOf(model, controller);
+
+            foreach (NifFieldDef field in FbxNodeType.OwnFields(model, controller.Name, "NiTimeController"))
+            {
+                if (model.FindItem(controller, field.Name) is not { Children.Count: 0 } item
+                    || NifFieldCodec.IsLink(item))
+                {
+                    continue;
+                }
+
+                yield return (item, $"{AnimatedFieldPrefix}{controller.Name}_{id}_{field.Name}");
+            }
+        }
+
         /// <summary>Rebuilds the controllers that animate nothing, onto the block.</summary>
         public static void Read(
             FbxObject node,
