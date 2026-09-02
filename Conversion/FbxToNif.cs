@@ -2647,11 +2647,26 @@ namespace SECmd.Conversion
                 return;
             }
 
-            var boneIndex = new Dictionary<string, uint>(StringComparer.Ordinal);
-            uint next = 0;
+            // Which written bone each of the skin's entries became. Paired in order
+            // rather than looked up by name: a skin may hold the same bone under several
+            // entries -- a tree gives each level of detail its own share of the list, so
+            // treepineforest01 names four bones across nineteen entries -- and a
+            // name-keyed map sends every reference to the first of them, which is one
+            // level's bones moving all three levels' vertices.
+            //
+            // Order alone would be wrong too, since a bone whose node is missing is
+            // dropped when the list is written and everything after it moves up. So the
+            // two are walked together and the name is the check: an entry that does not
+            // match the next written bone is one that was dropped, and it maps nowhere.
+            var written = _model.GetRefArray(instance, "Bones").Select(_model.GetName).ToList();
+            var boneIndex = new int[skin.Bones.Count];
+            Array.Fill(boneIndex, -1);
 
-            foreach (NifItem bone in _model.GetRefArray(instance, "Bones"))
-                boneIndex.TryAdd(_model.GetName(bone), next++);
+            for (int k = 0, at = 0; k < skin.Bones.Count && at < written.Count; k++)
+            {
+                if (skin.Bones[k].Name == written[at])
+                    boneIndex[k] = at++;
+            }
 
             var byVertex = skin.ByVertex();
 
@@ -2686,10 +2701,10 @@ namespace SECmd.Conversion
                 {
                     (int bone, float weight) = influences[j];
 
-                    string name = bone < skin.Bones.Count ? skin.Bones[bone].Name : string.Empty;
-
-                    if (!boneIndex.TryGetValue(name, out uint index))
+                    if (bone < 0 || bone >= boneIndex.Length || boneIndex[bone] < 0)
                         continue;
+
+                    var index = (uint)boneIndex[bone];
 
                     // Renormalised over the four that were kept, so a vertex whose fifth
                     // influence was dropped is not left slightly limp -- but only when it

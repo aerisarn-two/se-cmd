@@ -75,6 +75,25 @@ namespace SECmd.Fbx
         /// </remarks>
         public const string PartitionLodProperty = "nif_partition_lod";
 
+        /// <summary>Which entry of the skin's bone list a cluster is.</summary>
+        /// <remarks>
+        /// A skin's bone list may name one bone several times. 72 of the 26,940 skins
+        /// the game ships do, and they are exactly the 72 with a partition above LOD 0:
+        /// a tree gets its own set of entries per level, `treepineforest05` holding nine
+        /// -- `[Trunk] [Trunk, C02, C04, Mid01] [Trunk, C02, C04, Mid01]` -- for four
+        /// distinct bones.
+        ///
+        /// Which entry a cluster belongs to is not recoverable from the cluster. Keying
+        /// on the bone's name and bind pose gets most of the way and no further, since a
+        /// tree repeats a bone at the same pose in two levels; `treepineforestash01` has
+        /// 22 clusters against 19 entries, so the entries are not one per cluster either
+        /// and cannot simply be counted. So the entry travels.
+        ///
+        /// Absent -- a scene from a DCC, or one exported before this -- the reader falls
+        /// back to name and pose, which is what it always did.
+        /// </remarks>
+        public const string BoneEntryProperty = "nif_bone_entry";
+
         /// <summary>Set when the source kept its weights out of `NiSkinData`.</summary>
         /// <remarks>
         /// Written only for the shapes that did, so a scene that came from anywhere else
@@ -322,6 +341,11 @@ namespace SECmd.Fbx
                 FbxObject cluster = scene.AddObject("Deformer", bone.Name + "_cluster", "Cluster");
                 FbxNode clusterNode = cluster.Node;
 
+                // Which entry of the skin's bone list this is, which the cluster cannot
+                // otherwise say when the list names one bone more than once.
+                cluster.Properties.SetUserString(
+                    BoneEntryProperty, b.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
                 clusterNode.Nodes.Add(new FbxNode("Version", ClusterVersion));
                 clusterNode.Nodes.Add(new FbxNode("UserData", string.Empty, string.Empty));
 
@@ -421,6 +445,13 @@ namespace SECmd.Fbx
             var boneAt = new Dictionary<(string Name, string Pose), int>();
             var seen = new HashSet<(int Bone, ushort Vertex)>();
 
+            // When every cluster says which entry it is, the list is built from that
+            // instead, in the order the entries were numbered. Only then: a scene that
+            // says nothing keeps the name-and-pose rule above, and one that says it for
+            // some clusters and not others is not trusted for any of them, since a list
+            // half built from entries and half from names would number neither right.
+            Dictionary<int, int> byEntry = AllocateCarriedEntries(scene, skinObjects, skin);
+
             for (int p = 0; p < skinObjects.Count; p++)
             {
                 var info = new SkinPartitionInfo
@@ -436,7 +467,7 @@ namespace SECmd.Fbx
 
                 var covered = new SortedSet<ushort>();
 
-                ReadOnePartition(scene, skinObjects[p], skin, boneAt, seen, info, covered);
+                ReadOnePartition(scene, skinObjects[p], skin, boneAt, byEntry, seen, info, covered);
 
                 info.Vertices.AddRange(covered);
 
@@ -480,11 +511,88 @@ namespace SECmd.Fbx
                 : int.MaxValue;
 
         /// <summary>Reads one deformer's clusters into the shared bone list.</summary>
+        /// <summary>The bone-list entry a cluster names, when it names one.</summary>
+        private static int? EntryOf(FbxObject cluster) =>
+            int.TryParse(
+                cluster.Properties.GetString(BoneEntryProperty),
+                System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out int entry) && entry >= 0
+                ? entry
+                : null;
+
+        /// <summary>
+        /// Builds the skin's bone list from the entries the clusters name, when they all
+        /// name one.
+        /// </summary>
+        /// <remarks>
+        /// Allocated in the order the entries were numbered rather than the order the
+        /// clusters are met, so entry *n* here is entry *n* in the file it came from and
+        /// every partition's bone index still means what it meant.
+        ///
+        /// A bone appearing under several entries is several entries, which is the whole
+        /// point: it is how a tree gives each level of detail its own share of the list.
+        /// </remarks>
+        /// <returns>Carried entry to its place in the list, or empty when unavailable.</returns>
+        private static Dictionary<int, int> AllocateCarriedEntries(
+            FbxScene scene, List<FbxObject> skinObjects, SkinData skin)
+        {
+            var found = new SortedDictionary<int, FbxObject>();
+            int clusters = 0;
+
+            foreach (FbxObject skinObject in skinObjects)
+            {
+                foreach (FbxObject cluster in scene.ChildrenOf(skinObject.Id)
+                             .Where(o => o.Class == "Deformer" && o.SubClass == "Cluster"))
+                {
+                    clusters++;
+
+                    if (EntryOf(cluster) is not { } entry)
+                        return [];
+
+                    // The first cluster naming an entry describes it; a later one for
+                    // the same entry is another partition drawing with it.
+                    found.TryAdd(entry, cluster);
+                }
+            }
+
+            // A scene with no clusters says nothing either way.
+            //
+            // Every skin with clusters goes through here, not only the ones repeating a
+            // bone. Restricting it to those was tried and is wrong: a tree's nine
+            // clusters each name a *distinct* entry -- the repetition is of bones across
+            // entries, not of entries across clusters -- so "more clusters than entries"
+            // is exactly the test that misses it. The file's own numbering is the better
+            // answer wherever it is available, and for a skin whose bones are one apiece
+            // it is the same answer the name-and-pose rule gives.
+            if (clusters == 0)
+                return [];
+
+            var byEntry = new Dictionary<int, int>(found.Count);
+
+            foreach ((int entry, FbxObject cluster) in found)
+            {
+                if (scene.ChildrenOf(cluster.Id).FirstOrDefault(o => o.Class == "Model") is not { } boneModel)
+                    return [];
+
+                byEntry[entry] = skin.Bones.Count;
+
+                skin.Bones.Add(new SkinBone
+                {
+                    Name = NameEncoding.Unsanitize(boneModel.Name),
+                    SkinTransform = FromMatrixArray(cluster.Child("TransformLink")),
+                });
+            }
+
+            return byEntry;
+        }
+
         private static void ReadOnePartition(
             FbxScene scene,
             FbxObject skinObject,
             SkinData skin,
             Dictionary<(string Name, string Pose), int> boneAt,
+            IReadOnlyDictionary<int, int> byEntry,
             HashSet<(int Bone, ushort Vertex)> seen,
             SkinPartitionInfo info,
             SortedSet<ushort> covered)
@@ -510,14 +618,25 @@ namespace SECmd.Fbx
                     SkinTransform = FromMatrixArray(cluster.Child("TransformLink"))
                 };
 
-                // The same bone, in the same pose, in two partitions is one entry.
-                var key = (bone.Name, Pose(bone.SkinTransform));
+                int at;
 
-                if (!boneAt.TryGetValue(key, out int at))
+                if (byEntry.Count > 0)
                 {
-                    at = skin.Bones.Count;
-                    boneAt[key] = at;
-                    skin.Bones.Add(bone);
+                    // The entry the cluster named, already allocated.
+                    if (EntryOf(cluster) is not { } entry || !byEntry.TryGetValue(entry, out at))
+                        continue;
+                }
+                else
+                {
+                    // The same bone, in the same pose, in two partitions is one entry.
+                    var key = (bone.Name, Pose(bone.SkinTransform));
+
+                    if (!boneAt.TryGetValue(key, out at))
+                    {
+                        at = skin.Bones.Count;
+                        boneAt[key] = at;
+                        skin.Bones.Add(bone);
+                    }
                 }
 
                 if (!info.Bones.Contains(at))
