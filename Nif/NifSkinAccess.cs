@@ -170,7 +170,12 @@ namespace SECmd.Nif
                 skin.Bones[i].SkinTransform = ReadSkinTransform(model, entry, "Skin Transform");
 
                 if (model.FindItem(entry, "Vertex Weights") is not { } weights)
+                {
+                    // The array is switched off, so the count beside it is whatever the
+                    // file chose to leave there and cannot be worked out again.
+                    skin.Bones[i].DeclaredWeightCount = model.GetUInt(entry, "Num Vertices");
                     continue;
+                }
 
                 foreach (NifItem weight in weights.Children)
                 {

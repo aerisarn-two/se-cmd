@@ -94,6 +94,14 @@ namespace SECmd.Fbx
         /// </remarks>
         public const string BoneEntryProperty = "nif_bone_entry";
 
+        /// <summary>The vertex count a bone's skin-data entry declared.</summary>
+        /// <remarks>
+        /// Only meaningful for a skin that kept its weights out of `NiSkinData`, where
+        /// the count sits beside an array that is switched off and says whatever the file
+        /// chose. See <see cref="SkinBone.DeclaredWeightCount"/>.
+        /// </remarks>
+        public const string DeclaredWeightsProperty = "nif_bone_declared_weights";
+
         /// <summary>Set when the source kept its weights out of `NiSkinData`.</summary>
         /// <remarks>
         /// Written only for the shapes that did, so a scene that came from anywhere else
@@ -346,6 +354,13 @@ namespace SECmd.Fbx
                 cluster.Properties.SetUserString(
                     BoneEntryProperty, b.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
+                if (bone.DeclaredWeightCount is { } declared)
+                {
+                    cluster.Properties.SetUserString(
+                        DeclaredWeightsProperty,
+                        declared.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                }
+
                 clusterNode.Nodes.Add(new FbxNode("Version", ClusterVersion));
                 clusterNode.Nodes.Add(new FbxNode("UserData", string.Empty, string.Empty));
 
@@ -511,6 +526,16 @@ namespace SECmd.Fbx
                 : int.MaxValue;
 
         /// <summary>Reads one deformer's clusters into the shared bone list.</summary>
+        /// <summary>The declared weight count a cluster carries, if any.</summary>
+        private static uint? DeclaredWeightsOf(FbxObject cluster) =>
+            uint.TryParse(
+                cluster.Properties.GetString(DeclaredWeightsProperty),
+                System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out uint declared)
+                ? declared
+                : null;
+
         /// <summary>The bone-list entry a cluster names, when it names one.</summary>
         private static int? EntryOf(FbxObject cluster) =>
             int.TryParse(
@@ -581,6 +606,7 @@ namespace SECmd.Fbx
                 {
                     Name = NameEncoding.Unsanitize(boneModel.Name),
                     SkinTransform = FromMatrixArray(cluster.Child("TransformLink")),
+                    DeclaredWeightCount = DeclaredWeightsOf(cluster),
                 });
             }
 
@@ -615,7 +641,8 @@ namespace SECmd.Fbx
                     // fail to resolve is dropped whole, every Skyrim body part loses
                     // its skinning without anything failing.
                     Name = NameEncoding.Unsanitize(boneModel.Name),
-                    SkinTransform = FromMatrixArray(cluster.Child("TransformLink"))
+                    SkinTransform = FromMatrixArray(cluster.Child("TransformLink")),
+                    DeclaredWeightCount = DeclaredWeightsOf(cluster),
                 };
 
                 int at;

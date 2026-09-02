@@ -200,13 +200,23 @@ namespace SECmd.Tests
 
             Assert.Equal(0u, rebuilt.GetUInt(data, "Has Vertex Weights"));
 
-            // The bones and their counts stay: nif.xml makes only the weight array
-            // conditional on that flag, so a bone still says how many vertices it moves
-            // and still carries its bind pose.
+            // The bones stay, with their bind poses: the flag says whether the weights
+            // are there, not whether the bones are.
             NifItem bones = rebuilt.FindItem(data, "Bone List")!;
 
             Assert.NotEmpty(bones.Children);
-            Assert.All(bones.Children, b => Assert.True(rebuilt.GetUInt(b, "Num Vertices") > 0));
+
+            // And each keeps the count *this file* stated, which is 76 and 60.
+            //
+            // Not because a count beside a switched-off array means anything -- it does
+            // not, and the game always writes zero there: of its 26,913 NiSkinData
+            // blocks the 108 clearing this flag have every count at zero, without
+            // exception. This fixture is nifly's and says otherwise, and both have to
+            // come back as they went in. So the number travels with the bone rather than
+            // being derived, and a scene that never stated one gets zero.
+            Assert.Equal(
+                new uint[] { 76, 60 },
+                bones.Children.Select(b => rebuilt.GetUInt(b, "Num Vertices")).ToArray());
 
             // And the weights are still in the copy the renderer reads.
             SkinData skin = rebuilt.ReadSkin(FirstSkinnedShape(rebuilt))!;

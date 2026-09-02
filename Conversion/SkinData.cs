@@ -7,6 +7,26 @@ namespace SECmd.Conversion
     /// </summary>
     public sealed class SkinBone
     {
+        /// <summary>
+        /// The vertex count the bone's <c>NiSkinData</c> entry declared, when the file
+        /// kept its weights out of that block.
+        /// </summary>
+        /// <remarks>
+        /// `Num Vertices` sits beside a `Vertex Weights` array that `Has Vertex Weights`
+        /// can switch off, and nif.xml makes only the array conditional -- so the count
+        /// is written either way and a file gets to say what it likes.
+        ///
+        /// The game always says zero: of its 26,913 `NiSkinData` blocks the 108 clearing
+        /// the flag have every count at zero, without exception. `nifly`'s
+        /// `TestNifFile_Skinned_NoNiSkinDataWeights` says 76 and 60. Both are files this
+        /// has to give back unchanged, and neither number can be worked out from the
+        /// weights, so it travels rather than being chosen.
+        ///
+        /// Null when the file kept its weights in the bone list, where the count is the
+        /// array's length and says itself.
+        /// </remarks>
+        public uint? DeclaredWeightCount { get; set; }
+
         public required string Name { get; init; }
 
         /// <summary>

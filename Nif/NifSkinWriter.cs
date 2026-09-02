@@ -577,13 +577,25 @@ namespace SECmd.Nif
 
                 if (!anyWeights)
                 {
-                    // The count stays, the weights go. nif.xml makes only the array
+                    // The count goes with the weights. nif.xml makes only the array
                     // conditional on the flag, so `Num Vertices` is written either way
-                    // and still says how many vertices this bone moves --
-                    // `TestNifFile_Skinned_NoNiSkinDataWeights` clears the flag and keeps
-                    // 76 and 60. Zeroing it would lose a count the file has and the
-                    // renderer's own copy still honours.
-                    model.FindItem(entry, "Num Vertices")?.Value.SetCount((uint)bone.Weights.Count);
+                    // and this once said how many vertices the bone moves -- on the
+                    // reading that a count the renderer's own copy still honours is worth
+                    // keeping.
+                    //
+                    // Vanilla does not agree, and vanilla settles it. Of the 26,913
+                    // `NiSkinData` blocks the game ships, 108 clear this flag and every
+                    // one of those 108 has every `Num Vertices` at zero: no exceptions in
+                    // either direction, since the 26,805 that keep their weights match
+                    // their arrays exactly. A count beside an array that is not there
+                    // describes nothing.
+                    //
+                    // Neither is chosen here. `nifly`'s
+                    // `TestNifFile_Skinned_NoNiSkinDataWeights` keeps 76 and 60, and both
+                    // it and the game's files have to come back as they went in, so the
+                    // number travels with the bone. Zero is the fallback, for a scene
+                    // that never had a count to state -- which is what the game writes.
+                    model.FindItem(entry, "Num Vertices")?.Value.SetCount(bone.DeclaredWeightCount ?? 0);
                     continue;
                 }
 
