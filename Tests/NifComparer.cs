@@ -178,6 +178,8 @@ namespace SECmd.Tests
                     Align(a, b, WeightedVertices, whole: true);
                 else if (a.Name == "Extra Targets")
                     Align(a, b, Annotations, whole: true);
+                else if (a.Name is "Vertex Weights" or "Bone Indices" or "Vertex Map")
+                    AlignByVertexMap(a, b);
 
                 _permuted.TryGetValue(a, out int[]? order);
 
@@ -1187,6 +1189,75 @@ namespace SECmd.Tests
             /// <summary>A block's live child of that name.</summary>
             private NifItem? Child(NifItem parent, string name) =>
                 parent.Children.FirstOrDefault(c => c.Name == name && left.EvalCondition(c));
+
+            /// <summary>
+            /// Pairs a partition's per-vertex rows by the vertex they stand for.
+            /// </summary>
+            /// <remarks>
+            /// A partition addresses its vertices through `Vertex Map`, and everything
+            /// else in it -- `Vertex Weights`, `Bone Indices` -- is a row per entry of
+            /// that map. The order of the map is an accepted gap (§7.3): it carries no
+            /// meaning, ours is ascending, and vanilla's follows no rule that can be
+            /// re-derived.
+            ///
+            /// **An accepted gap is not inert.** With the two maps in different orders,
+            /// row 823 on one side is a different vertex from row 823 on the other, and
+            /// comparing the rows in place compares two unrelated vertices. `hair13`
+            /// reads as though two vertices swapped weights, and they did -- they are in
+            /// different places in the two maps.
+            ///
+            /// Worse, the exception for a file that contradicts its own weights reaches
+            /// the authored weight through the *source's* map and compares it against our
+            /// value at the same row, so where the orders diverge its verdict meant
+            /// nothing in either direction.
+            ///
+            /// So the rows are paired by the vertex each stands for, and everything
+            /// inside them is then compared vertex against the same vertex. A partition
+            /// whose maps do not name the same vertices is left alone and fails as
+            /// before.
+            /// </remarks>
+            private void AlignByVertexMap(NifItem left_, NifItem right_)
+            {
+                if (left_.Parent is not { } mine || right_.Parent is not { } theirs)
+                    return;
+
+                if (Child(mine, "Vertex Map") is not { } ours
+                    || theirs.Children.FirstOrDefault(
+                           c => c.Name == "Vertex Map" && right.EvalCondition(c)) is not { } yours)
+                {
+                    return;
+                }
+
+                if (ours.Children.Count != yours.Children.Count
+                    || ours.Children.Count != left_.Children.Count)
+                {
+                    return;
+                }
+
+                var at = new Dictionary<uint, int>(yours.Children.Count);
+
+                for (int i = 0; i < yours.Children.Count; i++)
+                {
+                    // A map naming one vertex twice is not one this can pair.
+                    if (!at.TryAdd(yours.Children[i].Value.ToUInt(), i))
+                        return;
+                }
+
+                var order = new int[left_.Children.Count];
+                bool moved = false;
+
+                for (int i = 0; i < order.Length; i++)
+                {
+                    if (!at.TryGetValue(ours.Children[i].Value.ToUInt(), out int found))
+                        return;
+
+                    order[i] = found;
+                    moved |= found != i;
+                }
+
+                if (moved)
+                    _permuted[left_] = order;
+            }
 
             private bool Same(NifItem a, NifItem b)
             {
