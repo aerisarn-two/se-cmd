@@ -119,8 +119,19 @@ namespace SECmd.Conversion
             // Pull the endpoints in so the caps sit at the extremes of the cloud. A
             // cloud shorter than it is wide -- a capsule that is all cap -- gives a
             // negative span, which is clamped to a single point at the centre.
-            float high = MathF.Max(max - radius, min + radius);
-            float low = MathF.Min(max - radius, min + radius);
+            //
+            // Taken as they are, not through Max and Min. Those were here, and they
+            // undid the clamp they were standing next to: pulling in from both ends of a
+            // short cloud crosses the pair over, and Max/Min quietly swap it back into an
+            // uncrossed one, so `high < low` was never true and the ends were placed
+            // *outward* at the crossing instead of collapsing to the centre. For a cloud
+            // longer than it is wide the pair does not cross and the two forms agree,
+            // which is why only the flat shapes showed it.
+            //
+            // `sewerentrancecollision01`'s cylinder is 0.0143 long and 0.4572 across --
+            // a disc -- and came back 1.61 long, a hundred times its own height.
+            float high = max - radius;
+            float low = min + radius;
 
             if (high < low)
                 high = low = 0.5f * (min + max);
