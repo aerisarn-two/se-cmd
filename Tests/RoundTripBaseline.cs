@@ -167,8 +167,8 @@ namespace SECmd.Tests
             // exporter sets TangentAuto and lets the importer choose tangents that
             // reproduce the curve's shape (spec §5A). The numbers therefore differ while
             // the curve does not — which is the trade the spec records, not a loss.
-            ["Forward"] = "quadratic key tangents are re-chosen by the importer (§5A)",
-            ["Backward"] = "quadratic key tangents are re-chosen by the importer (§5A)",
+            // Forward and Backward are no longer listed here: a quadratic key states its
+            // own slopes and they are carried now, as FBX's own user tangents.
 
             // Calculated from the block graph rather than carried (bsxflags-spec.md),
             // and *added* to a file that had none -- which lengthens the root's extra

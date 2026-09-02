@@ -1213,6 +1213,11 @@ namespace SECmd.Nif
                 {
                     value?.Value.SetFloat(property.Curve.Keys[i].Value);
                 }
+
+                // The keys of a colour property are three curves and of everything else
+                // one, which is the same shape the transform channels come in.
+                WriteTbc(model, keys.Children[i], property.Curves[0], times[i]);
+                WriteTangents(model, keys.Children[i], property.Curves, times[i]);
             }
 
             NifItem interpolator = model.InsertBlock(InterpolatorClass(model, property));
@@ -1383,6 +1388,7 @@ namespace SECmd.Nif
                     Sample(track.Translation[2], times[i])));
 
                 WriteTbc(model, keys.Children[i], track.Translation[0], times[i]);
+                WriteTangents(model, keys.Children[i], track.Translation, times[i]);
             }
         }
 
@@ -1439,6 +1445,13 @@ namespace SECmd.Nif
                     model.FindItem(keys.Children[i], "Value")?.Value.SetFloat(curve.Keys[i].Value * ToRadians);
 
                     WriteTbc(model, keys.Children[i], curve, curve.Keys[i].Time);
+
+                    // Back into radians with the value they belong to.
+                    model.FindItem(keys.Children[i], "Forward")?.Value
+                        .SetFloat(curve.Keys[i].Forward * ToRadians);
+
+                    model.FindItem(keys.Children[i], "Backward")?.Value
+                        .SetFloat(curve.Keys[i].Backward * ToRadians);
                 }
             }
         }
@@ -1535,6 +1548,7 @@ namespace SECmd.Nif
                 model.FindItem(keys.Children[i], "Value")?.Value.SetFloat(Sample(track.Scale[0], times[i]));
 
                 WriteTbc(model, keys.Children[i], track.Scale[0], times[i]);
+                WriteTangents(model, keys.Children[i], track.Scale, times[i]);
             }
         }
 
@@ -1560,6 +1574,56 @@ namespace SECmd.Nif
                 field.Value.Set(source.Tbc);
                 return;
             }
+        }
+
+        /// <summary>
+        /// Puts a key's own slopes back, when the key type states them.
+        /// </summary>
+        /// <remarks>
+        /// `Forward` and `Backward` exist only on a key type of 2, so this costs a lookup
+        /// on every other kind. Written as scalars or as a vector depending on what the
+        /// key holds -- a `NiPosData` key's tangents are vectors, and each axis kept its
+        /// own on its own curve.
+        /// </remarks>
+        private static void WriteTangents(
+            NifModel model, NifItem key, IReadOnlyList<AnimCurve> curves, float time)
+        {
+            if (model.FindItem(key, "Forward") is not { } forward
+                || model.FindItem(key, "Backward") is not { } backward)
+            {
+                return;
+            }
+
+            Span<float> ahead = stackalloc float[3];
+            Span<float> behind = stackalloc float[3];
+            bool found = false;
+
+            for (int axis = 0; axis < curves.Count && axis < 3; axis++)
+            {
+                foreach (AnimKey source in curves[axis].Keys)
+                {
+                    if (source.Time != time)
+                        continue;
+
+                    ahead[axis] = source.Forward;
+                    behind[axis] = source.Backward;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+                return;
+
+            if (forward.Value.Type == NifValueType.Vector3)
+            {
+                forward.Value.Set(new NifVector3(ahead[0], ahead[1], ahead[2]));
+                backward.Value.Set(new NifVector3(behind[0], behind[1], behind[2]));
+                return;
+            }
+
+            forward.Value.SetFloat(ahead[0]);
+            backward.Value.SetFloat(behind[0]);
         }
 
         /// <summary>

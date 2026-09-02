@@ -63,6 +63,17 @@ namespace SECmd.Fbx
             /// FBX's data slots are tension, continuity, bias -- the middle two swap.
             /// </remarks>
             public const int TangentTcb = 0x00000200;
+
+            /// <summary>
+            /// The key states its own slopes, which is what a NIF quadratic key does.
+            /// </summary>
+            /// <remarks>
+            /// FBX keeps them in the same four floats as the TCB numbers: the first is
+            /// the slope leaving this key, the second the slope entering the *next* one.
+            /// The weights beside them are read only for a key flagged weighted, which
+            /// these are not, so they stay zero and FBX weights the tangents its own way.
+            /// </remarks>
+            public const int TangentUser = 0x00000400;
         }
 
         /// <summary>Converts seconds to FBX's integer time.</summary>
@@ -593,16 +604,65 @@ namespace SECmd.Fbx
             // broken into a new run whenever either changes.
             var attributes = new List<float>();
 
-            foreach (AnimKey key in curve.Keys)
+            // Whether the curve states its own slopes anywhere. Asked of the whole
+            // curve, not of each key: the slope entering a key is stored beside the key
+            // before it, so one key's tangents are two keys' business.
+            bool tangents = curve.Keys.Any(k => k.Forward != 0f || k.Backward != 0f);
+
+            for (int index = 0; index < curve.Keys.Count; index++)
             {
+                AnimKey key = curve.Keys[index];
+
                 bool tcb = key.Tbc.X != 0f || key.Tbc.Y != 0f || key.Tbc.Z != 0f;
 
-                int flag = tcb ? KeyFlags.Cubic | KeyFlags.TangentTcb : FlagsOf(key.Interpolation);
+                int flag = tcb
+                    ? KeyFlags.Cubic | KeyFlags.TangentTcb
+                    : tangents ? KeyFlags.Cubic | KeyFlags.TangentUser : FlagsOf(key.Interpolation);
 
                 // Tension, continuity, bias -- FBX's order, not nif.xml's.
                 float tension = tcb ? key.Tbc.X : 0f;
                 float continuity = tcb ? key.Tbc.Z : 0f;
                 float bias = tcb ? key.Tbc.Y : 0f;
+
+                if (tangents && !tcb)
+                {
+                    // Per second, where a NIF states them per segment.
+                    //
+                    // A NIF quadratic key's tangents are Hermite tangents: the parameter
+                    // runs 0 to 1 across the interval between two keys, so the numbers
+                    // are value units per interval. FBX's slopes are value units per
+                    // second. Handing FBX the raw numbers gives a curve too steep or too
+                    // shallow by exactly the length of the segment -- it would round trip
+                    // perfectly and play wrong, which is the opposite of the point.
+                    //
+                    // Dividing here and multiplying on the way back is not bit-exact
+                    // unless the interval is a power of two, so this trades an unit in
+                    // the last place for a curve that plays. The comparison works to six
+                    // significant digits and does not see the difference; a DCC sees
+                    // nothing else.
+                    // Measured between the times FBX will hold, not between the times
+                    // in hand. The reader has only the first pair, and a key interval
+                    // is a difference of two nearly equal numbers: `powerwordhaas` keys
+                    // at 0.93333334 and 0.93334335, ten microseconds apart, where the
+                    // subtraction keeps about three significant digits. Divide by one
+                    // and multiply by the other and half a percent of the tangent is
+                    // gone. Computed from the same numbers at both ends, they cancel.
+                    float span = index + 1 < curve.Keys.Count
+                        ? FromFbxTime(times[index + 1]) - FromFbxTime(times[index])
+                        : 0f;
+
+                    tension = span > 0f ? key.Forward / span : key.Forward;
+
+                    // The last key has no next, so its second slot is free -- and the
+                    // first key's incoming slope has nowhere of its own, since nothing
+                    // precedes it. It goes there. Neither shapes a segment: no curve
+                    // runs before the first key or after the last. They are carried
+                    // because the file states them, and a rebuild that invents them is a
+                    // rebuild that changed the file.
+                    continuity = index + 1 < curve.Keys.Count
+                        ? (span > 0f ? curve.Keys[index + 1].Backward / span : curve.Keys[index + 1].Backward)
+                        : curve.Keys[0].Backward;
+                }
 
                 bool same = flags.Count > 0
                     && flags[^1] == flag

@@ -39,6 +39,21 @@ namespace SECmd.Conversion
         /// which is what the field holds in a file that does not use them.
         /// </remarks>
         public NifVector3 Tbc { get; init; }
+
+        /// <summary>The slope leaving this key, for a key written with tangents.</summary>
+        /// <remarks>
+        /// A NIF key type of 2 states the two slopes itself where FBX derives them, and
+        /// they were dropped and re-chosen on the way back -- 8,112 of the 13,184
+        /// quadratic key groups in a 4,000-mesh sample state at least one that is not
+        /// zero, so re-choosing them is re-drawing the curve.
+        ///
+        /// One scalar apiece because a curve is one scalar: a `NiPosData` key's tangents
+        /// are a vector, and each axis travels on its own curve and keeps its own.
+        /// </remarks>
+        public float Forward { get; init; }
+
+        /// <summary>The slope entering this key.</summary>
+        public float Backward { get; init; }
     }
 
     /// <summary>A single animated scalar over time.</summary>

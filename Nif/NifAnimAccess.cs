@@ -679,10 +679,14 @@ namespace SECmd.Nif
                     NifVector3 point = value?.Value.Get<NifVector3>() ?? new NifVector3();
 
                     NifVector3 handles = TbcOf(model, key);
+                    (NifVector3 ahead, NifVector3 behind) = VectorTangentsOf(model, key);
 
-                    property.Curves[0].Keys.Add(new AnimKey(time, point.X, interpolation) { Tbc = handles });
-                    property.Curves[1].Keys.Add(new AnimKey(time, point.Y, interpolation) { Tbc = handles });
-                    property.Curves[2].Keys.Add(new AnimKey(time, point.Z, interpolation) { Tbc = handles });
+                    property.Curves[0].Keys.Add(new AnimKey(time, point.X, interpolation)
+                        { Tbc = handles, Forward = ahead.X, Backward = behind.X });
+                    property.Curves[1].Keys.Add(new AnimKey(time, point.Y, interpolation)
+                        { Tbc = handles, Forward = ahead.Y, Backward = behind.Y });
+                    property.Curves[2].Keys.Add(new AnimKey(time, point.Z, interpolation)
+                        { Tbc = handles, Forward = ahead.Z, Backward = behind.Z });
                 }
                 else
                 {
@@ -690,6 +694,8 @@ namespace SECmd.Nif
                         new AnimKey(time, value?.Value.ToFloat() ?? 0f, interpolation)
                         {
                             Tbc = TbcOf(model, key),
+                            Forward = ScalarOf(model, key, "Forward"),
+                            Backward = ScalarOf(model, key, "Backward"),
                         });
                 }
             }
@@ -778,10 +784,14 @@ namespace SECmd.Nif
                 NifVector3 value = model.FindItem(key, "Value")?.Value.Get<NifVector3>() ?? new NifVector3();
 
                 NifVector3 handles = TbcOf(model, key);
+                (NifVector3 ahead, NifVector3 behind) = VectorTangentsOf(model, key);
 
-                track.Translation[0].Keys.Add(new AnimKey(time, value.X, interpolation) { Tbc = handles });
-                track.Translation[1].Keys.Add(new AnimKey(time, value.Y, interpolation) { Tbc = handles });
-                track.Translation[2].Keys.Add(new AnimKey(time, value.Z, interpolation) { Tbc = handles });
+                track.Translation[0].Keys.Add(new AnimKey(time, value.X, interpolation)
+                    { Tbc = handles, Forward = ahead.X, Backward = behind.X });
+                track.Translation[1].Keys.Add(new AnimKey(time, value.Y, interpolation)
+                    { Tbc = handles, Forward = ahead.Y, Backward = behind.Y });
+                track.Translation[2].Keys.Add(new AnimKey(time, value.Z, interpolation)
+                    { Tbc = handles, Forward = ahead.Z, Backward = behind.Z });
             }
         }
 
@@ -818,7 +828,16 @@ namespace SECmd.Nif
                         track.Rotation[axis].Keys.Add(new AnimKey(
                             FloatOf(model, key, "Time"),
                             FloatOf(model, key, "Value") * ToDegrees,
-                            interpolation));
+                            interpolation)
+                        {
+                            Tbc = TbcOf(model, key),
+
+                            // In degrees, as the value beside them is. A tangent is a
+                            // value per unit of the parameter, so it scales with the
+                            // value and not with the time.
+                            Forward = ScalarOf(model, key, "Forward") * ToDegrees,
+                            Backward = ScalarOf(model, key, "Backward") * ToDegrees,
+                        });
                     }
                 }
 
@@ -858,9 +877,23 @@ namespace SECmd.Nif
 
                 // NIF scales uniformly; FBX has three axes and wants all of them.
                 for (int axis = 0; axis < 3; axis++)
-                    track.Scale[axis].Keys.Add(new AnimKey(time, value, interpolation) { Tbc = TbcOf(model, key) });
+                    track.Scale[axis].Keys.Add(new AnimKey(time, value, interpolation)
+                    {
+                        Tbc = TbcOf(model, key),
+                        Forward = ScalarOf(model, key, "Forward"),
+                        Backward = ScalarOf(model, key, "Backward"),
+                    });
             }
         }
+
+        /// <summary>One of a key's tangents, for a key that states them as scalars.</summary>
+        private static float ScalarOf(NifModel model, NifItem key, string field) =>
+            model.FindItem(key, field)?.Value.ToFloat() ?? 0f;
+
+        /// <summary>Both of a key's tangents, for a key whose value is a vector.</summary>
+        private static (NifVector3 Forward, NifVector3 Backward) VectorTangentsOf(NifModel model, NifItem key) =>
+            (model.FindItem(key, "Forward")?.Value.Get<NifVector3>() ?? new NifVector3(),
+             model.FindItem(key, "Backward")?.Value.Get<NifVector3>() ?? new NifVector3());
 
         /// <summary>A key's tension, bias and continuity, or zero when it has none.</summary>
         private static NifVector3 TbcOf(NifModel model, NifItem key) =>

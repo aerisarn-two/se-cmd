@@ -560,11 +560,17 @@ namespace SECmd.Fbx
             // The three numbers a Kochanek-Bartels key is shaped with, which FBX keeps
             // in the key's own data slots. Expanded by the same run counts as the flags,
             // since both are stored per run of like keys rather than per key.
-            List<NifVector3> handles = ExpandTcb(
-                ReadInts(curve.Child("KeyAttrFlags")),
-                ReadFloats(curve.Child("KeyAttrDataFloat")),
-                ReadInts(curve.Child("KeyAttrRefCount")),
-                times.Length);
+            int[] attrFlags = ReadInts(curve.Child("KeyAttrFlags"));
+            float[] attrData = ReadFloats(curve.Child("KeyAttrDataFloat"));
+            int[] attrRuns = ReadInts(curve.Child("KeyAttrRefCount"));
+
+            List<NifVector3> handles = ExpandTcb(attrFlags, attrData, attrRuns, times.Length);
+
+            // The slopes, expanded the same way. A key's outgoing slope sits in its own
+            // entry and its incoming one in the entry before -- so the first key's comes
+            // from the last, which is where the writer put it for want of anywhere else.
+            List<(float Forward, float Backward)> slopes =
+                ExpandSlopes(attrFlags, attrData, attrRuns, times.Length);
 
             for (int i = 0; i < count; i++)
             {
@@ -574,7 +580,76 @@ namespace SECmd.Fbx
                     i < interpolations.Count ? interpolations[i] : AnimInterpolation.Linear)
                 {
                     Tbc = i < handles.Count ? handles[i] : new NifVector3(),
+                    Forward = i < slopes.Count ? slopes[i].Forward : 0f,
+                    Backward = i < slopes.Count ? slopes[i].Backward : 0f,
                 });
+            }
+
+            ScaleSlopes(into);
+        }
+
+        /// <summary>The slopes of each key, from the runs the curve stores them in.</summary>
+        /// <remarks>
+        /// Only for a run flagged as stating its own tangents. The first slot of an
+        /// entry is the slope leaving that key; the second is the slope entering the
+        /// next, so a key's incoming slope is read from the entry before it -- and the
+        /// first key's from the last entry, which has no next key to describe.
+        /// </remarks>
+        private static List<(float Forward, float Backward)> ExpandSlopes(
+            int[] flags, float[] data, int[] refCounts, int keyCount)
+        {
+            var forward = new List<float>(keyCount);
+            var next = new List<float>(keyCount);
+
+            for (int i = 0; i < flags.Length && forward.Count < keyCount; i++)
+            {
+                int run = i < refCounts.Length ? Math.Max(1, refCounts[i]) : 1;
+
+                bool user = (flags[i] & FbxAnimWriter.KeyFlags.TangentUser) != 0;
+
+                float outgoing = user && (i * 4) < data.Length ? data[i * 4] : 0f;
+                float incoming = user && (i * 4) + 1 < data.Length ? data[(i * 4) + 1] : 0f;
+
+                for (int k = 0; k < run && forward.Count < keyCount; k++)
+                {
+                    forward.Add(outgoing);
+                    next.Add(incoming);
+                }
+            }
+
+            var result = new List<(float, float)>(forward.Count);
+
+            for (int i = 0; i < forward.Count; i++)
+            {
+                float backward = i > 0 ? next[i - 1] : (next.Count > 0 ? next[^1] : 0f);
+                result.Add((forward[i], backward));
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Turns FBX's per-second slopes back into the per-segment tangents a NIF states.
+        /// </summary>
+        /// <remarks>
+        /// The mirror of the division on the way out. The slope leaving a key belongs to
+        /// the segment after it and the slope entering one to the segment before, so each
+        /// is scaled by its own interval -- and the two that shape no segment, the first
+        /// key's incoming and the last key's outgoing, are left as they are because there
+        /// is no interval to scale them by.
+        /// </remarks>
+        private static void ScaleSlopes(AnimCurve curve)
+        {
+            for (int i = 0; i < curve.Keys.Count; i++)
+            {
+                float ahead = i + 1 < curve.Keys.Count ? curve.Keys[i + 1].Time - curve.Keys[i].Time : 0f;
+                float behind = i > 0 ? curve.Keys[i].Time - curve.Keys[i - 1].Time : 0f;
+
+                curve.Keys[i] = curve.Keys[i] with
+                {
+                    Forward = ahead > 0f ? curve.Keys[i].Forward * ahead : curve.Keys[i].Forward,
+                    Backward = behind > 0f ? curve.Keys[i].Backward * behind : curve.Keys[i].Backward,
+                };
             }
         }
 
