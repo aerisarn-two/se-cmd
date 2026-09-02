@@ -161,6 +161,13 @@ namespace SECmd.Conversion
                 FbxExtraDataWriter.ReadExtraData(sceneRoots[0], _model, root, Warnings);
                 FbxMultiBound.Read(sceneRoots[0], _model, root, Warnings);
                 FbxNodeControllers.Read(sceneRoots[0], _model, root, Warnings, AimAt);
+
+                // The root is a tree node in every tree the game ships, so leaving this
+                // to the walk left it out altogether.
+                FbxTreeNode.Read(sceneRoots[0], _model, root, AimAt);
+
+                // And its controllers need ordering like any other node's.
+                _animatedControllerHosts.Add((sceneRoots[0], root));
             }
             _nodesByName[_options.RootName] = root;
             _sceneRoot = root;
@@ -494,6 +501,7 @@ namespace SECmd.Conversion
 
             FbxExtraDataWriter.ReadExtraData(model, _model, node, Warnings);
             FbxMultiBound.Read(model, _model, node, Warnings);
+            FbxTreeNode.Read(model, _model, node, AimAt);
 
             // Controllers that animate nothing. A particle system rebuilds its own
             // through its carrier, which owns the whole system.

@@ -231,6 +231,9 @@ namespace SECmd.Conversion
             FbxMultiBound.Write(node, _model, block);
             AddMultiBoundMesh(scene, node, block, name);
 
+            // A tree names the bones it bends, by reference, so the names travel.
+            FbxTreeNode.Write(node, _model, block);
+
             // A particle system has no geometry to export -- its vertices are a
             // runtime buffer the file only sizes -- so it stays an empty node with
             // the system carried alongside it.
