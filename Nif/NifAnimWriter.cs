@@ -920,7 +920,7 @@ namespace SECmd.Nif
             //
             // Neither rule is absolute: one `BSOrderedNode` is listed, and six ordinary
             // nodes of 8,435 are not. Those seven stay differences.
-            var all = new List<NifItem>();
+            List<NifItem> all = [];
 
             foreach (NifItem block in model.Blocks)
             {
@@ -936,6 +936,40 @@ namespace SECmd.Nif
 
                 all.Add(block);
             }
+
+            // One entry per name, not one per node. The palette is a name-to-block
+            // table -- that is the whole of what it does -- so a second entry under a
+            // name already taken is one the engine can never reach, and vanilla does
+            // not write it: `miraakhelm_1` has two nodes called `InvMarker` in its
+            // graph and one `InvMarker` in its palette.
+            //
+            // **The last of a repeated name wins**, which is what filling a table by
+            // name does. `fxspiderwebkitdoorspecial` has two nodes called
+            // `OrderedRenderingNode` and its palette names the second; keeping the
+            // first pointed the entry at a node 62 units away.
+            //
+            // Not always right, and it cannot be: `miraakhelm_1` names the second of
+            // its two `InvMarker`s and `miraakrobesnoskin_0` the first, which is the
+            // same pipeline disagreeing with itself that the root exclusion below
+            // records. Last wins is right for three of the four meshes it decides and
+            // is the reading the table's own meaning gives, so the fourth stays a
+            // difference rather than a guess dressed as a rule.
+            var lastAt = new Dictionary<string, int>(StringComparer.Ordinal);
+
+            for (int i = 0; i < all.Count; i++)
+                lastAt[model.GetName(all[i])] = i;
+
+            var kept = new List<NifItem>(all.Count);
+
+            for (int i = 0; i < all.Count; i++)
+            {
+                if (lastAt[model.GetName(all[i])] == i)
+                    kept.Add(all[i]);
+            }
+
+            all = kept;
+
+            var byName = new HashSet<string>(all.Select(model.GetName), StringComparer.Ordinal);
 
             // ...and anything a sequence names that the rule left out, since a target
             // the palette cannot resolve is worse than an entry vanilla would not have
@@ -971,8 +1005,19 @@ namespace SECmd.Nif
             // the 15 stay a difference rather than a guess.
             foreach (NifItem target in targets)
             {
-                if (!ReferenceEquals(target, root) && !all.Contains(target))
-                    all.Add(target);
+                // Named, and not under a name the table already answers to. An entry
+                // with no name is one nothing can ask for, and a second entry under a
+                // taken name is one nothing can reach -- `dragon_oh_bloodyhead` was
+                // getting a nameless twenty-third entry pointing at nothing.
+                if (ReferenceEquals(target, root)
+                    || all.Contains(target)
+                    || model.GetName(target) is not { Length: > 0 } name
+                    || !byName.Add(name))
+                {
+                    continue;
+                }
+
+                all.Add(target);
             }
 
             if (model.SetArraySize(palette, "Num Objs", "Objs", all.Count) is not { } objects)
