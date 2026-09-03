@@ -1324,24 +1324,23 @@ namespace SECmd.Tests
         /// the code and would say less: what matters is that the number falls and never
         /// rises. It has -- 400 of 600 on the first sweep that asked, 15,634 of 22,047
         /// when it was first measured across the whole corpus, 207 after the animation
-        /// keys were carried whole, and 92 of 22,047 now that the skin weights are read
-        /// from the copy the game draws from.
+        /// keys were carried whole, 92 once the skin weights were read from the copy the
+        /// game draws from, and 54 of 22,047 now that a partition lists the vertices it
+        /// draws rather than every vertex its shape has.
         ///
         /// **Set it back down every time it falls.** At 0.72 against an actual 0.94% it
         /// was two orders of magnitude of slack: a change could have made seventy times
         /// as many meshes differ and the sweep would still have passed. A ratchet that
         /// is not tightened is a ratchet that has stopped being one.
         ///
-        /// The fields behind what is left, most first: `Num Vertices` and the length of
-        /// the `Vertex Weights` array beside it -- 38 of the 92 report nothing else, and
-        /// every one is a partition whose vertex map holds a different number of seam
-        /// entries than the source's -- then triangles and the vertex maps that index
-        /// them, and a scattering of names and transforms.
+        /// The fields behind what is left, most first: triangles and the counts beside
+        /// them (19 meshes), transforms and the names they hang on, `Data Size`, and a
+        /// scattering of one-offs. Skin weights are no longer among them at all -- the
+        /// cluster that once was 153 of the 207 is gone, and the four remaining `Vertex
+        /// Weights` entries are array lengths on meshes whose complaint is elsewhere.
         ///
-        /// **Not one of the 92 is a wrong weight.** The cluster that used to dominate
-        /// this list was 153 meshes of the 207, and it went when the weights started
-        /// being read from the partition rather than from `NiSkinData`; what is left
-        /// under those two field names is array lengths, not values.
+        /// They are the shape of a few problems rather than fifty, and none is reachable
+        /// from the two dozen fixtures the baseline was written against.
         ///
         /// Set from the whole corpus and not from a sample, because the sample
         /// flatters: `Sample` takes an equal count from each archive where the archives
@@ -1349,7 +1348,7 @@ namespace SECmd.Tests
         /// against a ceiling set from a sample and it is a ratchet measuring its own
         /// sampling.
         /// </remarks>
-        private const double KnownFieldDivergence = 0.0042;
+        private const double KnownFieldDivergence = 0.0025;
 
         /// <summary>
         /// How the two files' blocks differ, ignoring the differences that are meant
