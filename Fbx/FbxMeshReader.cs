@@ -289,7 +289,17 @@ namespace SECmd.Fbx
                     ushort b = Emit(polygonCorners[i]);
                     ushort c = Emit(polygonCorners[i + 1]);
 
-                    if (a == b || b == c || a == c)
+                    // A collapsed triangle is dropped only when it came out of fanning
+                    // something larger, where two corners meeting on one vertex is an
+                    // artifact of the fan rather than a face anybody drew.
+                    //
+                    // A polygon that arrived as a triangle is kept as it is, degenerate
+                    // or not. A NIF may hold such a triangle deliberately -- it draws
+                    // nothing, and Bethesda leaves them in -- and dropping them lost two
+                    // of `arnhall3way01`'s 100, with `Num Triangles` and `Data Size`
+                    // following. Thirteen meshes differed for that reason, twelve of them
+                    // Creation Club Ayleid ruins.
+                    if ((a == b || b == c || a == c) && polygonCorners.Count > 3)
                         continue;
 
                     mesh.Triangles.Add(new NifTriangle(a, b, c));
