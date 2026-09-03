@@ -121,7 +121,25 @@ namespace SECmd.Fbx
                         // holds nine under names of its own, and with no sequence driving
                         // them nothing else would bring them back.
                         if (link.Value.Type != NifValueType.UpLink)
+                        {
                             FbxInterpolatorCodec.Write(model, model.GetBlock(link), $"{name}_", Sink);
+                            return;
+                        }
+
+                        // A pointer travels as the name of what it points at, the way the
+                        // interpolator codec carries one. Following it instead would copy
+                        // the node, which comes back attached to nothing.
+                        //
+                        // `NiBSBoneLODController` is why: it groups a skeleton's bones by
+                        // the level of detail that still moves them, and every entry of
+                        // every group is a pointer. Carried as nothing, all 55 of a wolf
+                        // skeleton's came back null -- a bone LOD controller that names no
+                        // bones, on the three creature skeletons that have one.
+                        if (model.GetBlock(link) is { } aimed
+                            && model.GetName(aimed) is { Length: > 0 } named)
+                        {
+                            Sink($"{name}{FbxInterpolatorCodec.PointerSuffix}", named);
+                        }
                     });
             }
         }
@@ -335,7 +353,18 @@ namespace SECmd.Fbx
                     (name, link) =>
                     {
                         if (link.Value.Type == NifValueType.UpLink)
+                        {
+                            // Resolved once every node exists, since a pointer may name
+                            // one this walk has not reached yet.
+                            if (aimsAt is not null
+                                && Source($"{name}{FbxInterpolatorCodec.PointerSuffix}")
+                                    is { Length: > 0 } named)
+                            {
+                                aimsAt(link, named);
+                            }
+
                             return;
+                        }
 
                         if (FbxInterpolatorCodec.Read(
                                 model, $"{name}_", Source, "NiInterpolator", 0, aimsAt)
