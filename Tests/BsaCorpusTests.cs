@@ -1323,26 +1323,33 @@ namespace SECmd.Tests
         /// A ceiling rather than a list because naming the meshes would be longer than
         /// the code and would say less: what matters is that the number falls and never
         /// rises. It has -- 400 of 600 on the first sweep that asked, 15,634 of 22,047
-        /// when it was first measured across the whole corpus, and 207 of 22,047 now.
+        /// when it was first measured across the whole corpus, 207 after the animation
+        /// keys were carried whole, and 92 of 22,047 now that the skin weights are read
+        /// from the copy the game draws from.
         ///
         /// **Set it back down every time it falls.** At 0.72 against an actual 0.94% it
         /// was two orders of magnitude of slack: a change could have made seventy times
         /// as many meshes differ and the sweep would still have passed. A ratchet that
         /// is not tightened is a ratchet that has stopped being one.
         ///
-        /// The fields behind what is left, most first: skin weights and the
-        /// per-partition bone lists that hold them (153 of the 207), vertex counts and
-        /// `Data Size`, triangles and the vertex maps that index them. They are the
-        /// shape of a few problems rather than two hundred, and none of them is
-        /// reachable from the two dozen fixtures the baseline was written against.
+        /// The fields behind what is left, most first: `Num Vertices` and the length of
+        /// the `Vertex Weights` array beside it -- 38 of the 92 report nothing else, and
+        /// every one is a partition whose vertex map holds a different number of seam
+        /// entries than the source's -- then triangles and the vertex maps that index
+        /// them, and a scattering of names and transforms.
+        ///
+        /// **Not one of the 92 is a wrong weight.** The cluster that used to dominate
+        /// this list was 153 meshes of the 207, and it went when the weights started
+        /// being read from the partition rather than from `NiSkinData`; what is left
+        /// under those two field names is array lengths, not values.
         ///
         /// Set from the whole corpus and not from a sample, because the sample
         /// flatters: `Sample` takes an equal count from each archive where the archives
-        /// are neither the same size nor equally divergent, so 4,000 files answer 0.43%
-        /// where all 22,047 answer 0.94%. Run the sweep sampled against a ceiling set
-        /// from a sample and it is a ratchet measuring its own sampling.
+        /// are neither the same size nor equally divergent. Run the sweep sampled
+        /// against a ceiling set from a sample and it is a ratchet measuring its own
+        /// sampling.
         /// </remarks>
-        private const double KnownFieldDivergence = 0.0095;
+        private const double KnownFieldDivergence = 0.0042;
 
         /// <summary>
         /// How the two files' blocks differ, ignoring the differences that are meant
