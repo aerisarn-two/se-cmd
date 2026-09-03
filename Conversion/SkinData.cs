@@ -249,18 +249,22 @@ namespace SECmd.Conversion
         /// The per-vertex scale the skin partition's weights take.
         /// </summary>
         /// <remarks>
-        /// Unguarded, unlike <see cref="VertexScale"/>. The partition holds full floats,
-        /// so there is no neighbouring half to be rounded into, and the files are
-        /// normalised to the last bit: `TestNifFile_LooseBlocks_SE` carries vertices
-        /// whose authored weights sum to 0.999924 -- inside any sensible tolerance --
-        /// and whose partition still holds them scaled to exactly one.
+        /// Guarded now, as <see cref="VertexScale"/> is, and it used not to be. The
+        /// reason it was unguarded no longer holds: the weights arriving here came from
+        /// `NiSkinData`, which keeps what was authored -- `TestNifFile_LooseBlocks_SE`
+        /// has vertices summing to 0.999924 -- and the partition holds them scaled to
+        /// exactly one, so the scaling had work to do.
         ///
-        /// `NiSkinData` beside it is the copy that keeps the authored values, which is
-        /// why normalising them before either copy was written -- as a shared trim once
-        /// did -- made the two copies agree with each other and neither agree with the
-        /// file.
+        /// They now come from the partition itself, already summing to one to the last
+        /// bit, so the division has nothing left to correct -- and dividing by a total
+        /// that is already one is not a no-op in floating point, which is the fault this
+        /// guard was written for the first time.
+        ///
+        /// Guarded on that reasoning rather than on a measurement: the sample divergence
+        /// was the same with and without it, so nothing in the corpus currently depends
+        /// on it either way.
         /// </remarks>
-        public static float PartitionScale(float total) => total > 0f ? 1f / total : 1f;
+        public static float PartitionScale(float total) => VertexScale(total);
 
     }
 }

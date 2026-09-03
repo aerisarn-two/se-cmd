@@ -84,18 +84,42 @@ namespace SECmd.Nif
             foreach (NifItem bone in bones)
                 result.Bones.Add(new SkinBone { Name = model.GetName(bone) });
 
-            // The bone list is exact; the partition caps a vertex at four
-            // influences, so only fall back to it.
+            // **The partition is where the weights are read from, and `NiSkinData` is
+            // the fallback.** It used to be the other way round, on the grounds that
+            // "the bone list is exact" -- and it is not the one the game draws.
             //
-            // Falling back is also the only sign that the file left NiSkinData empty on
-            // purpose, which a few dozen do, so it is recorded rather than merely acted
-            // on -- otherwise a shape that kept its weights in one copy comes back with
-            // them in both.
-            if (!ReadWeightsFromBoneList(model, data, result))
-            {
-                result.WeightsInBoneList = false;
-                ReadWeightsFromPartition(model, skin, result);
-            }
+            // A Skyrim SE mesh states its weights three times: `NiSkinData`'s per-bone
+            // lists, the partition's per-vertex rows, and the vertex buffer the GPU
+            // samples. The last two agree exactly -- 0 differences over 1,070,617 rows
+            // of a 3,000-mesh sample -- and `NiSkinData` disagrees with both on about
+            // 0.25% of vertices. Most of that is derivable (a vertex authored with more
+            // than the four a row holds is trimmed to the four heaviest and
+            // renormalised, which reproduces the shipped row for 97% of them), but
+            // roughly 2,500 vertices per 3,000 meshes are a flat contradiction: the same
+            // bones, both sides summing to one, different numbers. `horse.nif`, four
+            // `_byoh` children's torsos and some 70 FaceGen heads carry most of them.
+            //
+            // Nothing derives those from `NiSkinData`, so reading it there converts a
+            // mesh to weights the engine does not use. ck-cmd reads the partition
+            // (`FBXWrangler.cpp:1093`, taking `part_data.vertexWeights` and using the
+            // bone list only for `skinTransform`), and this now follows it.
+            //
+            // The cost is the other direction: `NiSkinData` is not bound by four
+            // influences -- it stores per bone, so a vertex may appear in any number of
+            // bone lists, and about 2,000 vertices per 3,000 meshes are authored with
+            // five to eight. Those come through with the four the partition kept, which
+            // is what the file ships and all a rebuilt NIF could hold anyway.
+            bool fromPartition = ReadWeightsFromPartition(model, skin, result);
+
+            // Always read, whichever copy the weights came from: a bone's own skin
+            // transform lives here and nowhere else, as does the count a file left
+            // beside an array it switched off.
+            //
+            // Whether `NiSkinData` carries weights at all is a fact about the source
+            // rather than about where this chose to read them, and the writer needs it:
+            // a few dozen files keep their weights out of the bone list on purpose, and
+            // a shape that kept them in one copy must not come back with them in both.
+            result.WeightsInBoneList = ReadBoneList(model, data, result, takeWeights: !fromPartition);
 
             ReadPartitions(model, skin, result);
 
@@ -155,8 +179,18 @@ namespace SECmd.Nif
             }
         }
 
-        /// <summary>Weights as <c>NiSkinData</c> stores them, per bone.</summary>
-        private static bool ReadWeightsFromBoneList(NifModel model, NifItem? data, SkinData skin)
+        /// <summary>
+        /// The `NiSkinData` bone list: every bone's skin transform, and its weights when
+        /// they are wanted.
+        /// </summary>
+        /// <remarks>
+        /// The transforms are read whatever happens -- they are stated here and nowhere
+        /// else. The weights are read only when the partition had none, since the
+        /// partition is the copy the game draws from.
+        /// </remarks>
+        /// <returns>Whether the bone list carries weights, read or not.</returns>
+        private static bool ReadBoneList(
+            NifModel model, NifItem? data, SkinData skin, bool takeWeights)
         {
             if (data is null || model.FindItem(data, "Bone List") is not { } boneList)
                 return false;
@@ -185,8 +219,10 @@ namespace SECmd.Nif
                     if (value <= 0f)
                         continue;
 
-                    skin.Bones[i].Weights.Add((vertex, value));
                     any = true;
+
+                    if (takeWeights)
+                        skin.Bones[i].Weights.Add((vertex, value));
                 }
             }
 
@@ -201,7 +237,8 @@ namespace SECmd.Nif
         /// own bone list to reach the skin's. Vertices are partition-local too when
         /// a vertex map is present.
         /// </remarks>
-        private static void ReadWeightsFromPartition(NifModel model, NifItem skin, SkinData result)
+        /// <returns>Whether the partition carried any weights.</returns>
+        private static bool ReadWeightsFromPartition(NifModel model, NifItem skin, SkinData result)
         {
             NifItem? partition = model.GetRef(skin, "Skin Partition");
 
@@ -209,7 +246,13 @@ namespace SECmd.Nif
                 partition = model.GetRef(data, "Skin Partition");
 
             if (partition is null || model.FindItem(partition, "Partitions") is not { } partitions)
-                return;
+                return false;
+
+            // A vertex on a seam is drawn by more than one partition, and each states its
+            // weights in full. Added once per partition the vertex comes back weighted
+            // twice over, which is the same trap `FbxSkinIO` guards on the way in.
+            var seen = new HashSet<(int Bone, ushort Vertex)>();
+            bool any = false;
 
             foreach (NifItem entry in partitions.Children)
             {
@@ -260,11 +303,16 @@ namespace SECmd.Nif
 
                         int bone = localBones[local];
 
-                        if (bone >= 0 && bone < result.Bones.Count)
+                        if (bone >= 0 && bone < result.Bones.Count && seen.Add((bone, vertex)))
+                        {
                             result.Bones[bone].Weights.Add((vertex, weight));
+                            any = true;
+                        }
                     }
                 }
             }
+
+            return any;
         }
 
         /// <summary>

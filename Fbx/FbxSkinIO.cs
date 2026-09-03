@@ -336,14 +336,25 @@ namespace SECmd.Fbx
                     continue;
                 }
 
-                if (bone.Weights.Count == 0)
-                    continue;
-
                 List<(ushort Vertex, float Weight)> weightList = covered is null
                     ? bone.Weights
                     : [.. bone.Weights.Where(w => covered.Contains(w.Vertex))];
 
-                if (weightList.Count == 0)
+                // A bone the skin names but nothing weights is still part of the skin.
+                // The bone list has an entry for it and the instance holds a reference,
+                // so dropping its cluster drops the bone -- and with the weights now read
+                // from the partition rather than from `NiSkinData`, a bone weighted only
+                // in the latter has none. Seven meshes in a 2,000-mesh sample lost
+                // exactly one bone that way.
+                //
+                // Written on the first deformer only, since one empty cluster is enough
+                // to carry the bone across and one per partition would be noise. The
+                // reader takes the bone from the cluster before it looks at the weights,
+                // so an empty one arrives as a bone with nothing on it, which is what it
+                // is.
+                bool keepEmpty = bone.Weights.Count == 0 && index == 0;
+
+                if (weightList.Count == 0 && !keepEmpty)
                     continue;
 
                 FbxObject cluster = scene.AddObject("Deformer", bone.Name + "_cluster", "Cluster");
