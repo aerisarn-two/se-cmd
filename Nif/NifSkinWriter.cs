@@ -397,19 +397,39 @@ namespace SECmd.Nif
             if (CarriedPartitions(skin, triangles, trianglePartitions, byVertex) is { } carried)
                 return EnforceBoneLimit(carried, byVertex);
 
-            // The common case: everything fits, so the partition is the whole mesh
-            // and the vertex map is the identity.
+            // The common case: everything fits, so there is one partition for the whole
+            // mesh.
             if (boneCount <= MaxBonesPerPartition)
             {
                 var whole = new PartitionGroup();
 
-                for (int i = 0; i < vertexCount; i++)
-                    whole.Vertices.Add((ushort)i);
-
-                for (int i = 0; i < boneCount; i++)
-                    whole.Bones.Add(i);
-
                 whole.Triangles.AddRange(triangles);
+
+                // The vertices its triangles draw, not every vertex the shape has.
+                //
+                // A shape may carry vertices no triangle references -- 23 of
+                // `1stpersoncuirassheavy_1`'s 331, 62 of `1stpersoncuirass_0`'s 384 --
+                // and listing them puts a vertex in the partition's map that the
+                // partition never draws. Vanilla does not: its map holds exactly what
+                // our triangles turn out to use, in all 38 meshes where the two differ.
+                //
+                // A shape with no triangles keeps every vertex, since there is nothing
+                // to derive the set from and an empty map would lose the lot.
+                if (triangles.Count > 0)
+                {
+                    FillFromTriangles(whole, byVertex);
+                }
+                else
+                {
+                    for (int i = 0; i < vertexCount; i++)
+                        whole.Vertices.Add((ushort)i);
+                }
+
+                if (whole.Bones.Count == 0)
+                {
+                    for (int i = 0; i < boneCount; i++)
+                        whole.Bones.Add(i);
+                }
 
                 return [whole];
             }
