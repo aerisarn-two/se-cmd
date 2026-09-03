@@ -1325,22 +1325,24 @@ namespace SECmd.Tests
         /// rises. It has -- 400 of 600 on the first sweep that asked, 15,634 of 22,047
         /// when it was first measured across the whole corpus, 207 after the animation
         /// keys were carried whole, 92 once the skin weights were read from the copy the
-        /// game draws from, and 54 of 22,047 now that a partition lists the vertices it
-        /// draws rather than every vertex its shape has.
+        /// game draws from, 54 once a partition listed the vertices it draws rather than
+        /// every vertex its shape has, and 36 of 22,047 now that a triangle which
+        /// arrived degenerate stays degenerate.
         ///
         /// **Set it back down every time it falls.** At 0.72 against an actual 0.94% it
         /// was two orders of magnitude of slack: a change could have made seventy times
         /// as many meshes differ and the sweep would still have passed. A ratchet that
         /// is not tightened is a ratchet that has stopped being one.
         ///
-        /// The fields behind what is left, most first: triangles and the counts beside
-        /// them (19 meshes), transforms and the names they hang on, `Data Size`, and a
-        /// scattering of one-offs. Skin weights are no longer among them at all -- the
-        /// cluster that once was 153 of the 207 is gone, and the four remaining `Vertex
-        /// Weights` entries are array lengths on meshes whose complaint is elsewhere.
+        /// The fields behind what is left, most first: `Name`, `Translation` and
+        /// `Rotation` together on eight meshes -- the `miraakrobes` family, a dragon's
+        /// severed head and `sprigganmatron` -- then `Nodes` on the three creature
+        /// skeletons, and a long tail of one-offs.
         ///
-        /// They are the shape of a few problems rather than fifty, and none is reachable
-        /// from the two dozen fixtures the baseline was written against.
+        /// Geometry has left the list. Triangles, vertex counts, `Data Size` and skin
+        /// weights are all gone; what remains is the graph and its transforms, and none
+        /// of it is reachable from the two dozen fixtures the baseline was written
+        /// against.
         ///
         /// Set from the whole corpus and not from a sample, because the sample
         /// flatters: `Sample` takes an equal count from each archive where the archives
@@ -1348,7 +1350,7 @@ namespace SECmd.Tests
         /// against a ceiling set from a sample and it is a ratchet measuring its own
         /// sampling.
         /// </remarks>
-        private const double KnownFieldDivergence = 0.0025;
+        private const double KnownFieldDivergence = 0.0017;
 
         /// <summary>
         /// How the two files' blocks differ, ignoring the differences that are meant
