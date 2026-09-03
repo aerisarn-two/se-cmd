@@ -156,6 +156,15 @@ namespace SECmd.Tests
                 if (a.Name == "Children" && a.Children.Count != b.Children.Count)
                     AlignAroundEmptyChildren(a, b);
 
+                // A bone's authored weight list, now rebuilt from the partition and so
+                // holding only the vertices the partition weights that bone for. Matched
+                // before the length check, since the lengths are what differ.
+                if (a.Name == "Vertex Weights" && HasVertexIndices(a)
+                    && a.Children.Count != b.Children.Count)
+                {
+                    AlignBoneWeightList(a, b);
+                }
+
                 if (a.Children.Count != b.Children.Count && !_ragged.Contains(a))
                 {
                     Differences.Add(new NifDifference(
@@ -178,6 +187,8 @@ namespace SECmd.Tests
                     Align(a, b, WeightedVertices, whole: true);
                 else if (a.Name == "Extra Targets")
                     Align(a, b, Annotations, whole: true);
+                else if (IsWeightRow(a))
+                    AlignWeightSlots(a, b);
                 else if (a.Name is "Vertex Weights" or "Bone Indices" or "Vertex Map")
                     AlignByVertexMap(a, b);
 
@@ -1040,6 +1051,150 @@ namespace SECmd.Tests
                 return ((VertexFlags)attributes & VertexFlags.Tangent) != 0;
             }
 
+
+            /// <summary>Whether an item is one vertex's four weight slots.</summary>
+            /// <remarks>
+            /// Two shapes hold them: a partition's `Vertex Weights` is an array of rows
+            /// and each row is the four slots, so a row is a `Vertex Weights` inside a
+            /// `Vertex Weights`; the vertex buffer's `Bone Weights` is the four slots
+            /// directly.
+            /// </remarks>
+            private static bool IsWeightRow(NifItem item) =>
+                (item.Name == "Vertex Weights" && item.Parent is { Name: "Vertex Weights" })
+                || item.Name == "Bone Weights";
+
+            /// <summary>
+            /// Pairs one vertex's weight slots by the bone each names.
+            /// </summary>
+            /// <remarks>
+            /// The four slots of a row are a set, not a sequence: each pairs a weight
+            /// with a bone in the slot beside it, and nothing reads their order. Vanilla
+            /// does not fill them left to right -- `cuirassheavy_0` leaves a zero between
+            /// two influences -- and a rebuild packs them, so a positional comparison
+            /// reports the same weight twice, once as appearing and once as vanishing:
+            /// `0 vs 0.39` and `0.39 vs 0`.
+            ///
+            /// This is the mistake this file exists to avoid, one level below the rows it
+            /// already avoids it for. Matched on the bone, so a weight that has genuinely
+            /// moved to another bone still fails; the empty slots are then paired off in
+            /// the order they appear, since one zero is the same as another.
+            /// </remarks>
+            private void AlignWeightSlots(NifItem left_, NifItem right_)
+            {
+                if (BonesOfSlots(left, left_) is not { } mine
+                    || BonesOfSlots(right, right_) is not { } theirs
+                    || mine.Count != theirs.Count)
+                {
+                    return;
+                }
+
+                var order = new int[left_.Children.Count];
+                Array.Fill(order, -1);
+                var taken = new bool[right_.Children.Count];
+
+                // The slots that carry a weight, matched on their bone.
+                for (int i = 0; i < mine.Count; i++)
+                {
+                    if (left_.Children[i].Value.ToFloat() == 0f)
+                        continue;
+
+                    int found = -1;
+
+                    for (int j = 0; j < theirs.Count; j++)
+                    {
+                        if (taken[j] || right_.Children[j].Value.ToFloat() == 0f || theirs[j] != mine[i])
+                            continue;
+
+                        found = j;
+                        break;
+                    }
+
+                    // A bone this row weights and the other does not: a real difference,
+                    // left to the positional walk to report.
+                    if (found < 0)
+                        return;
+
+                    order[i] = found;
+                    taken[found] = true;
+                }
+
+                // The empty ones, in the order they come. One zero is the same as another.
+                for (int i = 0; i < order.Length; i++)
+                {
+                    if (order[i] >= 0)
+                        continue;
+
+                    for (int j = 0; j < taken.Length; j++)
+                    {
+                        if (taken[j])
+                            continue;
+
+                        order[i] = j;
+                        taken[j] = true;
+                        break;
+                    }
+
+                    if (order[i] < 0)
+                        return;
+                }
+
+                _permuted[left_] = order;
+            }
+
+            /// <summary>The bone each of a row's slots names, or null when unreadable.</summary>
+            private static List<int>? BonesOfSlots(NifModel model, NifItem row)
+            {
+                // A partition row indexes the partition's own bone list; the vertex
+                // buffer's slots index the skin's.
+                bool inPartition = row.Name == "Vertex Weights";
+
+                NifItem? indices;
+                NifItem? bones = null;
+
+                if (inPartition)
+                {
+                    if (row.Parent is not { } array || array.Parent is not { } partition)
+                        return null;
+
+                    int at = array.Children.IndexOf(row);
+
+                    indices = partition.Children
+                        .FirstOrDefault(c => c.Name == "Bone Indices" && model.EvalCondition(c))
+                        ?.Children.ElementAtOrDefault(at);
+
+                    bones = partition.Children
+                        .FirstOrDefault(c => c.Name == "Bones" && model.EvalCondition(c));
+                }
+                else
+                {
+                    indices = row.Parent?.Children
+                        .FirstOrDefault(c => c.Name == "Bone Indices" && model.EvalCondition(c));
+                }
+
+                if (indices is null || indices.Children.Count < row.Children.Count)
+                    return null;
+
+                var result = new List<int>();
+
+                for (int i = 0; i < row.Children.Count; i++)
+                {
+                    int index = (int)indices.Children[i].Value.ToUInt();
+
+                    if (bones is null)
+                    {
+                        result.Add(index);
+                        continue;
+                    }
+
+                    if (index >= bones.Children.Count)
+                        return null;
+
+                    result.Add((int)bones.Children[index].Value.ToUInt());
+                }
+
+                return result;
+            }
+
             /// <summary>
             /// Pairs two child lists that hold the same nodes and differ only in empty
             /// slots.
@@ -1096,162 +1251,304 @@ namespace SECmd.Tests
                 _ragged.Add(left_);
             }
 
+
+
             /// <summary>
-            /// Whether a partition weight differs because the file disagrees with itself.
+            /// Whether a vertex-buffer weight is the one the source's partition states.
             /// </summary>
             /// <remarks>
-            /// A skinned mesh states its weights twice: `NiSkinData` holds what was
-            /// authored, and `NiSkinPartition` holds the four-slot copy the renderer
-            /// reads. A rebuild has only one of them to work from and rebuilds the cache
-            /// from the authored weights, so where a file's two copies disagree, ours
-            /// matches the authored one and the file's cache does not.
+            /// A Skyrim SE mesh writes each vertex's influences twice, in the partition
+            /// and in the buffer the GPU samples, and they agree in the game's files --
+            /// 0 differences over 1,070,617 rows of a 3,000-mesh sample. Where a file
+            /// does disagree, the weights are read from the partition, so an influence
+            /// the buffer carries alone is not rebuilt.
             ///
-            /// The files really do disagree. `hair13` has 1,711 weights in its partitions;
-            /// 1,667 match its own `NiSkinData` and 44 do not, by up to 0.0068 -- and 44
-            /// is exactly the number the sweep reports for it.
+            /// `TestNifFile_LooseBlocks_SE` is such a file, and disagrees both ways:
+            /// 197 buffer slots carry an influence its partition does not, every one of
+            /// them dust -- the largest is 8.7e-5 -- and the influences beside them are
+            /// held unnormalised in the buffer where the partition holds them scaled to
+            /// one, which is the same 3e-4 seen from the other end.
             ///
-            /// So this is not "weights may differ": it is "this weight may differ from the
-            /// cache when it equals what the file itself says was authored". Anything else
-            /// -- a weight that matches neither copy, a renormalisation of our own, a
-            /// dropped influence -- still fails. Reaching the authored value means walking
-            /// from the slot back out to the partition, through `Vertex Map` for the
-            /// vertex and `Bones` for the bone, and into the `NiSkinData` beside it.
+            /// So both readings are the same question: does this slot hold what the
+            /// partition states for that bone and vertex, where stating nothing means
+            /// zero? Checked rather than excused, so a weight the partition does state
+            /// and the rebuild lost still fails.
             /// </remarks>
-            private bool AuthoredWeightExplains(NifItem slot, NifItem theirs)
+            private bool PartitionExplainsBufferWeight(NifItem slot, NifItem theirs)
             {
-                // slot -> row -> array -> partition, on our side and theirs alike.
-                if (slot.Parent is not { } row
-                    || row.Parent is not { } array
-                    || array.Parent is not { } partition
-                    || array.Name != "Vertex Weights"
-                    || theirs.Parent is not { } theirRow
-                    || theirRow.Parent is not { } theirArray
-                    || theirArray.Parent is not { } theirPartition)
+                if (slot.Parent is not { Name: "Bone Weights" } weights
+                    || weights.Parent is not { } row
+                    || row.Parent is not { Name: "Vertex Data" } buffer
+                    || buffer.Parent is not { } block)
                 {
                     return false;
                 }
 
-                int at = array.Children.IndexOf(row);
-                int which = row.Children.IndexOf(slot);
-                int theirAt = theirArray.Children.IndexOf(theirRow);
+                int which = weights.Children.IndexOf(slot);
+                int vertex = buffer.Children.IndexOf(row);
 
-                if (at < 0 || which < 0 || theirAt < 0)
+                if (which < 0 || vertex < 0)
                     return false;
 
-                // The vertex, which the rows have already been paired on.
-                if (Child(partition, "Vertex Map") is not { } map || at >= map.Children.Count)
-                    return false;
-
-                uint vertex = map.Children[at].Value.ToUInt();
-
-                // **The bone is read from the side the weight came from.** Reading it
-                // from the source instead was the flaw here: the four slots of a row are
-                // not ordered, so slot 2 on one side need not be the bone slot 2 names on
-                // the other, and the lookup then asked about a bone this weight was never
-                // for. That is the same mistake as comparing partition rows in place, one
-                // level further down.
-                if (BoneNameOf(right, theirPartition, theirAt, which) is not { } name)
-                    return false;
-
-                // What the file itself says was authored for that bone and vertex. Only
-                // when the skin names the bone once: a list naming it twice -- a tree's
-                // does, one set per level of detail -- cannot say which entry is meant.
-                if (_owner is null
-                    || left.Blocks.FirstOrDefault(
-                           b => left.GetRef(b, "Skin Partition") == _owner) is not { } instance
-                    || left.GetRef(instance, "Data") is not { } skinData
-                    || Child(skinData, "Bone List") is not { } list)
+                if (row.Children.FirstOrDefault(
+                        c => c.Name == "Bone Indices" && left.EvalCondition(c)) is not { } indices
+                    || which >= indices.Children.Count)
                 {
                     return false;
                 }
 
-                var bones = left.GetRefArray(instance, "Bones").Select(left.GetName).ToList();
-                int bone = bones.IndexOf(name);
+                int bone = (int)indices.Children[which].Value.ToUInt();
 
-                if (bone < 0 || bones.LastIndexOf(name) != bone || bone >= list.Children.Count)
-                    return false;
-
-                if (Child(list.Children[bone], "Vertex Weights") is not { } authored)
-                    return false;
-
-                // How much of the vertex's authored weight the row can actually hold. A
-                // row has four slots and `NiSkinData` is not bound by that: `falmervampire
-                // feral` authors 141 vertices with five influences apiece, all of them
-                // drawn by a single partition. So the four heaviest are kept and scaled
-                // back up to one -- a derivable answer, and the one this port writes.
-                //
-                // Without this the comparison asked whether our value *equals* the
-                // authored one, which for such a vertex it cannot: vertex 81's five
-                // influences leave 0.93522 after the smallest goes, and every kept weight
-                // is 1.0693 times what was authored.
-                float scale = RenormalisationFor(list, vertex, row.Children.Count);
-                bool trimmed = InfluenceCount(list, vertex) > row.Children.Count;
-
-                foreach (NifItem entry in authored.Children)
+                // The partition beside this buffer, reached through the skin that owns it.
+                if (left.Blocks.FirstOrDefault(
+                        b => left.GetRef(b, "Skin Partition") == block) is not { } instance
+                    || left.GetRef(instance, "Data") is not { } data)
                 {
-                    if (entry.Children.FirstOrDefault(c => c.Name == "Index") is not { } index
-                        || index.Value.ToUInt() != vertex
-                        || entry.Children.FirstOrDefault(c => c.Name == "Weight") is not { } weight)
+                    return false;
+                }
+
+                // Stating nothing is stating zero.
+                return PartitionWeightsOf(data).TryGetValue((bone, (uint)vertex), out float weight)
+                    ? Close(weight, theirs.Value.ToFloat())
+                    : theirs.Value.ToFloat() == 0f;
+            }
+
+            /// <summary>
+            /// Every weight the source's partitions state, by bone and vertex.
+            /// </summary>
+            /// <remarks>
+            /// Built once per `NiSkinData` and kept, because the questions below ask it
+            /// per weight and a file has hundreds of thousands of them.
+            /// </remarks>
+            private readonly Dictionary<NifItem, Dictionary<(int Bone, uint Vertex), float>>
+                _partitionWeights = [];
+
+            private Dictionary<(int Bone, uint Vertex), float> PartitionWeightsOf(NifItem skinData)
+            {
+                if (_partitionWeights.TryGetValue(skinData, out var cached))
+                    return cached;
+
+                var map = new Dictionary<(int, uint), float>();
+                _partitionWeights[skinData] = map;
+
+                if (left.Blocks.FirstOrDefault(b => left.GetRef(b, "Data") == skinData) is not { } instance
+                    || left.GetRef(instance, "Skin Partition") is not { } partitionBlock
+                    || Child(partitionBlock, "Partitions") is not { } partitions)
+                {
+                    return map;
+                }
+
+                foreach (NifItem partition in partitions.Children)
+                {
+                    if (Child(partition, "Vertex Weights") is not { } weights
+                        || Child(partition, "Bone Indices") is not { } indices
+                        || Child(partition, "Vertex Map") is not { } vertexMap
+                        || Child(partition, "Bones") is not { } bones)
                     {
                         continue;
                     }
 
-                    if (scale != 1f)
+                    for (int row = 0; row < weights.Children.Count && row < vertexMap.Children.Count; row++)
                     {
-                        // The row could not hold everything the vertex was authored with,
-                        // so the file had to choose -- and it does not record what it
-                        // chose. Ours keeps the four heaviest and scales them back to one,
-                        // which is checked first because it is checkable.
-                        var scaled = new NifValue(weight.Value.Type);
-                        scaled.SetFloat(weight.Value.ToFloat() * scale);
+                        uint vertex = vertexMap.Children[row].Value.ToUInt();
 
-                        if (scaled.ToString() == theirs.Value.ToString())
-                            return true;
+                        for (int slot = 0; slot < weights.Children[row].Children.Count; slot++)
+                        {
+                            float weight = weights.Children[row].Children[slot].Value.ToFloat();
 
-                        // Everything fitted, so the scaling is the only thing that
-                        // happened to this weight and it had a right answer. Not
-                        // matching it is a real difference.
-                        if (!trimmed)
-                            return false;
+                            if (weight == 0f
+                                || row >= indices.Children.Count
+                                || slot >= indices.Children[row].Children.Count)
+                            {
+                                continue;
+                            }
 
-                        // And where it does not match, the row is passed over rather than
-                        // reported, because there is nothing to be right about.
-                        // `falmervampireferal`'s cache keeps `L UpperArm` as a slot at
-                        // weight zero while dropping a heavier influence, and moves
-                        // `Spine1` from 0.37286 to 0.48826 -- ratios of 1.0846, 1.0949,
-                        // 1.0498 and 0.9546 against its own authored weights, so no
-                        // scaling of any kind reaches it. Which four a tool keeps, and
-                        // what it does to them afterwards, is a decision taken before the
-                        // file was written.
-                        //
-                        // Only a row the file itself had to trim. A vertex whose
-                        // influences all fit is still held to the authored value exactly,
-                        // which is every vertex in all but one mesh of a 2,000-mesh
-                        // sample.
-                        return true;
+                            int local = (int)indices.Children[row].Children[slot].Value.ToUInt();
+
+                            if (local >= bones.Children.Count)
+                                continue;
+
+                            map[((int)bones.Children[local].Value.ToUInt(), vertex)] = weight;
+                        }
                     }
-
-                    // Ours has to *be* the authored weight. That it merely differs from
-                    // the cache is not enough.
-                    //
-                    // Compared as `NifValue` prints them, which is `G6` -- six
-                    // significant digits, the same comparison the walk uses for every
-                    // other field. Tightening this to the float itself, or to within one
-                    // unit in the last place, was tried and is wrong: the weight makes
-                    // the trip as a double and comes back through a renormalisation, so
-                    // it agrees with the authored value to about six digits and not to
-                    // the bit. The sample went from 20 divergent meshes to 27.
-                    //
-                    // The cost of the crude comparison is the odd weight sitting on a
-                    // rounding boundary, which prints either side of it from a one-bit
-                    // difference: `hair13`'s vertex 921 is authored 0.790237606 and
-                    // rebuilt a shade below, and reads as 0.790238 against 0.790237.
-                    // One mesh in the sample keeps a difference for that reason.
-                    return weight.Value.ToString() == theirs.Value.ToString();
                 }
 
-                return false;
+                return map;
             }
+
+            /// <summary>The `NiSkinData` and bone index a weight entry belongs to.</summary>
+            private (NifItem Data, int Bone, uint Vertex)? WeightAddress(NifItem slot)
+            {
+                if (slot.Parent is not { } entry
+                    || entry.Parent is not { Name: "Vertex Weights" } array
+                    || array.Parent is not { } boneEntry
+                    || boneEntry.Parent is not { Name: "Bone List" } boneList
+                    || boneList.Parent is not { } data)
+                {
+                    return null;
+                }
+
+                int bone = boneList.Children.IndexOf(boneEntry);
+                NifItem? index = entry.Children.FirstOrDefault(c => c.Name == "Index");
+
+                return bone < 0 || index is null ? null : (data, bone, index.Value.ToUInt());
+            }
+
+            /// <summary>
+            /// Whether a rebuilt authored weight is the one the source's partition holds.
+            /// </summary>
+            /// <remarks>
+            /// `NiSkinData` is no longer the copy the weights are read from -- the
+            /// partition is, being what the renderer samples and what ck-cmd takes -- so
+            /// the authored list is rebuilt from it and carries its numbers. Where a file
+            /// disagreed with itself, ours now matches the partition and the file's own
+            /// authored copy does not.
+            ///
+            /// Checked against that partition rather than excused, so a weight matching
+            /// neither copy still fails. This is the same rule as everywhere else in this
+            /// comparison: measure a derived value against what it was derived from.
+            /// </remarks>
+            private bool PartitionWeightExplains(NifItem slot, NifItem theirs)
+            {
+                if (WeightAddress(slot) is not { } at)
+                    return false;
+
+                return PartitionWeightsOf(at.Data).TryGetValue((at.Bone, at.Vertex), out float weight)
+                    && Close(weight, theirs.Value.ToFloat());
+            }
+
+            /// <summary>
+            /// Whether a bone's weight count is the length of the list it now describes.
+            /// </summary>
+            private bool BoneWeightCountExplains(NifItem count, NifItem theirs)
+            {
+                if (count.Parent is not { } boneEntry
+                    || boneEntry.Parent is not { Name: "Bone List" }
+                    || theirs.Parent is not { } theirEntry
+                    || theirEntry.Children.FirstOrDefault(
+                        c => c.Name == "Vertex Weights" && right.EvalCondition(c)) is not { } list)
+                {
+                    return false;
+                }
+
+                return theirs.Value.ToUInt() == (uint)list.Children.Count;
+            }
+
+            /// <summary>
+            /// Pairs a bone's authored weight list with the shorter one rebuilt from the
+            /// partition.
+            /// </summary>
+            /// <remarks>
+            /// A bone's `NiSkinData` list names every vertex it was authored to move; the
+            /// rebuilt one names those the partition actually weights it for, which is a
+            /// subset -- a vertex authored with more influences than a partition row
+            /// holds loses its lightest, and `NiSkinData` is not bound by four.
+            ///
+            /// So the two are matched on the vertex each entry names, and a source entry
+            /// with no counterpart is dropped from the walk **only when the source's own
+            /// partition does not weight that bone for that vertex**. A weight that went
+            /// missing for any other reason still fails on the length, which is the point
+            /// of doing this rather than excusing the field.
+            /// </remarks>
+            private void AlignBoneWeightList(NifItem left_, NifItem right_)
+            {
+                if (left_.Children.Count < right_.Children.Count)
+                    return;
+
+                if (left_.Parent is not { } boneEntry
+                    || boneEntry.Parent is not { Name: "Bone List" } boneList
+                    || boneList.Parent is not { } data)
+                {
+                    return;
+                }
+
+                int bone = boneList.Children.IndexOf(boneEntry);
+
+                if (bone < 0)
+                    return;
+
+                var shipped = PartitionWeightsOf(data);
+
+                var theirs = new Dictionary<uint, int>();
+
+                for (int i = 0; i < right_.Children.Count; i++)
+                {
+                    if (right_.Children[i].Children.FirstOrDefault(c => c.Name == "Index") is not { } index)
+                        return;
+
+                    theirs[index.Value.ToUInt()] = i;
+                }
+
+                var order = new int[left_.Children.Count];
+                Array.Fill(order, -1);
+                int paired = 0;
+
+                for (int i = 0; i < left_.Children.Count; i++)
+                {
+                    if (left_.Children[i].Children.FirstOrDefault(c => c.Name == "Index") is not { } index)
+                        return;
+
+                    uint vertex = index.Value.ToUInt();
+
+                    if (theirs.TryGetValue(vertex, out int at))
+                    {
+                        order[i] = at;
+                        paired++;
+                        continue;
+                    }
+
+                    // Dropped -- and the partition has to agree that this bone does not
+                    // move this vertex, or the weight has gone missing for a reason this
+                    // does not know about.
+                    if (shipped.ContainsKey((bone, vertex)))
+                        return;
+                }
+
+                // Every entry of theirs accounted for, so nothing was invented either.
+                if (paired != right_.Children.Count)
+                    return;
+
+                _permuted[left_] = order;
+                _ragged.Add(left_);
+            }
+
+
+
+
+
+
+            /// <summary>The bone a vertex-buffer slot names, through the skin's bone list.</summary>
+            private static string? VertexBoneNameOf(
+                NifModel model, NifItem block, NifItem row, int slot)
+            {
+                if (row.Children.FirstOrDefault(
+                        c => c.Name == "Bone Indices" && model.EvalCondition(c)) is not { } indices
+                    || slot >= indices.Children.Count)
+                {
+                    return null;
+                }
+
+                int index = (int)indices.Children[slot].Value.ToUInt();
+
+                if (SkinInstanceOf(model, block) is not { } instance)
+                    return null;
+
+                var list = model.GetRefArray(instance, "Bones").ToList();
+
+                return index < list.Count ? model.GetName(list[index]) : null;
+            }
+
+            /// <summary>
+            /// The skin instance a block belongs to, whichever end of the link it is.
+            /// </summary>
+            /// <remarks>
+            /// The vertex buffer sits on the shape in one file and on the partition in
+            /// another, so the instance is either the block this one points at or the
+            /// block that points at this one.
+            /// </remarks>
+            private static NifItem? SkinInstanceOf(NifModel model, NifItem block) =>
+                model.Blocks.FirstOrDefault(b => model.GetRef(b, "Skin Partition") == block)
+                ?? (model.GetRef(block, "Skin") is { } skin ? skin : null);
 
             /// <summary>How many influences a vertex was authored with.</summary>
             private int InfluenceCount(NifItem boneList, uint vertex)
@@ -1499,8 +1796,19 @@ namespace SECmd.Tests
                 if (a.Name == "Bitangent Y" && !DeclaresTangents())
                     return true;
 
-                // A cached partition weight the file's own authored weights contradict.
-                if (a.Name == "Vertex Weights" && AuthoredWeightExplains(a, b))
+                // A vertex-buffer weight that is what the source's own partition says.
+                // The weights are read from the partition, so where a file's two copies
+                // disagree the buffer is rebuilt from the partition and not from itself.
+                if (a.Name == "Bone Weights" && PartitionExplainsBufferWeight(a, b))
+                    return true;
+
+                // An authored weight that is now the partition's, because that is what
+                // it is rebuilt from.
+                if (a.Name == "Weight" && PartitionWeightExplains(a, b))
+                    return true;
+
+                // And the count beside a bone's shortened weight list.
+                if (a.Name == "Num Vertices" && BoneWeightCountExplains(a, b))
                     return true;
 
                 // A quaternion and its negation are the same rotation: q and -q turn a
