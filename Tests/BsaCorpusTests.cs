@@ -1320,28 +1320,29 @@ namespace SECmd.Tests
         /// The share of vanilla meshes known to differ in some field, as a ratchet.
         /// </summary>
         /// <remarks>
-        /// 400 of 600 on the first sweep that asked. A ceiling rather than a list
-        /// because naming the meshes would be longer than the code and would say less:
-        /// what matters is that the number falls and never rises.
+        /// A ceiling rather than a list because naming the meshes would be longer than
+        /// the code and would say less: what matters is that the number falls and never
+        /// rises. It has -- 400 of 600 on the first sweep that asked, 15,634 of 22,047
+        /// when it was first measured across the whole corpus, and 207 of 22,047 now.
         ///
-        /// The fields behind it, most first: triangles and the vertex maps that index
-        /// them, vertex counts and `Data Size`, skin weights and the per-partition bone
-        /// lists that hold them. They are the shape of one problem rather than fifty,
-        /// and none of them is reachable from the two dozen fixtures the baseline was
-        /// written against.
+        /// **Set it back down every time it falls.** At 0.72 against an actual 0.94% it
+        /// was two orders of magnitude of slack: a change could have made seventy times
+        /// as many meshes differ and the sweep would still have passed. A ratchet that
+        /// is not tightened is a ratchet that has stopped being one.
         ///
-        /// Set from the whole corpus -- 15,634 of 22,047 -- and not from a sample. It
-        /// was 0.67 against a sampled 65%, and the sample was flattering: `Sample`
-        /// takes an equal count from each archive where the archives are neither the
-        /// same size nor equally divergent, so 6,000 files answered 65% where all
-        /// 22,047 answer 70.9%. Run the sweep sampled and it passes a ceiling the full
-        /// run breaks, which is a ratchet measuring its own sampling.
+        /// The fields behind what is left, most first: skin weights and the
+        /// per-partition bone lists that hold them (153 of the 207), vertex counts and
+        /// `Data Size`, triangles and the vertex maps that index them. They are the
+        /// shape of a few problems rather than two hundred, and none of them is
+        /// reachable from the two dozen fixtures the baseline was written against.
         ///
-        /// The two were checked against each other before this moved: at this commit
-        /// and at the one that set 0.67, the same sample gives the same 3,914 files, so
-        /// nothing about the conversion changed -- only what is being counted.
+        /// Set from the whole corpus and not from a sample, because the sample
+        /// flatters: `Sample` takes an equal count from each archive where the archives
+        /// are neither the same size nor equally divergent, so 4,000 files answer 0.43%
+        /// where all 22,047 answer 0.94%. Run the sweep sampled against a ceiling set
+        /// from a sample and it is a ratchet measuring its own sampling.
         /// </remarks>
-        private const double KnownFieldDivergence = 0.72;
+        private const double KnownFieldDivergence = 0.0095;
 
         /// <summary>
         /// How the two files' blocks differ, ignoring the differences that are meant
