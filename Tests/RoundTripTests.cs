@@ -1202,52 +1202,164 @@ namespace SECmd.Tests
 
         [Theory]
         [MemberData(nameof(EveryFixture))]
-        public void NiSkinDataKeepsTheWeightsItWasAuthoredWith(string name)
+        public void NiSkinDataMatchesThePartitionItIsRebuiltFrom(string name)
         {
-            // Two faults, one on top of the other, and the baseline blamed a third
-            // thing that was not happening.
+            // This used to assert that a rebuilt `NiSkinData` held what the source's
+            // `NiSkinData` held, and that is no longer the arrangement. The weights are
+            // read from the partition -- what the renderer samples, and what ck-cmd
+            // takes -- and the authored list is rebuilt from it, so a file whose two
+            // copies disagree comes back with the partition's numbers in both.
             //
-            // LimitInfluences divided every weight by its vertex total whether or not
-            // anything had been dropped. Vanilla weights are already normalised -- over
-            // 4,201,422 skinned vertices the worst |sum - 1| with four influences or
-            // fewer is 1.6e-7 -- so that was arithmetic with nothing to correct, and it
-            // moved every weight in the file. It also fed both copies, which do not
-            // agree: NiSkinData keeps what was authored and the partition holds it
-            // normalised, and TestNifFile_LooseBlocks_SE has vertices summing to
-            // 0.999924 in one and to exactly one in the other.
+            // The invariant is therefore about agreement rather than preservation: every
+            // bone's list holds exactly the vertices the partition weights that bone for,
+            // with exactly the weights it states.
             //
-            // And it rebuilt each bone's list by walking a dictionary, so the weights
-            // came back on the right vertices in nobody's order.
+            // It still catches the two faults it was written for. `LimitInfluences`
+            // divided every weight by its vertex total whether or not anything had been
+            // dropped -- vanilla weights are already normalised, so that was arithmetic
+            // with nothing to correct, and it moved every weight in the file. And the
+            // rebuild walked a dictionary, so weights came back on the right vertices in
+            // nobody's order; pairing each vertex with its own weight is what a map
+            // comparison checks, and a shuffled list fails it just as an ordered
+            // comparison would.
             NifModel source = Load(name);
 
-            static List<(string Bone, List<(uint, float)> Weights)> Lists(NifModel m) =>
-                [.. m.Blocks
-                    .Where(b => b.Name == "NiSkinData")
-                    .SelectMany(d => m.FindItem(d, "Bone List") is { } l ? l.Children : [])
-                    .Select(entry => (
-                        string.Empty,
-                        (List<(uint, float)>)
-                        [
-                            .. (m.FindItem(entry, "Vertex Weights")?.Children ?? [])
-                                .Select(w => (
-                                    m.FindItem(w, "Index")!.Value.ToUInt(),
-                                    m.FindItem(w, "Weight")!.Value.ToFloat()))
-                        ]))];
+            Dictionary<int, Dictionary<uint, float>> expected = PartitionWeights(source);
 
-            List<(string, List<(uint, float)>)> before = Lists(source);
-
-            if (before.Count == 0 || before.All(b => b.Item2.Count == 0))
+            if (expected.Count == 0)
                 return;
 
-            List<(string, List<(uint, float)>)> after = Lists(RoundTrip(source));
+            Dictionary<int, Dictionary<uint, float>> actual = AuthoredWeights(RoundTrip(source));
 
-            Assert.Equal(before.Count, after.Count);
-
-            for (int i = 0; i < before.Count; i++)
+            // A file that keeps its weights out of `NiSkinData` on purpose must come
+            // back that way. Rebuilding the list from the partition would otherwise fill
+            // in a copy the source deliberately left empty, which is the same fault in
+            // the other direction: `TestNifFile_Skinned_NoNiSkinDataWeights` exists for
+            // exactly this and would pass a test that only checked agreement.
+            if (AuthoredWeights(source).Count == 0)
             {
-                // Order included: these are lists in the file, not sets.
-                Assert.Equal(before[i].Item2, after[i].Item2);
+                Assert.True(
+                    actual.Count == 0,
+                    $"{name}: NiSkinData was empty and came back with {actual.Count} bone lists");
+
+                return;
             }
+
+            foreach ((int bone, Dictionary<uint, float> want) in expected)
+            {
+                Assert.True(
+                    actual.TryGetValue(bone, out Dictionary<uint, float>? got),
+                    $"{name}: bone {bone} lost its weight list");
+
+                Assert.Equal(
+                    want.OrderBy(e => e.Key).Select(e => (e.Key, e.Value)),
+                    got!.OrderBy(e => e.Key).Select(e => (e.Key, e.Value)));
+            }
+        }
+
+        /// <summary>Every weight a model's partitions state, per bone and vertex.</summary>
+        /// <remarks>
+        /// Bones are numbered across the whole file rather than per skin, so two skins'
+        /// bone 0 do not collide: the count of skins seen so far offsets each.
+        /// </remarks>
+        private static Dictionary<int, Dictionary<uint, float>> PartitionWeights(NifModel m)
+        {
+            var result = new Dictionary<int, Dictionary<uint, float>>();
+            int offset = 0;
+
+            foreach (NifItem instance in m.Blocks)
+            {
+                if (m.GetRef(instance, "Skin Partition") is not { } block
+                    || m.GetRef(instance, "Data") is not { } data
+                    || m.FindItem(data, "Bone List") is not { } boneList)
+                {
+                    continue;
+                }
+
+                foreach (NifItem partition in m.FindItem(block, "Partitions")?.Children ?? [])
+                {
+                    if (m.FindItem(partition, "Vertex Weights") is not { } weights
+                        || !m.EvalCondition(weights)
+                        || m.FindItem(partition, "Bone Indices") is not { } indices
+                        || m.FindItem(partition, "Vertex Map") is not { } map
+                        || m.FindItem(partition, "Bones") is not { } bones)
+                    {
+                        continue;
+                    }
+
+                    for (int row = 0; row < weights.Children.Count && row < map.Children.Count; row++)
+                    {
+                        uint vertex = map.Children[row].Value.ToUInt();
+
+                        for (int slot = 0; slot < weights.Children[row].Children.Count; slot++)
+                        {
+                            float weight = weights.Children[row].Children[slot].Value.ToFloat();
+
+                            if (weight == 0f || slot >= indices.Children[row].Children.Count)
+                                continue;
+
+                            int local = (int)indices.Children[row].Children[slot].Value.ToUInt();
+
+                            if (local >= bones.Children.Count)
+                                continue;
+
+                            int bone = offset + (int)bones.Children[local].Value.ToUInt();
+
+                            if (!result.TryGetValue(bone, out var set))
+                                result[bone] = set = [];
+
+                            set[vertex] = weight;
+                        }
+                    }
+                }
+
+                offset += boneList.Children.Count;
+            }
+
+            return result;
+        }
+
+        /// <summary>The same, as `NiSkinData` states it.</summary>
+        private static Dictionary<int, Dictionary<uint, float>> AuthoredWeights(NifModel m)
+        {
+            var result = new Dictionary<int, Dictionary<uint, float>>();
+            int offset = 0;
+
+            foreach (NifItem instance in m.Blocks)
+            {
+                if (m.GetRef(instance, "Skin Partition") is null
+                    || m.GetRef(instance, "Data") is not { } data
+                    || m.FindItem(data, "Bone List") is not { } boneList)
+                {
+                    continue;
+                }
+
+                for (int bone = 0; bone < boneList.Children.Count; bone++)
+                {
+                    if (m.FindItem(boneList.Children[bone], "Vertex Weights") is not { } weights
+                        || !m.EvalCondition(weights))
+                    {
+                        continue;
+                    }
+
+                    var set = new Dictionary<uint, float>();
+
+                    foreach (NifItem entry in weights.Children)
+                    {
+                        float weight = m.FindItem(entry, "Weight")?.Value.ToFloat() ?? 0f;
+
+                        if (weight != 0f)
+                            set[m.FindItem(entry, "Index")?.Value.ToUInt() ?? 0] = weight;
+                    }
+
+                    if (set.Count > 0)
+                        result[offset + bone] = set;
+                }
+
+                offset += boneList.Children.Count;
+            }
+
+            return result;
         }
 
         [Theory]
