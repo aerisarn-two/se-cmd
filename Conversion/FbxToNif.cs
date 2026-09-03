@@ -2658,17 +2658,33 @@ namespace SECmd.Conversion
             // dropped when the list is written and everything after it moves up. So the
             // two are walked together and the name is the check: an entry that does not
             // match the next written bone is one that was dropped, and it maps nowhere.
-            var written = _model.GetRefArray(instance, "Bones").Select(_model.GetName).ToList();
+            var written = _model.GetRefArray(instance, "Bones").ToList();
             var boneIndex = new int[skin.Bones.Count];
             Array.Fill(boneIndex, -1);
 
+            // Matched on the node each bone resolved to, not on what it is called.
+            //
+            // A scene may hold two nodes of the same name, and FBX cannot: the second
+            // becomes `Bone01#1`, and that suffixed name is what the skin carries back.
+            // The NIF node it resolves to is still called `Bone01`, so comparing the two
+            // strings never matched -- `jester_go` has three such bones and mapped none
+            // of them, which left every weight unwritten and the mesh's whole vertex
+            // buffer at zero while its partition and `NiSkinData` were correct.
+            //
+            // The node is the identity here, and `_nodesByName` is the same lookup
+            // `WriteSkin` used to decide which bones to write, so the two agree by
+            // construction.
             for (int k = 0, at = 0; k < skin.Bones.Count && at < written.Count; k++)
             {
-                if (skin.Bones[k].Name == written[at])
+                if (_nodesByName.TryGetValue(skin.Bones[k].Name, out NifItem? node)
+                    && node == written[at])
+                {
                     boneIndex[k] = at++;
+                }
             }
 
             var byVertex = skin.ByVertex();
+
 
             for (int i = 0; i < vertices.Children.Count; i++)
             {
