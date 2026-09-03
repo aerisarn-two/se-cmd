@@ -1532,6 +1532,23 @@ namespace SECmd.Tests
                 if (a.Value.Type is NifValueType.Matrix && MatrixSurvivesTheEulerTrip(a, b))
                     return true;
 
+                // A half is compared as a half. The source's value came out of the file
+                // and so is already rounded to the sixteen bits the field holds; the
+                // rebuilt one is a full float that will be rounded only when it is
+                // written. Compared as they stand, every half field in the file differs
+                // in its fifth digit -- 1,084 of them on one FaceGen head -- and none of
+                // it is loss: the saved bytes are identical, which the byte-for-byte
+                // sweep has been saying all along.
+                //
+                // This is the rule this comparison keeps relearning: where a value
+                // passes through a known transformation, compare against that
+                // transformation's own output rather than against its input.
+                if (a.Value.Type is NifValueType.Hfloat && b.Value.Type is NifValueType.Hfloat
+                    && NifPack.FloatToHalf(a.Value.ToFloat()) == NifPack.FloatToHalf(b.Value.ToFloat()))
+                {
+                    return true;
+                }
+
                 string sa = a.Value.ToString(), sb = b.Value.ToString();
 
                 if (sa == sb)
