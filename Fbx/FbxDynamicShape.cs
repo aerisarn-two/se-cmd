@@ -23,6 +23,16 @@ namespace SECmd.Fbx
         /// <summary>The property holding the fourth component, one per vertex.</summary>
         public const string Property = "dynamic_vertex_w";
 
+        /// <summary>The property a buffer with no mesh beside it travels in, whole.</summary>
+        /// <remarks>
+        /// Only the fourth components travel normally, because the other three are the
+        /// mesh's own positions and come back with it. A shape whose static data is
+        /// switched off has no mesh: `hairshorthumanfold` carries 643 dynamic vertices,
+        /// `Data Size` of zero and no triangle array, so nothing else would bring its
+        /// positions across and the buffer came back empty.
+        /// </remarks>
+        public const string WholeProperty = "dynamic_vertex_xyzw";
+
         /// <summary>Records the buffer's fourth components, if the shape has any.</summary>
         public static void Write(FbxObject geometry, NifModel model, NifItem shape)
         {
@@ -36,6 +46,41 @@ namespace SECmd.Fbx
                 Property,
                 string.Join(' ', buffer.Children.Select(
                     v => v.Value.Get<NifVector4>().W.ToString("R", CultureInfo.InvariantCulture))));
+
+            // The whole buffer when there is no mesh to carry the positions.
+            if (model.FindItem(shape, "Vertex Data") is { Children.Count: > 0 })
+                return;
+
+            geometry.Properties.SetUserString(
+                WholeProperty,
+                string.Join(
+                    ' ',
+                    buffer.Children.Select(v => v.Value.Get<NifVector4>()).SelectMany(
+                        v => new[] { v.X, v.Y, v.Z, v.W })
+                        .Select(f => f.ToString("R", CultureInfo.InvariantCulture))));
+        }
+
+        /// <summary>Rebuilds a buffer that travelled whole.</summary>
+        private static void ReadWhole(NifModel model, NifItem shape, string[] parts)
+        {
+            int count = parts.Length / 4;
+
+            model.FindItem(shape, "Num Vertices")?.Value.SetCount((uint)count);
+            model.FindItem(shape, "Dynamic Data Size")?.Value.SetCount((uint)(count * 16));
+
+            if (model.FindItem(shape, "Vertices") is not { } buffer)
+                return;
+
+            model.UpdateArraySize(buffer);
+
+            for (int i = 0; i < count && i < buffer.Children.Count; i++)
+            {
+                static float F(string text) =>
+                    float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out float v) ? v : 0f;
+
+                buffer.Children[i].Value.Set(
+                    new NifVector4(F(parts[i * 4]), F(parts[(i * 4) + 1]), F(parts[(i * 4) + 2]), F(parts[(i * 4) + 3])));
+            }
         }
 
         /// <summary>
@@ -50,6 +95,16 @@ namespace SECmd.Fbx
         {
             if (!model.BlockInherits(shape, "BSDynamicTriShape"))
                 return;
+
+            // A buffer carried whole, for a shape that had no mesh to hold its
+            // positions. Read first, since it says everything the two below do.
+            if (positions.Count == 0
+                && geometry.Properties.GetString(WholeProperty)
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries) is { Length: >= 4 } whole)
+            {
+                ReadWhole(model, shape, whole);
+                return;
+            }
 
             string[] parts = geometry.Properties.GetString(Property)
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries);

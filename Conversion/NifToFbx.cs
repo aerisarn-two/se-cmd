@@ -918,6 +918,9 @@ namespace SECmd.Conversion
         /// <summary>And its second.</summary>
         public const string CylinderBProperty = "nif_cylinder_b";
 
+        /// <summary>The prefix an empty shape's declared counts travel under.</summary>
+        public const string EmptyShapeCountPrefix = "nif_empty_";
+
         /// <summary>The property a cylinder's own radius field travels in.</summary>
         public const string CylinderRadiusProperty = "nif_cylinder_radius";
 
@@ -1351,6 +1354,21 @@ namespace SECmd.Conversion
                 scene.Connect(node, parent);
 
             node.Properties.SetUserString(FbxNodeType.EmptyShapeProperty, "1");
+
+            // What the shape declares about a mesh it does not have. These are read off
+            // the geometry everywhere else, and there is no geometry here:
+            // `hairshorthumanfold` says 643 vertices and 836 triangles with a vertex
+            // descriptor to match, and stores none of either. Derived, they all came
+            // back zero.
+            foreach (string field in new[] { "Vertex Desc", "Num Vertices", "Num Triangles" })
+            {
+                if (_model.FindItem(shape, field) is { } item && item.Value.ToUInt64() != 0)
+                {
+                    node.Properties.SetUserString(
+                        $"{EmptyShapeCountPrefix}{field.Replace(" ", string.Empty)}",
+                        item.Value.ToUInt64().ToString(CultureInfo.InvariantCulture));
+                }
+            }
 
             FbxNodeType.WriteWithFields(
                 node, _model, shape,

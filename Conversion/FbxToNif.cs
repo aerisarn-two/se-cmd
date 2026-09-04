@@ -3016,6 +3016,22 @@ namespace SECmd.Conversion
                 _model.BlockInherits(shape, "BSTriShape") ? "BSTriShape" : "NiTriBasedGeom");
 
             FbxLodSizes.Read(model, _model, shape);
+
+            // What the shape said about a mesh it never had. Written before the buffer,
+            // since `Vertex Desc` is what the fields under it are conditional on.
+            foreach (string field in new[] { "Vertex Desc", "Num Vertices", "Num Triangles" })
+            {
+                if (ulong.TryParse(
+                        model.Properties.GetString(
+                            $"{NifToFbx.EmptyShapeCountPrefix}{field.Replace(" ", string.Empty)}"),
+                        NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong stated)
+                    && _model.FindItem(shape, field) is { } item)
+                {
+                    item.Value.SetCount(stated);
+                    shape.InvalidateConditionsRecursive();
+                }
+            }
+
             FbxDynamicShape.Read(model, _model, shape, []);
             FbxExtraDataWriter.ReadExtraData(model, _model, shape, Warnings);
             BuildMaterial(shape, model);
