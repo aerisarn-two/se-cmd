@@ -90,6 +90,9 @@ namespace SECmd.Conversion
             return document;
         }
 
+        /// <summary>The body names handed out, so no two bodies share one.</summary>
+        private readonly HashSet<string> _bodyNames = new(StringComparer.Ordinal);
+
         /// <summary>The rigid bodies converted so far, and the nodes standing for them.</summary>
         private readonly Dictionary<NifItem, (FbxObject Node, string Name)> _bodies = [];
 
@@ -364,8 +367,21 @@ namespace SECmd.Conversion
             // may be a bone several levels down. Written relative to that node, so the
             // body's *global* placement is its NIF one -- which is what a DCC tool
             // draws and what the import reads back.
+            // Unique across bodies, because a constraint names the ones it joins by
+            // this string and the import has nothing else to go on. Node names are not
+            // unique in a NIF: `signwindpeakinn01` hangs two bodies off two nodes both
+            // called `c_Post`, and with one name between them the hinge came back
+            // joined to the wrong post.
+            //
+            // Counted before the suffix, not after: the import recognises a body by
+            // that suffix, and `c_Post_rb2` is not a body at all.
+            string bodyName = name + suffix;
+
+            for (int n = 2; !_bodyNames.Add(bodyName); n++)
+                bodyName = $"{name}{n}{suffix}";
+
             FbxObject bodyNode = FbxMeshWriter.AddModel(
-                scene, name + suffix, "Null", FbxGlobalTransform.Under(scene, parent, transform));
+                scene, bodyName, "Null", FbxGlobalTransform.Under(scene, parent, transform));
 
             scene.Connect(bodyNode, parent);
 
@@ -374,7 +390,7 @@ namespace SECmd.Conversion
 
             // Constraints join two bodies and are emitted once the walk has seen
             // both, so the bodies are remembered as they are converted.
-            _bodies[body] = (bodyNode, name + suffix);
+            _bodies[body] = (bodyNode, bodyName);
 
             NifItem? shape = _model.GetRef(body, "Shape");
 
