@@ -249,14 +249,8 @@ namespace SECmd.Conversion
                         ? carried
                         : null;
 
-                string[] multiTargetNames = sceneRoots.Count > 0
-                    ? sceneRoots[0].Properties.GetString(NifToFbx.MultiTargetTargetsProperty)
-                        .Split('\u001f', StringSplitOptions.RemoveEmptyEntries)
-                    : [];
-
                 _model.WriteAnimations(
-                    root, _scene.ReadAnimations(), _nodesByName, Warnings, multiTargetFlags,
-                    multiTargetNames);
+                    root, _scene.ReadAnimations(), _nodesByName, Warnings, multiTargetFlags);
             }
 
             // After the animation, because the emitter controller this wires up is one
