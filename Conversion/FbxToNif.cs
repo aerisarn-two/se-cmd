@@ -937,6 +937,9 @@ namespace SECmd.Conversion
                 SetCount(body, @"Rigid Body Info\Process Contact Callback Delay", delay);
             }
 
+            if (FbxRigidBodyInfo.BodyFlagsOf(bodyNode) is var bodyFlags and not 0u)
+                SetCount(body, "Body Flags", bodyFlags);
+
             WriteBodyTransform(body, bodyNode);
             WriteMotionProfile(body, bodyNode);
             WriteMassProperties(body, shape, bodyNode);

@@ -212,6 +212,15 @@ namespace SECmd.Fbx
                     ContactDelayProperty, delay.Value.ToUInt().ToString(CultureInfo.InvariantCulture));
             }
 
+            // The body's own flags, which sit outside `Rigid Body Info`. Written only
+            // when there is something in them, as the filter flags are.
+            if (model.FindItem(body, "Body Flags") is { } bodyFlags
+                && bodyFlags.Value.ToUInt() is var flags and not 0u)
+            {
+                bodyNode.Properties.SetUserString(
+                    BodyFlagsProperty, flags.ToString(CultureInfo.InvariantCulture));
+            }
+
             // How Havok simulates it. Carried by enum name, since the numbers mean
             // different things in the three enums involved.
             foreach ((string field, string property) in MotionFields)
@@ -246,6 +255,22 @@ namespace SECmd.Fbx
 
         /// <summary>What nif.xml gives a body that says nothing.</summary>
         public const uint DefaultContactDelay = 0xffff;
+
+        /// <summary>The property a body's own flags travel in.</summary>
+        /// <remarks>
+        /// `Body Flags` sits on `bhkRigidBody` rather than inside `Rigid Body Info`,
+        /// and says whether the body reports its collisions to the game. Nearly every
+        /// vanilla body holds 0; `dwarvenoil` holds 1, and wrote 0 without this.
+        /// </remarks>
+        public const string BodyFlagsProperty = "nif_rb_body_flags";
+
+        /// <summary>A body's own flags as carried, or none.</summary>
+        public static uint BodyFlagsOf(FbxObject bodyNode) =>
+            uint.TryParse(
+                bodyNode.Properties.GetString(BodyFlagsProperty),
+                NumberStyles.Integer, CultureInfo.InvariantCulture, out uint flags)
+                ? flags
+                : 0u;
 
         /// <summary>The contact callback delay carried with a node, or the default.</summary>
         public static uint ContactDelayOf(FbxObject bodyNode) =>
