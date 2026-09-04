@@ -65,7 +65,7 @@ namespace SECmd.Nif
         {
             HashSet<NifItem> claimed = SequencedControllers(model);
 
-            var tracks = new Dictionary<string, AnimTrack>(StringComparer.Ordinal);
+            var tracks = new Dictionary<NifItem, AnimTrack>();
 
             foreach (NifItem block in model.Blocks)
             {
@@ -101,7 +101,7 @@ namespace SECmd.Nif
                         if (model.GetRef(controller, "Interpolator") is { } interpolator
                             && model.BlockInherits(interpolator, "NiTransformInterpolator"))
                         {
-                            AnimTrack track = TrackFor(tracks, name);
+                            AnimTrack track = TrackFor(tracks, block, name);
 
                             // Its own, since nothing else on the node carries them and
                             // the writer would otherwise use a constant.
@@ -112,7 +112,7 @@ namespace SECmd.Nif
                         }
 
                         foreach (AnimProperty property in ReadStandaloneController(model, controller))
-                            TrackFor(tracks, name).Properties.Add(property);
+                            TrackFor(tracks, block, name).Properties.Add(property);
                     }
                 }
             }
@@ -499,9 +499,15 @@ namespace SECmd.Nif
             if (name.Length == 0)
                 return;
 
+            // No block is recorded for a sequence entry. The entry names its target as
+            // a string and that is all it says: the controller beside it targets the
+            // sequence's own root rather than the node, so reading identity from there
+            // bound every track in the file to the root.
+            NifItem? target = null;
+
             if (model.BlockInherits(interpolator, "NiTransformInterpolator"))
             {
-                ReadTransform(model, interpolator, TrackFor(tracks, name));
+                ReadTransform(model, interpolator, TrackFor(tracks, name, target));
                 return;
             }
 
@@ -519,7 +525,7 @@ namespace SECmd.Nif
                 // node aimed at another. The entry is still in the file and still has
                 // to come back, so the interpolator travels whole rather than being
                 // converted into something it is not.
-                TrackFor(tracks, name).Properties.Add(new AnimProperty
+                TrackFor(tracks, name, target).Properties.Add(new AnimProperty
                 {
                     Name = AnimProperty.ToPropertyName(
                         model.GetString(controlled, "Controller Type"),
@@ -560,7 +566,7 @@ namespace SECmd.Nif
 
             if (ReadValueKeys(model, interpolator, property))
             {
-                TrackFor(tracks, name).Properties.Add(property);
+                TrackFor(tracks, name, target).Properties.Add(property);
                 return;
             }
 
@@ -568,7 +574,7 @@ namespace SECmd.Nif
             // does the controlled block naming it. The game's lightning effects are
             // full of them: a "loop" sequence that drives nothing, spelled out rather
             // than left out. Dropping it lost both blocks.
-            TrackFor(tracks, name).Properties.Add(new AnimProperty(colour ? 3 : 1)
+            TrackFor(tracks, name, target).Properties.Add(new AnimProperty(colour ? 3 : 1)
             {
                 Name = property.Name,
                 IsBoolean = property.IsBoolean,
@@ -611,10 +617,34 @@ namespace SECmd.Nif
                 ReadTransformTrack(model, data, track);
         }
 
-        private static AnimTrack TrackFor(Dictionary<string, AnimTrack> tracks, string name)
+        /// <summary>The track for a block, keyed on the block and not on its name.</summary>
+        /// <remarks>
+        /// Two nodes may carry one name -- `rootthornhookactivator` gives its root's to
+        /// an `NiNode` beside it -- and keying on the name merged their controllers into
+        /// one track, which then drove whichever node the export bound first.
+        /// </remarks>
+        private static AnimTrack TrackFor(
+            Dictionary<NifItem, AnimTrack> tracks, NifItem block, string name)
+        {
+            if (!tracks.TryGetValue(block, out AnimTrack? track))
+                tracks[block] = track = new AnimTrack { NodeName = name, SourceNode = block };
+
+            return track;
+        }
+
+        /// <summary>
+        /// The track a sequence entry belongs to, which names its target as a string.
+        /// </summary>
+        /// <remarks>
+        /// Still keyed on the string, because that is what the entry states and what
+        /// the file's own sequences agree on. The block the entry's controller points
+        /// at is recorded beside it, so the export can bind to the node itself.
+        /// </remarks>
+        private static AnimTrack TrackFor(
+            Dictionary<string, AnimTrack> tracks, string name, NifItem? target)
         {
             if (!tracks.TryGetValue(name, out AnimTrack? track))
-                tracks[name] = track = new AnimTrack { NodeName = name };
+                tracks[name] = track = new AnimTrack { NodeName = name, SourceNode = target };
 
             return track;
         }

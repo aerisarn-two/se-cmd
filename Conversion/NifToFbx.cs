@@ -126,7 +126,7 @@ namespace SECmd.Conversion
         {
             foreach (AnimSequence sequence in _model.ReadAnimations())
             {
-                foreach (string missing in FbxAnimWriter.AddSequence(scene, sequence, _modelsByName))
+                foreach (string missing in FbxAnimWriter.AddSequence(scene, sequence, ModelFor))
                     Warnings.Add($"{sequence.Name}: no node named \"{missing}\", its animation is dropped");
             }
         }
@@ -161,6 +161,21 @@ namespace SECmd.Conversion
         /// names its target with.
         /// </remarks>
         private readonly Dictionary<string, FbxObject> _modelsByName = new(StringComparer.Ordinal);
+
+        /// <summary>
+        /// The model a track drives: the one its own block became, when it has one.
+        /// </summary>
+        /// <remarks>
+        /// Falls back to the name for a track whose block this walk never converted,
+        /// which is what every track had before and what an unresolvable one still has.
+        /// </remarks>
+        private FbxObject? ModelFor(AnimTrack track)
+        {
+            if (track.SourceNode is { } block && _built.TryGetValue(block, out FbxObject? own))
+                return own;
+
+            return _modelsByName.GetValueOrDefault(track.NodeName);
+        }
 
         /// <summary>Records a converted block under its NIF name, first one wins.</summary>
         /// <remarks>

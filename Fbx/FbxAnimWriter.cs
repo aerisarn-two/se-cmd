@@ -88,7 +88,7 @@ namespace SECmd.Fbx
         /// </summary>
         /// <returns>The names of tracks with no model, whose animation was dropped.</returns>
         public static List<string> AddSequence(
-            FbxScene scene, AnimSequence sequence, IReadOnlyDictionary<string, FbxObject> models)
+            FbxScene scene, AnimSequence sequence, Func<AnimTrack, FbxObject?> modelFor)
         {
             var missing = new List<string>();
 
@@ -143,7 +143,9 @@ namespace SECmd.Fbx
                 // sequence entry names its node by string, so the entry comes back
                 // even though nothing here can play it. What cannot travel is a curve,
                 // which animates a model and so needs one.
-                models.TryGetValue(track.NodeName, out FbxObject? model);
+                // Resolved per track rather than by name: two nodes may carry one name
+                // and a track drives one of them, which a lookup by string cannot say.
+                FbxObject? model = modelFor(track);
 
                 // Keys need a model, whether they move the node itself or one of its
                 // properties. Reporting only the second let a whole transform track

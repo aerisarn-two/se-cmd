@@ -318,6 +318,14 @@ namespace SECmd.Conversion
     {
         public required string NodeName { get; init; }
 
+        /// <summary>The block this track was read from, when it came from a NIF.</summary>
+        /// <remarks>
+        /// Node names repeat in a NIF, so the name alone cannot say which node a track
+        /// drives. The export binds each track to the model this block became; a track
+        /// read from an FBX has none, and the name it arrived with is used instead.
+        /// </remarks>
+        public NifItem? SourceNode { get; init; }
+
         public AnimCurve[] Translation { get; } = [new(), new(), new()];
 
         public AnimCurve[] Rotation { get; } = [new(), new(), new()];
