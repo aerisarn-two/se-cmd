@@ -226,6 +226,18 @@ namespace SECmd.Tests
             ["BSMeshLODTriShape/Scale"] = "reset: the transform is baked into the vertices",
 
 
+            // The game reads DDS and nothing else, so a texture entry naming a `.tga` or
+            // a `.bmp` names a file it cannot load -- a leftover from the source art,
+            // which is what those paths look like: `current\source\psdtextures\...`.
+            // Correcting the extension is the conversion doing its job, and vanilla
+            // ships five meshes that need it.
+            //
+            // Guarded to exactly that: the same path with `.dds` where it had something
+            // else. A texture becoming a *different* texture is not this and still
+            // fails.
+            ["Textures"] = "the game loads only DDS; a .tga or .bmp entry names nothing",
+
+
             // nif.xml's KeyType runs 1..5 and has no zero, so a key group carrying one
             // is a field nothing ever set — which is what a model built in a test looks
             // like. Writing LINEAR_KEY for it is normalisation, not loss.
@@ -769,7 +781,35 @@ namespace SECmd.Tests
             new(StringComparer.Ordinal)
             {
                 ["Interpolation"] = d => d.Left is "0" or "" || d.Left.EndsWith(" (0)", StringComparison.Ordinal),
+                ["Textures"] = OnlyTheExtensionBecameDds,
             };
+
+        /// <summary>
+        /// Whether a texture path differs only by having had its extension corrected.
+        /// </summary>
+        /// <remarks>
+        /// A string difference arrives quoted, as the walk prints it.
+        /// </remarks>
+        private static bool OnlyTheExtensionBecameDds(NifDifference difference)
+        {
+            string from = Unquote(difference.Left), to = Unquote(difference.Right);
+            int dot = from.LastIndexOf('.');
+
+            // No extension to correct, or one that was already right.
+            if (dot <= from.LastIndexOf('\\')
+                || from.AsSpan(dot).Equals(".dds", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            return to.Equals(
+                string.Concat(from.AsSpan(0, dot), ".dds"), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string Unquote(string value) =>
+            value.Length >= 2 && value[0] == '\'' && value[^1] == '\''
+                ? value[1..^1]
+                : value;
 
         /// <summary>Whether one entry key covers a difference, by the rule above.</summary>
         public static bool Covers(string key, NifDifference difference) =>
