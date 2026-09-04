@@ -31,7 +31,14 @@ namespace SECmd.Nif
         /// spring in the test corpus into a hinge nobody authored, which is a worse
         /// answer than declining to import it.
         /// </remarks>
-        private static readonly Dictionary<string, string> BlockTypes = new(StringComparer.Ordinal)
+        /// <remarks>
+        /// Matched without regard to case. The name comes from nif.xml's own union arm
+        /// with the spaces taken out, and nif.xml spells `Ball and Socket` with a small
+        /// `and` -- so the key it produces is `BallandSocket`, which an ordinal lookup
+        /// misses. `LimitedHinge` and `StiffSpring` only ever worked because nif.xml
+        /// happens to capitalise their second word.
+        /// </remarks>
+        private static readonly Dictionary<string, string> BlockTypes = new(StringComparer.OrdinalIgnoreCase)
         {
             ["Ragdoll"] = "bhkRagdollConstraint",
             ["Hinge"] = "bhkHingeConstraint",
@@ -129,22 +136,33 @@ namespace SECmd.Nif
 
         private static string BlockTypeOf(string type) => BlockTypes.GetValueOrDefault(type, string.Empty);
 
+        /// <summary>hkpConstraintData::ConstraintType, by the name the arm carries.</summary>
+        private static readonly Dictionary<string, uint> ConstraintTypes =
+            new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["BallAndSocket"] = 0,
+                ["Hinge"] = 1,
+                ["LimitedHinge"] = 2,
+                ["Prismatic"] = 6,
+                ["Ragdoll"] = 7,
+                ["StiffSpring"] = 8,
+                ["Malleable"] = 13,
+            };
+
         /// <summary>Points a wrapper's union at the arm the descriptor needs.</summary>
         private static void SelectWrappedType(NifModel model, NifItem block, string type)
         {
             // The numbers are hkpConstraintData::ConstraintType, which nif.xml
             // conditions each arm on.
-            uint value = type switch
-            {
-                "BallAndSocket" => 0,
-                "Hinge" => 1,
-                "LimitedHinge" => 2,
-                "Prismatic" => 6,
-                "Ragdoll" => 7,
-                "StiffSpring" => 8,
-                "Malleable" => 13,
-                _ => 7
-            };
+            //
+            // Matched without regard to case, for the reason `BlockTypes` is: the name
+            // is nif.xml's arm with its spaces removed, and `Ball and Socket` becomes
+            // `BallandSocket`. Missing it fell through to the default and wrote a
+            // ragdoll where the file said ball and socket -- on `breakableboard01` and
+            // `trapmace01`, whose breakable constraints are the only wrapped ball and
+            // socket joints the game ships.
+            if (!ConstraintTypes.TryGetValue(type, out uint value))
+                value = 7;
 
             if (model.ConstraintWrapper(block) is not { } wrapper)
                 return;
