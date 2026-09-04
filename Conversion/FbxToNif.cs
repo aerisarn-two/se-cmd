@@ -240,7 +240,18 @@ namespace SECmd.Conversion
             // Animation last of all, for the same reason: a track names the node it
             // moves, and the manager has to list blocks that already exist.
             if (_options.ImportAnimation)
-                _model.WriteAnimations(root, _scene.ReadAnimations(), _nodesByName, Warnings);
+            {
+                uint? multiTargetFlags =
+                    sceneRoots.Count > 0
+                    && uint.TryParse(
+                        sceneRoots[0].Properties.GetString(NifToFbx.MultiTargetFlagsProperty),
+                        NumberStyles.Integer, CultureInfo.InvariantCulture, out uint carried)
+                        ? carried
+                        : null;
+
+                _model.WriteAnimations(
+                    root, _scene.ReadAnimations(), _nodesByName, Warnings, multiTargetFlags);
+            }
 
             // After the animation, because the emitter controller this wires up is one
             // the animation route builds.

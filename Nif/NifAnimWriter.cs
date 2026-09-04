@@ -71,7 +71,8 @@ namespace SECmd.Nif
             NifItem root,
             IReadOnlyList<AnimSequence> sequences,
             IReadOnlyDictionary<string, NifItem> nodes,
-            List<string> warnings)
+            List<string> warnings,
+            uint? multiTargetFlags = null)
         {
             // Resolve first: a sequence with no resolvable target is a sequence with
             // nothing to write, and the manager should not exist for it.
@@ -158,7 +159,7 @@ namespace SECmd.Nif
             // block holds it before anything is said.
             model.FindItem(manager, "Phase")?.Value.SetFloat(0f);
 
-            NifItem controller = WriteMultiTargetController(model, root, targets);
+            NifItem controller = WriteMultiTargetController(model, root, targets, multiTargetFlags);
             model.SetRef(manager, "Next Controller", controller);
 
             // Every node any sequence names, not only the ones whose transform moves.
@@ -443,7 +444,8 @@ namespace SECmd.Nif
             NifModel model,
             AnimSequence sequence,
             IReadOnlyDictionary<string, NifItem> nodes,
-            List<string> warnings)
+            List<string> warnings,
+            uint? multiTargetFlags = null)
         {
             foreach (AnimTrack track in sequence.Tracks)
             {
@@ -858,12 +860,16 @@ namespace SECmd.Nif
         private static bool IsRunSwitch(NifItem controller) => controller.Name == "NiPSysUpdateCtlr";
 
         private static NifItem WriteMultiTargetController(
-            NifModel model, NifItem root, List<NifItem> targets)
+            NifModel model, NifItem root, List<NifItem> targets, uint? flags = null)
         {
             NifItem controller = model.InsertBlock("NiMultiTargetTransformController");
 
             model.SetRef(controller, "Target", root);
-            model.FindItem(controller, "Flags")?.Value.SetCount(TransformControllerFlags);
+
+            // The carried flags when the file had some, and FBXWrangler's constant
+            // otherwise. The constant is right for all but one mesh the game ships:
+            // `fxcatapultprojectile2` holds 364 where every other file holds 108.
+            model.FindItem(controller, "Flags")?.Value.SetCount(flags ?? TransformControllerFlags);
             model.FindItem(controller, "Phase")?.Value.SetFloat(0f);
             // An inverted infinite span, which is what an unset one looks like: all 310
             // multi-target controllers in a quarter of Skyrim's meshes hold exactly

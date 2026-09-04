@@ -73,7 +73,18 @@ namespace SECmd.Conversion
                 ConvertConstraints(scene);
 
             if (_options.ExportAnimation)
+            {
                 ConvertAnimation(scene);
+
+                // On the root's model, which is the one thing every file has exactly
+                // one of and the block the controller hangs on.
+                if (MultiTargetFlags() is { Length: > 0 } flags
+                    && FindRootBlocks().FirstOrDefault() is { } rootBlock
+                    && _modelsByName.TryGetValue(_model.GetName(rootBlock), out FbxObject? rootModel))
+                {
+                    rootModel.Properties.SetUserString(MultiTargetFlagsProperty, flags);
+                }
+            }
 
             scene.Flush();
             return document;
@@ -115,6 +126,28 @@ namespace SECmd.Conversion
                 foreach (string missing in FbxAnimWriter.AddSequence(scene, sequence, _modelsByName))
                     Warnings.Add($"{sequence.Name}: no node named \"{missing}\", its animation is dropped");
             }
+        }
+
+        /// <summary>
+        /// The flags on the fan-out controller, when they are not the usual ones.
+        /// </summary>
+        /// <remarks>
+        /// The controller is rebuilt rather than carried, and its flags were written as
+        /// the constant FBXWrangler uses -- 108, which is what all but one of the
+        /// game's files hold. `fxcatapultprojectile2` holds 364, the same flags with
+        /// one more bit, and a constant cannot say that.
+        /// </remarks>
+        private string MultiTargetFlags()
+        {
+            foreach (NifItem block in _model.Blocks)
+            {
+                if (block.Name != "NiMultiTargetTransformController") continue;
+
+                if (_model.FindItem(block, "Flags") is { } flags)
+                    return flags.Value.ToUInt().ToString(CultureInfo.InvariantCulture);
+            }
+
+            return string.Empty;
         }
 
         /// <summary>
@@ -814,6 +847,9 @@ namespace SECmd.Conversion
 
         /// <summary>The property a strips shape's radius travels in.</summary>
         public const string StripsRadiusProperty = "nif_strips_radius";
+
+        /// <summary>The property the fan-out controller's flags travel in.</summary>
+        public const string MultiTargetFlagsProperty = "nif_mtc_flags";
 
         /// <summary>The property a geometry data block's material hash travels in.</summary>
         public const string MaterialCrcProperty = "nif_material_crc";
