@@ -1327,24 +1327,31 @@ namespace SECmd.Tests
         /// keys were carried whole, 92 once the skin weights were read from the copy the
         /// game draws from, 54 once a partition listed the vertices it draws rather than
         /// every vertex its shape has, 36 once a triangle that arrived degenerate
-        /// stayed degenerate, 31 once an object palette held one entry per name, and 23
-        /// of 22,047 now that a curve sampled at a key's own time answers with that
-        /// key.
+        /// stayed degenerate, 31 once an object palette held one entry per name, 23 once
+        /// a curve sampled at a key's own time answered with that key, and 8 of 22,047
+        /// now.
         ///
         /// **Set it back down every time it falls.** At 0.72 against an actual 0.94% it
         /// was two orders of magnitude of slack: a change could have made seventy times
         /// as many meshes differ and the sweep would still have passed. A ratchet that
         /// is not tightened is a ratchet that has stopped being one.
         ///
-        /// The fields behind what is left are a tail rather than a cluster: 23 meshes
-        /// and no two of them alike, except the three creature skeletons that share one
-        /// signature and the `miraakboots` pair. `Pivot B` on two traps, an `AABB` on
-        /// one plant, a `Layer`, a `Material CRC`, a `Body Flags`.
+        /// Eight meshes, and they are worth naming because there is no cluster left:
         ///
-        /// Geometry, skinning and animation have all left the list. What remains is the
-        /// graph, a few collision fields, and single fields on single files -- none of
-        /// it reachable from the two dozen fixtures the baseline was written against,
-        /// and each of it its own investigation.
+        /// - `miraakboots_0`, `miraakboots_1`, `miraakrobesnoskin_0` and
+        ///   `rootthornhookactivator` name two nodes the same and the format addresses
+        ///   them by that name. An object palette holds one entry per name and a
+        ///   sequence resolves its targets through it, so the second node of a repeated
+        ///   name cannot be addressed at all -- and vanilla's own files disagree about
+        ///   which of the two an entry means.
+        /// - `dwelexiconstandcorrupt01` carries a corrupt string. The file is damaged.
+        /// - `sbigplanter01` loses its collision because mopper cannot build a MOPP
+        ///   tree for that geometry.
+        /// - `dlc2cycloneshoutprojectile02` and `norsecrmsmdoorsm02` differ in their
+        ///   controller chains and are the two still worth investigating.
+        ///
+        /// Geometry, skinning, animation keys and collision shapes have all left the
+        /// list.
         ///
         /// Set from the whole corpus and not from a sample, because the sample
         /// flatters: `Sample` takes an equal count from each archive where the archives
@@ -1352,7 +1359,7 @@ namespace SECmd.Tests
         /// against a ceiling set from a sample and it is a ratchet measuring its own
         /// sampling.
         /// </remarks>
-        private const double KnownFieldDivergence = 0.0011;
+        private const double KnownFieldDivergence = 0.0004;
 
         /// <summary>
         /// How the two files' blocks differ, ignoring the differences that are meant
