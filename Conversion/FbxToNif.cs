@@ -250,7 +250,8 @@ namespace SECmd.Conversion
                         : null;
 
                 _model.WriteAnimations(
-                    root, _scene.ReadAnimations(), _nodesByName, Warnings, multiTargetFlags);
+                    root, _scene.ReadAnimations(), _nodesByName, Warnings, multiTargetFlags,
+                    _nodesByObject);
             }
 
             // After the animation, because the emitter controller this wires up is one
@@ -497,6 +498,10 @@ namespace SECmd.Conversion
             // track names, and a file's unnamed nodes would otherwise share one key.
             _nodesByName[name] = node;
 
+            // And which object it was built from, which a name cannot say when two
+            // nodes carry one.
+            _nodesByObject[model.Id] = node;
+
             // A particle system is a shape and carries a shader and an alpha property
             // like any other; it just has no geometry for them to hang off.
             if (NifParticleWriter.HasParticleSystem(model))
@@ -554,6 +559,13 @@ namespace SECmd.Conversion
         private NifItem? _sceneRoot;
 
         /// <summary>The rigid bodies built so far, by the node name they came from.</summary>
+        /// <summary>The node each FBX object became, keyed by the object's own id.</summary>
+        /// <remarks>
+        /// Names repeat and object ids do not, so this is what an animation track binds
+        /// through when the scene said which object it drives.
+        /// </remarks>
+        private readonly Dictionary<long, NifItem> _nodesByObject = [];
+
         private readonly Dictionary<string, NifItem> _bodiesByName = new(StringComparer.Ordinal);
 
         /// <summary>Particle links naming a node, waiting for that node to exist.</summary>
@@ -2665,6 +2677,10 @@ namespace SECmd.Conversion
             // is the better target of the two.
             _nodesByName.TryAdd(NameEncoding.Unsanitize(geometry.Name), shape);
 
+            // A track bound to the holder drives this shape: the holder is the object
+            // the curves were connected to, and it is not a node of its own.
+            _nodesByObject[holder.Id] = shape;
+
             BuildMaterial(shape, holder);
 
             // After the material, since a flipbook controller joins the shader
@@ -3010,6 +3026,7 @@ namespace SECmd.Conversion
             FbxNodeType.ReadFlags(model, _model, shape);
             _model.SetTransform(shape, transform);
             _nodesByName.TryAdd(name, shape);
+            _nodesByObject[model.Id] = shape;
 
             FbxNodeType.ReadFields(
                 model, _model, shape,

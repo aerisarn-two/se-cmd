@@ -318,6 +318,18 @@ namespace SECmd.Conversion
     {
         public required string NodeName { get; init; }
 
+        /// <summary>The FBX object this track drives, when one is known.</summary>
+        /// <remarks>
+        /// A NIF may name two nodes the same and an FBX may hold two objects of one
+        /// name, since this writes them under the names they had. The file itself is
+        /// not ambiguous -- a curve connects to an object by id -- so the id is what
+        /// says which node a track drives, and the name is the fallback for a scene
+        /// that arrived from somewhere else.
+        ///
+        /// Zero when nothing said.
+        /// </remarks>
+        public long BindId { get; set; }
+
         /// <summary>The block this track was read from, when it came from a NIF.</summary>
         /// <remarks>
         /// Node names repeat in a NIF, so the name alone cannot say which node a track

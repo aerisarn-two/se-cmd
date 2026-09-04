@@ -37,6 +37,41 @@ namespace SECmd.Fbx
         /// is not a curve and the model's resting value is one per model where this is
         /// one per take. See <see cref="FbxAnimWriter.AddConstant"/>.
         /// </remarks>
+        /// <summary>
+        /// The track a stack property names, whatever key it was filed under.
+        /// </summary>
+        /// <remarks>
+        /// A track driven by curves is keyed on the object the curves connect to, since
+        /// two objects may carry one name. A stack property has only the name, so it
+        /// looks for that key first and then for a track already carrying the name --
+        /// otherwise a node with both a curve and a pose would get two tracks, and two
+        /// controlled blocks with it.
+        /// </remarks>
+        private static AnimTrack? Find(Dictionary<string, AnimTrack> tracks, string nodeName)
+        {
+            if (tracks.TryGetValue(nodeName, out AnimTrack? filed))
+                return filed;
+
+            foreach (AnimTrack track in tracks.Values)
+            {
+                if (track.NodeName == nodeName)
+                    return track;
+            }
+
+            return null;
+        }
+
+        /// <summary>That track, or a new one filed under the name.</summary>
+        private static AnimTrack FindOrAdd(Dictionary<string, AnimTrack> tracks, string nodeName)
+        {
+            if (Find(tracks, nodeName) is { } found)
+                return found;
+
+            var track = new AnimTrack { NodeName = nodeName };
+            tracks[nodeName] = track;
+            return track;
+        }
+
         private static void ReadConstants(FbxObject stack, Dictionary<string, AnimTrack> tracks)
         {
             foreach (FbxProperty70 property in stack.Properties.All)
@@ -75,8 +110,7 @@ namespace SECmd.Fbx
                 if (float.IsNaN(value))
                     continue;
 
-                if (!tracks.TryGetValue(nodeName, out AnimTrack? track))
-                    tracks[nodeName] = track = new AnimTrack { NodeName = nodeName };
+                AnimTrack track = FindOrAdd(tracks, nodeName);
 
                 (string type, string id, string interpolatorId, string propertyType) =
                     AnimProperty.FromPropertyName(propertyName);
@@ -121,6 +155,20 @@ namespace SECmd.Fbx
                 if (nodeName.Length == 0)
                     continue;
 
+                // The object the name meant, when the export said. Keyed on it, so two
+                // nodes of one name get a track each.
+                long bindId = long.TryParse(
+                    stack.Properties.GetString($"{prefix}node_id"),
+                    System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out long carriedId)
+                    ? carriedId
+                    : 0;
+
+                string key = bindId != 0
+                    ? bindId.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    : nodeName;
+
                 var fields = new Dictionary<string, string>(StringComparer.Ordinal);
                 string fieldPrefix = $"{prefix}f_";
 
@@ -136,8 +184,10 @@ namespace SECmd.Fbx
                 if (fields.Count == 0)
                     continue;
 
-                if (!tracks.TryGetValue(nodeName, out AnimTrack? track))
-                    tracks[nodeName] = track = new AnimTrack { NodeName = nodeName };
+                if (!tracks.TryGetValue(key, out AnimTrack? track))
+                {
+                    tracks[key] = track = new AnimTrack { NodeName = nodeName, BindId = bindId };
+                }
 
                 (string type, string id, string interpolatorId, string propertyType) =
                     AnimProperty.FromPropertyName(propertyName);
@@ -174,8 +224,7 @@ namespace SECmd.Fbx
                 string nodeName = rest[..bar];
                 string propertyName = rest[(bar + 1)..];
 
-                if (!tracks.TryGetValue(nodeName, out AnimTrack? track))
-                    tracks[nodeName] = track = new AnimTrack { NodeName = nodeName };
+                AnimTrack track = FindOrAdd(tracks, nodeName);
 
                 (string type, string id, string interpolatorId, string propertyType) =
                     AnimProperty.FromPropertyName(propertyName);
@@ -227,8 +276,7 @@ namespace SECmd.Fbx
                 if (!ok)
                     continue;
 
-                if (!tracks.TryGetValue(nodeName, out AnimTrack? track))
-                    tracks[nodeName] = track = new AnimTrack { NodeName = nodeName };
+                AnimTrack track = FindOrAdd(tracks, nodeName);
 
                 track.Pose = new AnimPose(
                     new NifVector3(numbers[0], numbers[1], numbers[2]),
@@ -255,7 +303,7 @@ namespace SECmd.Fbx
                 string rest = property.Name[FbxAnimWriter.InterpolatorPrefix.Length..];
                 int bar = rest.IndexOf(AnimProperty.Separator);
 
-                if (bar <= 0 || !tracks.TryGetValue(rest[..bar], out AnimTrack? track))
+                if (bar <= 0 || Find(tracks, rest[..bar]) is not { } track)
                     continue;
 
                 string name = rest[(bar + 1)..];
@@ -278,7 +326,7 @@ namespace SECmd.Fbx
                 string rest = property.Name[FbxAnimWriter.DataIdPrefix.Length..];
                 int bar = rest.IndexOf(AnimProperty.Separator);
 
-                if (bar <= 0 || !tracks.TryGetValue(rest[..bar], out AnimTrack? track))
+                if (bar <= 0 || Find(tracks, rest[..bar]) is not { } track)
                     continue;
 
                 if (!int.TryParse(
@@ -303,8 +351,13 @@ namespace SECmd.Fbx
         /// <remarks>See <see cref="FbxAnimWriter.ControllerFlagsKey"/>.</remarks>
         private static void ReadControllerFlags(FbxObject stack, Dictionary<string, AnimTrack> tracks)
         {
-            foreach ((string nodeName, AnimTrack track) in tracks)
+            // The track's own name, not the key it is filed under: a track driven by
+            // curves is keyed on the object those curves connect to, and these
+            // properties are named after the node.
+            foreach (AnimTrack track in tracks.Values)
             {
+                string nodeName = track.NodeName;
+
                 if (uint.TryParse(
                         stack.Properties.GetString(FbxAnimWriter.TransformFlagsKey(nodeName)),
                         System.Globalization.NumberStyles.Integer,
@@ -433,7 +486,7 @@ namespace SECmd.Fbx
                 if (scene[binding.DestinationId] is not { Class: "Model" } model)
                     continue;
 
-                AnimTrack track = TrackFor(tracks, model.Name);
+                AnimTrack track = TrackFor(tracks, model);
 
                 if (ChannelOf(track, binding.PropertyName) is { } channel)
                 {
@@ -493,17 +546,21 @@ namespace SECmd.Fbx
                 track.Properties.Add(property);
         }
 
-        private static AnimTrack TrackFor(Dictionary<string, AnimTrack> tracks, string modelName)
+        private static AnimTrack TrackFor(Dictionary<string, AnimTrack> tracks, FbxObject model)
         {
-            string name = NameEncoding.Unsanitize(modelName);
+            string name = NameEncoding.Unsanitize(model.Name);
 
             // The holder interposed on export carries the transform but is not a node
             // of its own, so a track bound to it belongs to the shape it wraps.
             if (name.EndsWith("_support", StringComparison.Ordinal))
                 name = name[..^"_support".Length];
 
-            if (!tracks.TryGetValue(name, out AnimTrack? track))
-                tracks[name] = track = new AnimTrack { NodeName = name };
+            // Keyed on the object rather than on its name: an FBX may hold two of a
+            // name, because a NIF may, and a curve names the one it drives by id.
+            string key = model.Id.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+            if (!tracks.TryGetValue(key, out AnimTrack? track))
+                tracks[key] = track = new AnimTrack { NodeName = name, BindId = model.Id };
 
             return track;
         }

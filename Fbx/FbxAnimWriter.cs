@@ -169,7 +169,7 @@ namespace SECmd.Fbx
                 foreach (AnimProperty property in track.Properties)
                 {
                     if (property.CarriedInterpolator is { } carried)
-                        AddCarried(stack, track.NodeName, property, carried);
+                        AddCarried(stack, track.NodeName, model, property, carried);
                     else if (property.Empty)
                         AddEmpty(stack, track.NodeName, property);
                     else if (property.Constant is { } value)
@@ -356,7 +356,7 @@ namespace SECmd.Fbx
         /// belongs to one sequence's entry, not to the model.
         /// </remarks>
         private static void AddCarried(
-            FbxObject stack, string nodeName, AnimProperty property,
+            FbxObject stack, string nodeName, FbxObject? model, AnimProperty property,
             IReadOnlyDictionary<string, string> fields)
         {
             int at = 0;
@@ -373,6 +373,19 @@ namespace SECmd.Fbx
             string prefix = $"{CarriedPrefix}{at}_";
 
             stack.Properties.SetUserString($"{prefix}node", nodeName);
+
+            // And which object that name meant. Two nodes of a NIF may share a name and
+            // the objects written for them do too, so the name alone cannot say which
+            // of them a carried controller belongs to -- `norsecrmsmdoorsm02` has two
+            // `Amulet01`, one holding a sequenced chain and one not, and both chains
+            // arrived on the first.
+            if (model is not null)
+            {
+                stack.Properties.SetUserString(
+                    $"{prefix}node_id",
+                    model.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
+
             stack.Properties.SetUserString($"{prefix}property", property.Name);
 
             foreach ((string name, string value) in fields)

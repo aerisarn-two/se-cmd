@@ -72,7 +72,8 @@ namespace SECmd.Nif
             IReadOnlyList<AnimSequence> sequences,
             IReadOnlyDictionary<string, NifItem> nodes,
             List<string> warnings,
-            uint? multiTargetFlags = null)
+            uint? multiTargetFlags = null,
+            IReadOnlyDictionary<long, NifItem>? byObject = null)
         {
             // Resolve first: a sequence with no resolvable target is a sequence with
             // nothing to write, and the manager should not exist for it.
@@ -90,7 +91,7 @@ namespace SECmd.Nif
                 // controllers themselves unattached to what they control.
                 if (sequence.Name == NifAnimAccess.DefaultSequenceName)
                 {
-                    WriteStandaloneControllers(model, sequence, nodes, warnings);
+                    WriteStandaloneControllers(model, sequence, nodes, warnings, byObject);
 
                     continue;
                 }
@@ -104,7 +105,7 @@ namespace SECmd.Nif
                     // own meshes have them, eleven sequences of a spriggan naming two
                     // leaf nodes that were never here. What it cannot have is a
                     // controller attached to that node, which is handled below.
-                    nodes.TryGetValue(track.NodeName, out NifItem? node);
+                    NifItem? node = NodeFor(track, nodes, byObject);
 
                     tracks.Add((track, node));
 
@@ -449,11 +450,11 @@ namespace SECmd.Nif
             AnimSequence sequence,
             IReadOnlyDictionary<string, NifItem> nodes,
             List<string> warnings,
-            uint? multiTargetFlags = null)
+            IReadOnlyDictionary<long, NifItem>? byObject)
         {
             foreach (AnimTrack track in sequence.Tracks)
             {
-                if (!nodes.TryGetValue(track.NodeName, out NifItem? node))
+                if (NodeFor(track, nodes, byObject) is not { } node)
                 {
                     warnings.Add(
                         $"{track.NodeName}: no node of that name, its property animation is dropped");
@@ -1713,6 +1714,34 @@ namespace SECmd.Nif
         /// to be reconciled. Taking the smoothest keeps a curve that was authored
         /// smooth from becoming a set of straight lines; the reverse would be visible.
         /// </remarks>
+        /// <summary>
+        /// The node a track drives: the object it named, or failing that the name.
+        /// </summary>
+        /// <remarks>
+        /// A NIF may name two nodes the same and the FBX written for it holds two
+        /// objects of that name, so the name cannot say which of them a track drives.
+        /// The scene can: a curve connects to an object by id, and a carried controller
+        /// records the id beside the name. `norsecrmsmdoorsm02` has two `Amulet01`, one
+        /// carrying a sequenced chain and one not, and by name both chains landed on
+        /// the first.
+        ///
+        /// The name remains the answer for a scene authored elsewhere, which carries no
+        /// id this ever wrote, and for a track whose object built no node.
+        /// </remarks>
+        private static NifItem? NodeFor(
+            AnimTrack track,
+            IReadOnlyDictionary<string, NifItem> nodes,
+            IReadOnlyDictionary<long, NifItem>? byObject)
+        {
+            if (track.BindId != 0 && byObject is not null
+                && byObject.TryGetValue(track.BindId, out NifItem? bound))
+            {
+                return bound;
+            }
+
+            return nodes.GetValueOrDefault(track.NodeName);
+        }
+
         private static uint KeyTypeOf(IReadOnlyList<AnimCurve> curves)
         {
             const uint Linear = 1, Quadratic = 2, Tbc = 3, Const = 5;

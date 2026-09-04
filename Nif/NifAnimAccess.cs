@@ -453,7 +453,13 @@ namespace SECmd.Nif
             // One track per node, however many controlled blocks turn out to name it:
             // a node's transform and its properties are separate blocks here and one
             // track there.
-            var tracks = new Dictionary<string, AnimTrack>(StringComparer.Ordinal);
+            //
+            // Keyed on the block the entry's own controller names, and on the string
+            // only when nothing corroborates it. A sequence whose entries target two
+            // nodes of one name folded them into a single track otherwise:
+            // `norsecrmsmdoorsm02` names both its `Amulet01` nodes, one carrying a
+            // sequenced chain and one not, and both chains came back on the first.
+            var tracks = new Dictionary<object, AnimTrack>();
 
             if (model.FindItem(block, "Controlled Blocks") is { } controlled)
             {
@@ -487,7 +493,7 @@ namespace SECmd.Nif
         /// are the only record of which.
         /// </remarks>
         private static void ReadControlledBlock(
-            NifModel model, NifItem controlled, Dictionary<string, AnimTrack> tracks)
+            NifModel model, NifItem controlled, Dictionary<object, AnimTrack> tracks)
         {
             NifItem? interpolator = model.GetRef(controlled, "Interpolator");
 
@@ -499,11 +505,18 @@ namespace SECmd.Nif
             if (name.Length == 0)
                 return;
 
-            // No block is recorded for a sequence entry. The entry names its target as
-            // a string and that is all it says: the controller beside it targets the
-            // sequence's own root rather than the node, so reading identity from there
-            // bound every track in the file to the root.
-            NifItem? target = null;
+            // Which block the entry means, when its own controller both says and agrees.
+            //
+            // **Only when the block carries the name the entry states.** A controller
+            // may target the sequence's root instead -- every one in a model built
+            // through the authoring API does -- and taking it unconditionally bound
+            // every track in the file to the root, which 28 fixtures said so about.
+            // Agreeing with the string is what tells the two cases apart.
+            NifItem? target = model.GetRef(controlled, "Controller") is { } owner
+                              && model.GetRef(owner, "Target") is { } aimed
+                              && TrackName(model, aimed) == name
+                ? aimed
+                : null;
 
             if (model.BlockInherits(interpolator, "NiTransformInterpolator"))
             {
@@ -641,10 +654,12 @@ namespace SECmd.Nif
         /// at is recorded beside it, so the export can bind to the node itself.
         /// </remarks>
         private static AnimTrack TrackFor(
-            Dictionary<string, AnimTrack> tracks, string name, NifItem? target)
+            Dictionary<object, AnimTrack> tracks, string name, NifItem? target)
         {
-            if (!tracks.TryGetValue(name, out AnimTrack? track))
-                tracks[name] = track = new AnimTrack { NodeName = name, SourceNode = target };
+            object key = target ?? (object)name;
+
+            if (!tracks.TryGetValue(key, out AnimTrack? track))
+                tracks[key] = track = new AnimTrack { NodeName = name, SourceNode = target };
 
             return track;
         }
