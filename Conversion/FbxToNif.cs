@@ -1206,7 +1206,7 @@ namespace SECmd.Conversion
                 else if (name.EndsWith("_convex", StringComparison.Ordinal))
                     built = BuildConvex(points, child);
                 else if (name.EndsWith("_plane", StringComparison.Ordinal))
-                    built = BuildPlane(points);
+                    built = BuildPlane(points, child);
                 else if (name.EndsWith("_strips", StringComparison.Ordinal))
                     built = BuildTriStrips(child, name);
                 else if (name.EndsWith("_mesh", StringComparison.Ordinal))
@@ -1682,7 +1682,14 @@ namespace SECmd.Conversion
         /// primitive would be silently wrong in a way that only shows up in game.
         /// </remarks>
         /// <summary>Rebuilds a plane and the box that bounds it.</summary>
-        private NifItem BuildPlane(IReadOnlyList<NifVector3> points)
+        /// <remarks>
+        /// The box is carried when the source had one. A plane is infinite and its AABB
+        /// says which part of it is real, so the box is not in the geometry: the
+        /// tessellation is a flat quad, and fitting a box to it gives no extent at all
+        /// along the normal. Refitting turned `slaughterfisheggcluster01_1`'s 0.28575
+        /// into zero and reversed the sign of its centre.
+        /// </remarks>
+        private NifItem BuildPlane(IReadOnlyList<NifVector3> points, FbxObject? holder = null)
         {
             (NifVector3 normal, float constant, NifVector3 centre, NifVector3 half) =
                 ShapeFitter.FitPlane(points);
@@ -1692,11 +1699,19 @@ namespace SECmd.Conversion
             _model.FindItem(shape, "Plane Normal")?.Value.Set(normal);
             SetFloat(shape, "Plane Constant", constant);
 
+            NifVector4? carriedCentre = holder is null
+                ? null
+                : ParseVector4(holder.Properties.GetString(NifToFbx.PlaneCentreProperty));
+
+            NifVector4? carriedExtents = holder is null
+                ? null
+                : ParseVector4(holder.Properties.GetString(NifToFbx.PlaneExtentsProperty));
+
             _model.FindItem(shape, "AABB Center")?.Value.Set(
-                new NifVector4(centre.X, centre.Y, centre.Z, 0f));
+                carriedCentre ?? new NifVector4(centre.X, centre.Y, centre.Z, 0f));
 
             _model.FindItem(shape, "AABB Half Extents")?.Value.Set(
-                new NifVector4(half.X, half.Y, half.Z, 0f));
+                carriedExtents ?? new NifVector4(half.X, half.Y, half.Z, 0f));
 
             return shape;
         }

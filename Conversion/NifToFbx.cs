@@ -433,6 +433,31 @@ namespace SECmd.Conversion
             FbxObject geometry = FbxMeshWriter.AddGeometry(scene, shapeName + "_geometry", mesh);
             scene.Connect(geometry, holder);
 
+            // A plane's box is not in its geometry. The shape is an infinite plane and
+            // an AABB saying which part of it is real, and the tessellation draws the
+            // plane -- flat, with no thickness -- so refitting a box to those points
+            // gives a zero extent along the normal and a centre placed by the fit
+            // rather than by the file. `slaughterfisheggcluster01_1` carries a
+            // half-extent of 0.28575 there and a centre whose sign the fit reversed.
+            if (shape.Name == "bhkPlaneShape")
+            {
+                foreach ((string field, string property) in new[]
+                {
+                    ("AABB Center", PlaneCentreProperty),
+                    ("AABB Half Extents", PlaneExtentsProperty),
+                })
+                {
+                    if (_model.FindItem(shape, field) is not { } item)
+                        continue;
+
+                    NifVector4 v = item.Value.Get<NifVector4>();
+
+                    holder.Properties.SetUserString(
+                        property,
+                        string.Create(CultureInfo.InvariantCulture, $"{v.X:R},{v.Y:R},{v.Z:R},{v.W:R}"));
+                }
+            }
+
             if (shape.Name == "bhkNiTriStripsShape")
             {
                 FbxStripsParts.Write(holder, _stripsParts);
@@ -789,6 +814,12 @@ namespace SECmd.Conversion
 
         /// <summary>The property a strips shape's radius travels in.</summary>
         public const string StripsRadiusProperty = "nif_strips_radius";
+
+        /// <summary>The property a plane's AABB centre travels in.</summary>
+        public const string PlaneCentreProperty = "nif_plane_aabb_centre";
+
+        /// <summary>The property a plane's AABB half extents travel in.</summary>
+        public const string PlaneExtentsProperty = "nif_plane_aabb_extents";
 
         /// <summary>The property a capsule's or cylinder's axis direction travels in.</summary>
         public const string ShapeAxisProperty = "nif_shape_axis";
