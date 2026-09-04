@@ -912,6 +912,15 @@ namespace SECmd.Conversion
         /// <summary>The property a plane's AABB half extents travel in.</summary>
         public const string PlaneExtentsProperty = "nif_plane_aabb_extents";
 
+        /// <summary>The property a cylinder's first end travels in, radius and all.</summary>
+        public const string CylinderAProperty = "nif_cylinder_a";
+
+        /// <summary>And its second.</summary>
+        public const string CylinderBProperty = "nif_cylinder_b";
+
+        /// <summary>The property a cylinder's own radius field travels in.</summary>
+        public const string CylinderRadiusProperty = "nif_cylinder_radius";
+
         /// <summary>The property a capsule's or cylinder's axis direction travels in.</summary>
         public const string ShapeAxisProperty = "nif_shape_axis";
 
@@ -947,6 +956,44 @@ namespace SECmd.Conversion
                 string.Create(
                     CultureInfo.InvariantCulture,
                     $"{second.X - first.X:R},{second.Y - first.Y:R},{second.Z - first.Z:R}"));
+
+            // A cylinder's ends and radius as the file states them.
+            //
+            // The axis alone is not enough. A cylinder tessellates to a tube, and
+            // fitting one back means finding its ends inside the hull -- which works
+            // while it is longer than it is wide and fails when it is not.
+            // `sewerentrancecollision01` has one 0.0143 long and 0.9144 across: a disc,
+            // whose ends the fit collapses onto each other and whose radius it reads
+            // 0.05 short. The endpoints are three numbers each; the tessellation is
+            // sixty. Carrying them is both cheaper and exact.
+            if (!cylinder)
+                return;
+
+            foreach ((string field, string property) in new[]
+            {
+                ("Vertex A", CylinderAProperty),
+                ("Vertex B", CylinderBProperty),
+            })
+            {
+                if (_model.FindItem(shape, field) is not { } item)
+                    continue;
+
+                NifVector4 v = item.Value.Get<NifVector4>();
+
+                holder.Properties.SetUserString(
+                    property,
+                    string.Create(CultureInfo.InvariantCulture, $"{v.X:R},{v.Y:R},{v.Z:R},{v.W:R}"));
+            }
+
+            // Its own radius field, which is not the fourth component beside the ends.
+            // `sewerentrancecollision01` holds 0.4072 here and 0.4572 there, so neither
+            // can be read off the other.
+            if (_model.FindItem(shape, "Cylinder Radius") is { } cylinderRadius)
+            {
+                holder.Properties.SetUserString(
+                    CylinderRadiusProperty,
+                    cylinderRadius.Value.ToFloat().ToString("R", CultureInfo.InvariantCulture));
+            }
         }
 
         /// <summary>Fields the multi-bound carrier owns (§5.2.2).</summary>

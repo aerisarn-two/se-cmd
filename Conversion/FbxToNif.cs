@@ -1687,14 +1687,32 @@ namespace SECmd.Conversion
 
             NifItem shape = _model.InsertBlock("bhkCylinderShape");
 
+            // The ends as the source stated them, when it did. A cylinder shorter than
+            // it is wide cannot be recovered from its own tessellation -- the fit
+            // collapses its ends together -- and the file has the six numbers.
+            NifVector4? carriedA = ParseVector4(node.Properties.GetString(NifToFbx.CylinderAProperty));
+            NifVector4? carriedB = ParseVector4(node.Properties.GetString(NifToFbx.CylinderBProperty));
+
             _model.FindItem(shape, "Vertex A")?.Value.Set(
-                new NifVector4(first.X, first.Y, first.Z, radius));
+                carriedA ?? new NifVector4(first.X, first.Y, first.Z, radius));
 
             _model.FindItem(shape, "Vertex B")?.Value.Set(
-                new NifVector4(second.X, second.Y, second.Z, radius));
+                carriedB ?? new NifVector4(second.X, second.Y, second.Z, radius));
 
-            SetFloat(shape, "Cylinder Radius", radius);
-            SetFloat(shape, "Radius", radius);
+            float stated = carriedA?.W ?? radius;
+
+            // Its own field, carried separately: a file may hold a different number
+            // here from the one beside the ends, and `sewerentrancecollision01` does.
+            SetFloat(
+                shape,
+                "Cylinder Radius",
+                float.TryParse(
+                    node.Properties.GetString(NifToFbx.CylinderRadiusProperty),
+                    NumberStyles.Float, CultureInfo.InvariantCulture, out float own)
+                    ? own
+                    : stated);
+
+            SetFloat(shape, "Radius", stated);
 
             return shape;
         }
