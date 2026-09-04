@@ -1253,6 +1253,22 @@ namespace SECmd.Tests
 
 
 
+
+            /// <summary>
+            /// Whether two Havok placements agree in the three components Havok reads.
+            /// </summary>
+            private static bool PlacementMatchesButForPadding(NifItem a, NifItem b)
+            {
+                // Under a rigid body's info, which is the only place this applies: a
+                // `Translation` elsewhere is a transform whose every component counts.
+                if (a.Parent is not { Name: "Rigid Body Info" })
+                    return false;
+
+                NifVector4 mine = a.Value.Get<NifVector4>(), theirs = b.Value.Get<NifVector4>();
+
+                return Close(mine.X, theirs.X) && Close(mine.Y, theirs.Y) && Close(mine.Z, theirs.Z);
+            }
+
             /// <summary>
             /// Whether a vertex-buffer weight is the one the source's partition states.
             /// </summary>
@@ -1795,6 +1811,23 @@ namespace SECmd.Tests
                 // A bitangent lane on a shape that declares no tangent frame.
                 if (a.Name == "Bitangent Y" && !DeclaresTangents())
                     return true;
+
+                // An `hkVector4`'s fourth component, which Havok does not read.
+                //
+                // A body's placement is four floats and the engine uses three; what sits
+                // in the fourth is whatever was in memory when the file was written, and
+                // vanilla does not clear it -- the centaur, werewolf and wolf skeletons
+                // carry 2.6608E+35 there on their ragdoll bodies. It is not part of what
+                // the file means, so it is not part of whether two files agree.
+                //
+                // Only for the placement, and only when the three that matter agree:
+                // this says a padding word is padding, not that a `Vector4` may differ.
+                if (a.Name == "Translation"
+                    && a.Value.Type is NifValueType.Vector4
+                    && PlacementMatchesButForPadding(a, b))
+                {
+                    return true;
+                }
 
                 // A vertex-buffer weight that is what the source's own partition says.
                 // The weights are read from the partition, so where a file's two copies
