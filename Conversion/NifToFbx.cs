@@ -435,6 +435,24 @@ namespace SECmd.Conversion
                 if (FbxCollisionMaterial.NameOf(_model, shape) is { Length: > 0 } containerMaterial)
                     node.Properties.SetUserString(ContainerMaterialProperty, containerMaterial);
 
+                // A list shape's per-sub-shape filters, when any of them says anything.
+                // The import writes zeroes, which is what every `bhkListShape` in a
+                // 3,000-mesh sample holds -- and `largerainbarrel_blood01` is the one in
+                // the whole corpus that does not, carrying `SKYL_STATIC` on each.
+                if (_model.FindItem(shape, "Filters") is { Children.Count: > 0 } filters)
+                {
+                    var layers = filters.Children
+                        .Select(f => _model.FindItem(f, "Layer")?.Value.ToUInt() ?? 0u)
+                        .ToList();
+
+                    if (layers.Any(l => l != 0u))
+                    {
+                        node.Properties.SetUserString(
+                            ListFiltersProperty,
+                            string.Join(',', layers.Select(l => l.ToString(CultureInfo.InvariantCulture))));
+                    }
+                }
+
                 // A MOPP tree just wraps the shape it indexes; the tree itself is
                 // regenerated on import and carries nothing to convert.
                 foreach (NifItem child in ChildShapesOf(shape))
@@ -847,6 +865,9 @@ namespace SECmd.Conversion
 
         /// <summary>The property a strips shape's radius travels in.</summary>
         public const string StripsRadiusProperty = "nif_strips_radius";
+
+        /// <summary>The property a list shape's sub-shape filter layers travel in.</summary>
+        public const string ListFiltersProperty = "nif_list_filter_layers";
 
         /// <summary>The property the fan-out controller's flags travel in.</summary>
         public const string MultiTargetFlagsProperty = "nif_mtc_flags";

@@ -1423,6 +1423,21 @@ namespace SECmd.Conversion
                 {
                     foreach (NifItem filter in filters.Children)
                         ZeroFields(filter);
+
+                    // ...unless the file said otherwise. One mesh in the corpus does.
+                    string[] carried = node.Properties.GetString(NifToFbx.ListFiltersProperty)
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+                    for (int i = 0; i < carried.Length && i < filters.Children.Count; i++)
+                    {
+                        if (uint.TryParse(
+                                carried[i], NumberStyles.Integer, CultureInfo.InvariantCulture,
+                                out uint layer)
+                            && _model.FindItem(filters.Children[i], "Layer") is { } item)
+                        {
+                            item.Value.SetCount(layer);
+                        }
+                    }
                 }
 
                 ApplyContainerMaterial(container, node, children[0]);
