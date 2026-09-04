@@ -78,11 +78,14 @@ namespace SECmd.Conversion
 
                 // On the root's model, which is the one thing every file has exactly
                 // one of and the block the controller hangs on.
-                if (MultiTargetFlags() is { Length: > 0 } flags
-                    && FindRootBlocks().FirstOrDefault() is { } rootBlock
+                if (FindRootBlocks().FirstOrDefault() is { } rootBlock
                     && _modelsByName.TryGetValue(_model.GetName(rootBlock), out FbxObject? rootModel))
                 {
-                    rootModel.Properties.SetUserString(MultiTargetFlagsProperty, flags);
+                    if (MultiTargetFlags() is { Length: > 0 } flags)
+                        rootModel.Properties.SetUserString(MultiTargetFlagsProperty, flags);
+
+                    if (MultiTargetTargets() is { Length: > 0 } listed)
+                        rootModel.Properties.SetUserString(MultiTargetTargetsProperty, listed);
                 }
             }
 
@@ -140,6 +143,31 @@ namespace SECmd.Conversion
         /// game's files hold. `fxcatapultprojectile2` holds 364, the same flags with
         /// one more bit, and a constant cannot say that.
         /// </remarks>
+        /// <summary>The nodes the fan-out controller drives, as the source lists them.</summary>
+        /// <remarks>
+        /// Derived on the way back from which tracks carry a transform, which is nearly
+        /// always the same set and not always: `dlc2cycloneshoutprojectile02` lists two
+        /// billboard nodes the derivation misses and leaves out the root, which the
+        /// derivation includes. The list is short and the file states it, so it travels.
+        /// </remarks>
+        private string MultiTargetTargets()
+        {
+            foreach (NifItem block in _model.Blocks)
+            {
+                if (block.Name != "NiMultiTargetTransformController") continue;
+
+                var names = _model.GetRefArray(block, "Extra Targets")
+                    .Select(t => NameEncoding.Sanitize(NifAnimAccess.TrackName(_model, t)))
+                    .Where(n => n.Length > 0)
+                    .ToList();
+
+                if (names.Count > 0)
+                    return string.Join('\u001f', names);
+            }
+
+            return string.Empty;
+        }
+
         private string MultiTargetFlags()
         {
             foreach (NifItem block in _model.Blocks)
@@ -881,6 +909,9 @@ namespace SECmd.Conversion
 
         /// <summary>The property a strips shape's radius travels in.</summary>
         public const string StripsRadiusProperty = "nif_strips_radius";
+
+        /// <summary>The property the fan-out controller's target list travels in.</summary>
+        public const string MultiTargetTargetsProperty = "nif_mtc_targets";
 
         /// <summary>The property a list shape's sub-shape filter layers travel in.</summary>
         public const string ListFiltersProperty = "nif_list_filter_layers";

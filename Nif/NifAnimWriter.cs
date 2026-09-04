@@ -72,7 +72,8 @@ namespace SECmd.Nif
             IReadOnlyList<AnimSequence> sequences,
             IReadOnlyDictionary<string, NifItem> nodes,
             List<string> warnings,
-            uint? multiTargetFlags = null)
+            uint? multiTargetFlags = null,
+            IReadOnlyList<string>? multiTargetNames = null)
         {
             // Resolve first: a sequence with no resolvable target is a sequence with
             // nothing to write, and the manager should not exist for it.
@@ -158,6 +159,23 @@ namespace SECmd.Nif
             // 76 -- and nif.xml's members already default to exactly that, so a fresh
             // block holds it before anything is said.
             model.FindItem(manager, "Phase")?.Value.SetFloat(0f);
+
+            // The list the file stated, when it stated one. Derived otherwise, which is
+            // right for all but a handful: the derivation asks which tracks carry a
+            // transform, and a file may name a node that carries none.
+            if (multiTargetNames is { Count: > 0 })
+            {
+                var stated = new List<NifItem>();
+
+                foreach (string named in multiTargetNames)
+                {
+                    if (nodes.TryGetValue(named, out NifItem? node) && !stated.Contains(node))
+                        stated.Add(node);
+                }
+
+                if (stated.Count > 0)
+                    targets = stated;
+            }
 
             NifItem controller = WriteMultiTargetController(model, root, targets, multiTargetFlags);
             model.SetRef(manager, "Next Controller", controller);
@@ -445,7 +463,8 @@ namespace SECmd.Nif
             AnimSequence sequence,
             IReadOnlyDictionary<string, NifItem> nodes,
             List<string> warnings,
-            uint? multiTargetFlags = null)
+            uint? multiTargetFlags = null,
+            IReadOnlyList<string>? multiTargetNames = null)
         {
             foreach (AnimTrack track in sequence.Tracks)
             {
