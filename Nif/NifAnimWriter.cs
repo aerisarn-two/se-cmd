@@ -1783,20 +1783,27 @@ namespace SECmd.Nif
                 AnimKey before = curve.Keys[i - 1];
                 AnimKey after = curve.Keys[i];
 
-                if (before.Interpolation == AnimInterpolation.Constant)
-                    return before.Value;
-
-                // A time that lands on a key is that key's value, not an interpolation
-                // that works out to it. The arithmetic is only equal for finite numbers:
-                // `dragonmoundmarker` ships 42 keys whose value is NaN -- Bethesda's own
-                // garbage, carried faithfully -- and interpolating from one gives NaN for
-                // the key beside it, so a resample at every channel's own key times
+                // A time that lands on a key is that key's value, whatever the curve
+                // does between keys. Asked first, before the constant hold below, since
+                // a step curve holds `before` across the interval [before, after) and
+                // takes `after` at its far end -- answering `before` there hands back
+                // the key before the one that was asked for, and a resample at every
+                // key's own time then rotates the whole channel by one place.
+                // `fxbatgroup` has a step curve of 26 keys and came back shifted.
+                //
+                // It matters for a smooth curve too, where interpolating works out to
+                // the key's value only for finite numbers: `dragonmoundmarker` ships 42
+                // keys whose value is NaN -- Bethesda's own garbage, carried faithfully
+                // -- and interpolating from one gives NaN for the key beside it, which
                 // spread 42 bad keys across their neighbours.
                 //
-                // It also spares every ordinary key the last bit of drift that
+                // And it spares every ordinary key the last bit of drift that
                 // multiplying by exactly one and adding back does not always avoid.
                 if (time >= after.Time)
                     return after.Value;
+
+                if (before.Interpolation == AnimInterpolation.Constant)
+                    return before.Value;
 
                 float span = after.Time - before.Time;
 
