@@ -1743,6 +1743,30 @@ namespace SECmd.Conversion
                     bones[name] = node;
             }
 
+            // The blocks this skin actually names win any collision above.
+            //
+            // Duplicate names are legal in a NIF and the skin picks between them by
+            // block index, which a name cannot express: `tfxbloodshirt` has two nodes
+            // called `NPC R UpperarmTwist1 [RUt1]`, a hundredth of a degree apart, and
+            // the walk above kept whichever it converted last. That is not always the
+            // one the skin means -- here it was not -- so the mesh came back bound to
+            // the wrong instance of four of its bones.
+            //
+            // Written after the general pass rather than instead of it, because a bone
+            // whose node this walk has not reached still needs the fallback.
+            if (_model.GetRef(shape, "Skin") is { } instance)
+            {
+                foreach (NifItem bone in _model.GetRefArray(instance, "Bones"))
+                {
+                    if (_built.TryGetValue(bone, out FbxObject? node)
+                        && node.Class == "Model"
+                        && _model.GetName(bone) is { Length: > 0 } name)
+                    {
+                        bones[name] = node;
+                    }
+                }
+            }
+
             foreach (string problem in FbxSkinIO.AddSkin(scene, geometry, skin, bones, NifTransform.Identity))
                 Warnings.Add($"{_model.GetName(shape)}: {problem}");
         }
