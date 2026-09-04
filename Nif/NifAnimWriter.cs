@@ -140,7 +140,11 @@ namespace SECmd.Nif
                             p.CarriedInterpolator is not null
                             && p.ControllerType == "NiTransformController");
 
-                    if (transform && !targets.Contains(node))
+                    // The root is the controller's `Target` and is not an extra target
+                    // as well. `dlc2cycloneshoutprojectile02` animates its root, so it
+                    // was listed both as the thing the controller drives and among the
+                    // others it drives besides -- four entries where the file has three.
+                    if (transform && !ReferenceEquals(node, root) && !targets.Contains(node))
                         targets.Add(node);
                 }
 
