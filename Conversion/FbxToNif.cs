@@ -3051,6 +3051,14 @@ namespace SECmd.Conversion
             NifItem data = _model.InsertBlock("NiTriShapeData");
             WriteGeometryData(data, mesh);
 
+            // Carried rather than derived: it hashes a material name this never sees.
+            if (uint.TryParse(
+                    geometry.Properties.GetString(NifToFbx.MaterialCrcProperty),
+                    NumberStyles.Integer, CultureInfo.InvariantCulture, out uint crc))
+            {
+                SetCount(data, "Material CRC", crc);
+            }
+
             _model.SetRef(shape, "Data", data);
 
             return shape;

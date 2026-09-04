@@ -815,6 +815,9 @@ namespace SECmd.Conversion
         /// <summary>The property a strips shape's radius travels in.</summary>
         public const string StripsRadiusProperty = "nif_strips_radius";
 
+        /// <summary>The property a geometry data block's material hash travels in.</summary>
+        public const string MaterialCrcProperty = "nif_material_crc";
+
         /// <summary>The property a plane's AABB centre travels in.</summary>
         public const string PlaneCentreProperty = "nif_plane_aabb_centre";
 
@@ -1490,6 +1493,19 @@ namespace SECmd.Conversion
                 LodFields);
             FbxDynamicShape.Write(geometry, _model, shape);
             FbxLodSizes.Write(geometry, _model, shape);
+
+            // A hash of the material the geometry was authored against, kept on the
+            // *data* block rather than the shape -- which is why the shape's own field
+            // carrier never saw it, and `dlc1houseingrdglowplant01` came back with zero
+            // where the file holds 1848600814. Nothing derives it: it is a checksum of
+            // a name this converter never sees.
+            if (_model.GetRef(shape, "Data") is { } geometryData
+                && _model.FindItem(geometryData, "Material CRC") is { } crc
+                && crc.Value.ToUInt() is var hash and not 0u)
+            {
+                geometry.Properties.SetUserString(
+                    MaterialCrcProperty, hash.ToString(CultureInfo.InvariantCulture));
+            }
 
             // Whether a skinned shape kept a copy of its geometry in itself as well as
             // in the skin partition. Almost none do -- the partition holds it and the
