@@ -1786,6 +1786,18 @@ namespace SECmd.Nif
                 if (before.Interpolation == AnimInterpolation.Constant)
                     return before.Value;
 
+                // A time that lands on a key is that key's value, not an interpolation
+                // that works out to it. The arithmetic is only equal for finite numbers:
+                // `dragonmoundmarker` ships 42 keys whose value is NaN -- Bethesda's own
+                // garbage, carried faithfully -- and interpolating from one gives NaN for
+                // the key beside it, so a resample at every channel's own key times
+                // spread 42 bad keys across their neighbours.
+                //
+                // It also spares every ordinary key the last bit of drift that
+                // multiplying by exactly one and adding back does not always avoid.
+                if (time >= after.Time)
+                    return after.Value;
+
                 float span = after.Time - before.Time;
 
                 return span <= 0f
