@@ -1327,21 +1327,24 @@ namespace SECmd.Tests
         /// keys were carried whole, 92 once the skin weights were read from the copy the
         /// game draws from, 54 once a partition listed the vertices it draws rather than
         /// every vertex its shape has, 36 once a triangle that arrived degenerate
-        /// stayed degenerate, and 31 of 22,047 now that an object palette holds one
-        /// entry per name.
+        /// stayed degenerate, 31 once an object palette held one entry per name, and 23
+        /// of 22,047 now that a curve sampled at a key's own time answers with that
+        /// key.
         ///
         /// **Set it back down every time it falls.** At 0.72 against an actual 0.94% it
         /// was two orders of magnitude of slack: a change could have made seventy times
         /// as many meshes differ and the sweep would still have passed. A ratchet that
         /// is not tightened is a ratchet that has stopped being one.
         ///
-        /// The fields behind what is left: `Nodes` on the three creature skeletons that
-        /// share a signature, `Textures` on four, a palette entry on the `miraakboots`
-        /// pair, and twenty-odd one-offs that share nothing with each other.
+        /// The fields behind what is left are a tail rather than a cluster: 23 meshes
+        /// and no two of them alike, except the three creature skeletons that share one
+        /// signature and the `miraakboots` pair. `Pivot B` on two traps, an `AABB` on
+        /// one plant, a `Layer`, a `Material CRC`, a `Body Flags`.
         ///
-        /// Geometry and skinning have left the list entirely. What remains is the graph,
-        /// its transforms, and a scattering of single fields, none of it reachable from
-        /// the two dozen fixtures the baseline was written against.
+        /// Geometry, skinning and animation have all left the list. What remains is the
+        /// graph, a few collision fields, and single fields on single files -- none of
+        /// it reachable from the two dozen fixtures the baseline was written against,
+        /// and each of it its own investigation.
         ///
         /// Set from the whole corpus and not from a sample, because the sample
         /// flatters: `Sample` takes an equal count from each archive where the archives
@@ -1349,7 +1352,7 @@ namespace SECmd.Tests
         /// against a ceiling set from a sample and it is a ratchet measuring its own
         /// sampling.
         /// </remarks>
-        private const double KnownFieldDivergence = 0.0015;
+        private const double KnownFieldDivergence = 0.0011;
 
         /// <summary>
         /// How the two files' blocks differ, ignoring the differences that are meant
