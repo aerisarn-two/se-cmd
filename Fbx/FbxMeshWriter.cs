@@ -1,4 +1,4 @@
-using MeshIO.Formats.Fbx;
+using LeanMeshIO.Formats.Fbx;
 using SECmd.Conversion;
 using SECmd.Nif;
 

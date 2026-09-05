@@ -1,5 +1,5 @@
 using SECmd.Nif;
-using MeshIO.Formats.Fbx;
+using LeanMeshIO.Formats.Fbx;
 using SECmd.Conversion;
 
 namespace SECmd.Fbx

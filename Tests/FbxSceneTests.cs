@@ -1,3 +1,4 @@
+using LeanMeshIO;
 using SECmd.Fbx;
 using Xunit;
 

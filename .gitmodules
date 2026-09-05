@@ -1,6 +1,3 @@
 [submodule "HKX2Library"]
 	path = External/HKX2Library
 	url = https://github.com/SpectralPlatypus/HKX2Library
-[submodule "External/MeshIO"]
-	path = External/MeshIO
-	url = https://github.com/DomCR/MeshIO

@@ -1,4 +1,5 @@
-using MeshIO.Formats;
+using LeanMeshIO.Formats;
+using LeanMeshIO;
 using SECmd.Fbx;
 using Xunit;
 

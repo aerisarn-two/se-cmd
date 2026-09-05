@@ -7,7 +7,7 @@ using SECmd.Nif;
 namespace SECmd.Havok
 {
     /// <summary>
-    /// Generates MOPP code by running niftools' <c>mopper.exe</c> as a child process.
+    /// Generates MOPP code by running <c>mopper.exe</c> as a child process.
     /// </summary>
     /// <remarks>
     /// This is the portable backend. mopper is a Win32 executable, but it talks pure
@@ -15,6 +15,11 @@ namespace SECmd.Havok
     /// is what makes MOPP generation possible on Linux at all. Running it
     /// out-of-process also sidesteps the bitness matching that in-process P/Invoke
     /// into NifMopp.dll requires.
+    ///
+    /// The binary comes from the Mopper.Native package rather than being vendored
+    /// here or left to the user to find. It is built from the fork, which matters:
+    /// stock niftools mopper has no <c>-ccmm</c>, and without it a collision mesh
+    /// with more than one material cannot be built.
     ///
     /// Contract (from mopper's own <c>--help</c>):
     /// <code>
@@ -32,6 +37,11 @@ namespace SECmd.Havok
         /// Path to <c>mopper.exe</c>. When null, it is looked for beside this
         /// executable and then on PATH.
         /// </summary>
+        /// <remarks>
+        /// Normally there is nothing to set: the Mopper.Native package puts a
+        /// build of the fork beside the assembly, which the search below finds.
+        /// This is for pointing at a different one.
+        /// </remarks>
         public string? MopperPath { get; set; }
 
         /// <summary>
@@ -74,8 +84,9 @@ namespace SECmd.Havok
 
             if (_resolvedPath is null)
             {
-                _reason = "mopper.exe was not found. Place it beside the executable, put it on PATH, "
-                    + $"or set {nameof(MopperPath)}.";
+                _reason = "mopper.exe was not found, which normally means the Mopper.Native "
+                    + "package did not restore. Place a copy beside the executable, put it on "
+                    + $"PATH, or set {nameof(MopperPath)}.";
                 return;
             }
 
@@ -93,8 +104,9 @@ namespace SECmd.Havok
         /// </summary>
         /// <remarks>
         /// The working directory comes first so a copy sitting next to the files
-        /// being converted wins over an installed one. If none of them has it, PATH
-        /// is searched.
+        /// being converted wins over an installed one. The directory holding the
+        /// executable is where the Mopper.Native package puts its copy, so that is
+        /// the one normally used. If neither has it, PATH is searched.
         /// </remarks>
         public IEnumerable<string> SearchPaths()
         {

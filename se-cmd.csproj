@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -35,45 +35,28 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="External\MeshIO\**" />
-    <EmbeddedResource Remove="External\MeshIO\**" />
-    <None Remove="External\MeshIO\**" />
-  </ItemGroup>
-
-  <!--
-    MeshIO's raw FBX document layer, compiled straight into this assembly.
-
-    We only want the node-tree reader and writer, not MeshIO's scene model: the
-    FBX semantics we need (skin deformers, bind poses, animation curves, custom
-    properties) are ours to build. Taking just these files avoids MeshIO's
-    CSUtilities and Newtonsoft.Json dependencies entirely, and compiling them
-    here rather than referencing the package makes its internal raw writer
-    reachable, since MeshIO only exposes raw reading publicly.
-
-    The submodule stays at pristine upstream so it can be updated in place.
-  -->
-  <ItemGroup>
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\ContentType.cs" />
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\Fbx\FbxBinary.cs" />
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\Fbx\FbxFileToken.cs" />
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\Fbx\FbxNode.cs" />
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\Fbx\FbxNodeCollection.cs" />
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\Fbx\FbxRootNode.cs" />
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\Fbx\FbxVersion.cs" />
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\Fbx\DeflateWithChecksum.cs" />
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\Fbx\ErrorLevel.cs" />
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\Fbx\Exceptions\FbxParserException.cs" />
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\Fbx\Parsers\IFbxParser.cs" />
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\Fbx\Parsers\FbxBinaryParser.cs" />
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\Fbx\Parsers\FbxAsciiParser.cs" />
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\Fbx\Writers\IFbxStreamWriter.cs" />
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\Fbx\Writers\FbxBinaryWriter.cs" />
-    <Compile Include="External\MeshIO\src\MeshIO\Formats\Fbx\Writers\FbxAsciiWriter.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Mutagen.Bethesda.Skyrim" Version="0.51.0" />
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta7.25380.108" />
+
+    <!--
+      The raw FBX node tree: reading and writing a file as a recursive list of
+      named records. Everything above it — skin deformers, bind poses, animation
+      curves, custom properties — is ours, in Fbx/.
+
+      This was MeshIO's raw layer, compiled in file by file from a submodule to
+      reach a writer MeshIO keeps internal. LeanMeshIO is that layer extracted,
+      with both directions public and the FileId and record-terminator bugs that
+      made the SDK reject our output fixed.
+    -->
+    <PackageReference Include="LeanMeshIO" Version="1.0.2" />
+
+    <!--
+      Puts mopper.exe beside the built assembly, where MopperProcessGenerator
+      already looks for it. It is the fork's build, so -ccmm is present and a
+      collision mesh with more than one material can be built without the user
+      finding a mopper of their own.
+    -->
+    <PackageReference Include="Mopper.Native" Version="2.1.0" />
   </ItemGroup>
 
   <ItemGroup>
