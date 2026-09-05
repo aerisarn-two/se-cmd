@@ -1,0 +1,25 @@
+   3516  hulls compared
+   3449    same corner count
+   1764    same plane count
+   1752    different plane count
+     67    different corner count
+
+outside / span: median -0.013083  p90 0.009382  p99 0.138386  max 0.965706
+radius: median 0.03235
+over 1% of span: 343   over 2%: 234   over 5%: 77   over 10%: 41
+
+  meshes/armor/daedric/daedriccuirassgo.nif #0: 0.19368 outside, span 1.195, ratio 0.16210, radius 0.0212, 8v/11p -> 8v/10p
+  meshes/armor/daedric/daedricgauntletsgo.nif #0: 0.01954 outside, span 0.450, ratio 0.04344, radius 0.0411, 8v/11p -> 8v/11p
+  meshes/armor/ebonymail/cuirassf_gnd.nif #0: 0.24335 outside, span 0.631, ratio 0.38574, radius 0.0199, 138v/72p -> 137v/76p
+  meshes/armor/elven/elvenshield.nif #0: 0.06529 outside, span 0.839, ratio 0.07780, radius 0.0189, 27v/49p -> 27v/46p
+  meshes/armor/elven/m/cuirassgnd.nif #0: 0.02261 outside, span 1.088, ratio 0.02078, radius 0.0130, 15v/26p -> 15v/26p
+  meshes/armor/elven/m/cuirassheavygnd.nif #0: 0.02259 outside, span 1.088, ratio 0.02076, radius 0.0130, 15v/26p -> 15v/26p
+  meshes/clutter/werewolf/werewolfhead1.nif #0: 0.18179 outside, span 3.000, ratio 0.06059, radius 0.0039, 13v/20p -> 13v/20p
+  meshes/clutter/werewolf/werewolfpelt.nif #0: 0.05238 outside, span 1.188, ratio 0.04408, radius 0.0375, 17v/22p -> 17v/16p
+  meshes/clutter/werewolf/werewolfpeltstatic.nif #0: 0.05238 outside, span 1.188, ratio 0.04408, radius 0.0375, 17v/22p -> 17v/16p
+  meshes/clutter/wine/winebottle01a.nif #0: 0.22014 outside, span 0.270, ratio 0.81491, radius 0.0500, 58v/33p -> 56v/62p
+  meshes/clutter/wine/winebottle01b.nif #0: 0.22014 outside, span 0.270, ratio 0.81491, radius 0.0500, 58v/33p -> 56v/62p
+  meshes/creationclub/_shared/clutter/ingredients/root/rootrotscaleingredient01.nif #0: 0.01231 outside, span 0.367, ratio 0.03356, radius 0.0310, 11v/18p -> 11v/17p
+  meshes/creationclub/_shared/clutter/ingredients/root/rootthornhookingredient01.nif #0: 0.00964 outside, span 0.452, ratio 0.02131, radius 0.0345, 12v/14p -> 12v/14p
+  meshes/creationclub/_shared/dungeons/root/clutter/firestalkbud.nif #0: 0.04915 outside, span 0.873, ratio 0.05628, radius 0.0155, 12v/16p -> 12v/15p
+  meshes/critters/bee/critterbeehive.nif #0: 0.01442 outside, span 0.547, ratio 0.02638, radius 0.0300, 12v/15p -> 12v/15p

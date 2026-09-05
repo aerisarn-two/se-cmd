@@ -1,0 +1,1 @@
+meshes/dlc01/landscape/trees/winteraspen06.nif	skinned mesh moved from its bones: 65.52 to 70.37

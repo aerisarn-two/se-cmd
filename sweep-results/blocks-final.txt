@@ -1,0 +1,4 @@
+meshes/architecture/solitude/clutter/sbigplanter01.nif	bhkCollisionObject 1->0, bhkCompressedMeshShape 1->0, bhkCompressedMeshShapeData 1->0, bhkMoppBvTreeShape 1->0, bhkRigidBodyT 1->0
+meshes/architecture/windhelm/whmaingate.nif	WHmaingate_rb_mopp_mesh: the MOPP backend failed and was retried -- attempt 1 of 3 mopper exited but its output did not close within 00:02:00.
+meshes/dungeons/caves/green/largehall/caveglhallentrance04.nif	RockCaveEntrance02_rb_mopp_mesh: the MOPP backend failed and was retried -- attempt 1 of 3 -ccmm exited with code 9
+meshes/dungeons/mines/cavewall/minecceiling01.nif	MineCCeiling01_rb_mopp_mesh: the MOPP backend failed and was retried -- attempt 1 of 3 mopper did not finish within 00:02:00.

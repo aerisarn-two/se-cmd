@@ -1,0 +1,81 @@
+--- 16:23:46 starting, batches of 1000
+Skyrim - Meshes0.bsa: 18862 meshes
+  16:24:11 Skyrim - Meshes0.bsa batch 1: 1000 checked, 0 divergent, 00:00:25
+  16:24:24 Skyrim - Meshes0.bsa batch 2: 2000 checked, 0 divergent, 00:00:38
+  16:24:41 Skyrim - Meshes0.bsa batch 3: 3000 checked, 0 divergent, 00:00:55
+  16:25:27 Skyrim - Meshes0.bsa batch 4: 4000 checked, 0 divergent, 00:01:41
+  16:25:41 Skyrim - Meshes0.bsa batch 5: 5000 checked, 0 divergent, 00:01:54
+  16:26:08 Skyrim - Meshes0.bsa batch 6: 6000 checked, 0 divergent, 00:02:21
+  16:26:35 Skyrim - Meshes0.bsa batch 7: 7000 checked, 0 divergent, 00:02:49
+  16:27:47 Skyrim - Meshes0.bsa batch 8: 8000 checked, 0 divergent, 00:04:01
+  16:29:34 Skyrim - Meshes0.bsa batch 9: 9000 checked, 0 divergent, 00:05:48
+  16:31:23 Skyrim - Meshes0.bsa batch 10: 10000 checked, 0 divergent, 00:07:36
+  16:31:49 Skyrim - Meshes0.bsa batch 11: 11000 checked, 0 divergent, 00:08:03
+  16:32:10 Skyrim - Meshes0.bsa batch 12: 12000 checked, 0 divergent, 00:08:24
+  16:32:22 Skyrim - Meshes0.bsa batch 13: 13000 checked, 0 divergent, 00:08:36
+  16:33:11 Skyrim - Meshes0.bsa batch 14: 14000 checked, 0 divergent, 00:09:25
+  16:33:21 Skyrim - Meshes0.bsa batch 15: 15000 checked, 0 divergent, 00:09:35
+  16:33:34 Skyrim - Meshes0.bsa batch 16: 16000 checked, 0 divergent, 00:09:48
+  16:33:49 Skyrim - Meshes0.bsa batch 17: 17000 checked, 0 divergent, 00:10:03
+  16:34:17 Skyrim - Meshes0.bsa batch 18: 18000 checked, 0 divergent, 00:10:30
+  16:34:35 Skyrim - Meshes0.bsa batch 19: 18862 checked, 0 divergent, 00:10:48
+Skyrim - Meshes1.bsa: 3185 meshes
+  16:34:39 Skyrim - Meshes1.bsa batch 1: 19862 checked, 0 divergent, 00:10:53
+  16:34:43 Skyrim - Meshes1.bsa batch 2: 20862 checked, 0 divergent, 00:10:57
+  16:34:48 Skyrim - Meshes1.bsa batch 3: 21862 checked, 0 divergent, 00:11:02
+  16:34:53 Skyrim - Meshes1.bsa batch 4: 22047 checked, 0 divergent, 00:11:07
+--- 16:34:53 done: 22047 checked, 0 divergent
+--- 16:34:53 starting, batches of 1000
+Skyrim - Meshes0.bsa: 18862 meshes
+  16:35:39 Skyrim - Meshes0.bsa batch 1: 1000 checked, 0 divergent, 00:00:45
+  16:36:36 Skyrim - Meshes0.bsa batch 2: 2000 checked, 0 divergent, 00:01:42
+  16:37:17 Skyrim - Meshes0.bsa batch 3: 3000 checked, 0 divergent, 00:02:24
+  16:38:38 Skyrim - Meshes0.bsa batch 4: 4000 checked, 0 divergent, 00:03:44
+  16:39:40 Skyrim - Meshes0.bsa batch 5: 5000 checked, 1 divergent, 00:04:47
+  16:40:38 Skyrim - Meshes0.bsa batch 6: 6000 checked, 1 divergent, 00:05:44
+  16:41:30 Skyrim - Meshes0.bsa batch 7: 7000 checked, 1 divergent, 00:06:36
+  16:43:00 Skyrim - Meshes0.bsa batch 8: 8000 checked, 1 divergent, 00:08:06
+  16:44:53 Skyrim - Meshes0.bsa batch 9: 9000 checked, 1 divergent, 00:09:59
+  16:46:45 Skyrim - Meshes0.bsa batch 10: 10000 checked, 1 divergent, 00:11:51
+  16:47:32 Skyrim - Meshes0.bsa batch 11: 11000 checked, 1 divergent, 00:12:38
+  16:48:07 Skyrim - Meshes0.bsa batch 12: 12000 checked, 1 divergent, 00:13:13
+  16:48:46 Skyrim - Meshes0.bsa batch 13: 13000 checked, 1 divergent, 00:13:52
+  16:49:58 Skyrim - Meshes0.bsa batch 14: 14000 checked, 1 divergent, 00:15:05
+  16:50:36 Skyrim - Meshes0.bsa batch 15: 15000 checked, 1 divergent, 00:15:42
+  16:51:12 Skyrim - Meshes0.bsa batch 16: 16000 checked, 1 divergent, 00:16:18
+  16:51:48 Skyrim - Meshes0.bsa batch 17: 17000 checked, 1 divergent, 00:16:55
+  16:52:38 Skyrim - Meshes0.bsa batch 18: 18000 checked, 1 divergent, 00:17:44
+  16:53:29 Skyrim - Meshes0.bsa batch 19: 18862 checked, 1 divergent, 00:18:35
+Skyrim - Meshes1.bsa: 3185 meshes
+  16:53:45 Skyrim - Meshes1.bsa batch 1: 19862 checked, 1 divergent, 00:18:51
+  16:54:12 Skyrim - Meshes1.bsa batch 2: 20862 checked, 1 divergent, 00:19:18
+  16:54:33 Skyrim - Meshes1.bsa batch 3: 21862 checked, 1 divergent, 00:19:39
+  16:54:44 Skyrim - Meshes1.bsa batch 4: 22047 checked, 1 divergent, 00:19:50
+--- 16:54:44 done: 22047 checked, 1 divergent
+--- 16:54:44 starting, batches of 1000
+Skyrim - Meshes0.bsa: 18862 meshes
+  16:55:52 Skyrim - Meshes0.bsa batch 1: 1000 checked, 734 divergent, 00:01:07
+  16:56:46 Skyrim - Meshes0.bsa batch 2: 2000 checked, 1460 divergent, 00:02:01
+  16:57:31 Skyrim - Meshes0.bsa batch 3: 3000 checked, 2210 divergent, 00:02:47
+  16:58:57 Skyrim - Meshes0.bsa batch 4: 4000 checked, 2918 divergent, 00:04:12
+  17:00:11 Skyrim - Meshes0.bsa batch 5: 5000 checked, 3423 divergent, 00:05:27
+  17:01:21 Skyrim - Meshes0.bsa batch 6: 6000 checked, 3998 divergent, 00:06:37
+  17:02:31 Skyrim - Meshes0.bsa batch 7: 7000 checked, 4851 divergent, 00:07:47
+  17:04:37 Skyrim - Meshes0.bsa batch 8: 8000 checked, 5715 divergent, 00:09:52
+  17:07:04 Skyrim - Meshes0.bsa batch 9: 9000 checked, 6715 divergent, 00:12:20
+  17:09:26 Skyrim - Meshes0.bsa batch 10: 10000 checked, 7715 divergent, 00:14:42
+  17:10:28 Skyrim - Meshes0.bsa batch 11: 11000 checked, 8434 divergent, 00:15:43
+  17:11:11 Skyrim - Meshes0.bsa batch 12: 12000 checked, 9050 divergent, 00:16:27
+  17:11:53 Skyrim - Meshes0.bsa batch 13: 13000 checked, 9648 divergent, 00:17:08
+  17:13:17 Skyrim - Meshes0.bsa batch 14: 14000 checked, 10458 divergent, 00:18:32
+  17:13:57 Skyrim - Meshes0.bsa batch 15: 15000 checked, 11089 divergent, 00:19:12
+  17:14:48 Skyrim - Meshes0.bsa batch 16: 16000 checked, 11839 divergent, 00:20:03
+  17:15:29 Skyrim - Meshes0.bsa batch 17: 17000 checked, 12481 divergent, 00:20:45
+  17:16:38 Skyrim - Meshes0.bsa batch 18: 18000 checked, 13152 divergent, 00:21:53
+  17:17:32 Skyrim - Meshes0.bsa batch 19: 18862 checked, 13741 divergent, 00:22:47
+Skyrim - Meshes1.bsa: 3185 meshes
+  17:17:54 Skyrim - Meshes1.bsa batch 1: 19862 checked, 14304 divergent, 00:23:09
+  17:18:28 Skyrim - Meshes1.bsa batch 2: 20862 checked, 14784 divergent, 00:23:44
+  17:19:02 Skyrim - Meshes1.bsa batch 3: 21862 checked, 15486 divergent, 00:24:17
+  17:19:16 Skyrim - Meshes1.bsa batch 4: 22047 checked, 15583 divergent, 00:24:31
+--- 17:19:16 done: 22047 checked, 15583 divergent

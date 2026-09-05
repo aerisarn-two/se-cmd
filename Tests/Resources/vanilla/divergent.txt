@@ -1,1 +1,0 @@
-meshes/dlc01/sky/dlceclipsesky.nif

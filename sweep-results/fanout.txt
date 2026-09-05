@@ -1,0 +1,40 @@
+meshes/clutter/blackreach/blackreachgiantmushanim05.nif	1 transform target(s) nothing fans out to: Bone_Root
+meshes/clutter/dwemer/dwedresser01.nif	1 transform target(s) nothing fans out to: DoorRight
+meshes/clutter/eyeofmagnus/eyeofmagnus01.nif	1 transform target(s) nothing fans out to: Cylinder01
+meshes/clutter/lumbermill/lumbermilllog01/lumbermilllog01.nif	1 transform target(s) nothing fans out to: LumbermillCutLogJammed01
+meshes/clutter/woodfires/spitpotopen01.nif	1 transform target(s) nothing fans out to: Pot
+meshes/critters/fcjumpingsalmon/fcambwaterfallsalmon01.nif	2 transform target(s) nothing fans out to: FishController01, FishController02
+meshes/dlc01/critters/ancestormothgroupattach.nif	4 transform target(s) nothing fans out to: AncestorMoth, AncestorMoth01, AncestorMoth02
+meshes/dlc01/critters/ancestormothstaticcloud.nif	4 transform target(s) nothing fans out to: AncestorMoth, AncestorMoth01, AncestorMoth02
+meshes/dlc01/dungeons/castle/animated/scportalbowl/casscportalbowl01.nif	1 transform target(s) nothing fans out to: GlowMesh
+meshes/dlc01/interface/intvampireperkskydome.nif	1 transform target(s) nothing fans out to: WarGas
+meshes/dlc01/magic/dlc1drainvitaltargetpointfx.nif	1 transform target(s) nothing fans out to: SoulEffect01
+meshes/dlc01/magic/dlc1vampdraintargetpointfx.nif	1 transform target(s) nothing fans out to: SoulEffect01
+meshes/dlc02/architecture/ravenrock/dlc2blacksmithforge01rr.nif	2 transform target(s) nothing fans out to: BlacksmithForgeGlow, L2_FloorStones
+meshes/dlc02/architecture/ravenrock/dlc2blacksmithforge01rrnop.nif	2 transform target(s) nothing fans out to: BlacksmithForgeGlow, L2_FloorStones
+meshes/dlc02/dungeons/dwemer/animated/dwekagrumezgauntlet/dwekagrumezwallr.nif	1 transform target(s) nothing fans out to: WallR
+meshes/dlc02/dungeons/dwemer/animated/dwekagrumezgauntlet/dwekagrumezwallsl.nif	2 transform target(s) nothing fans out to: WallF, WallR
+meshes/dlc02/effects/dlc2miraakteleportreturnexp.nif	1 transform target(s) nothing fans out to: GlowWarpy01
+meshes/dlc02/effects/dlc2miraakteleportreturnfx01.nif	1 transform target(s) nothing fans out to: GlowWarpy01
+meshes/dungeons/nordic/exterior/dragonmound/dragonmoundbase.nif	1 transform target(s) nothing fans out to: Base01
+meshes/dungeons/nordic/exterior/dragonmound/dragonmoundbasealt.nif	1 transform target(s) nothing fans out to: BaseAlt01
+meshes/effects/cwfxcatapultprojectile.nif	1 transform target(s) nothing fans out to: FireballProjectile01
+meshes/effects/dragondeathtestexport.nif	3 transform target(s) nothing fans out to: NPC LUpArm2, NPC Pelvis, NPC RUpArm2
+meshes/effects/fxalduinexplosion.nif	36 transform target(s) nothing fans out to: DragonShell00, DragonShell01, DragonShell02
+meshes/effects/fxambwaterfallsalmon01.nif	2 transform target(s) nothing fans out to: FishController01, FishController02
+meshes/effects/fxambwaterfallsalmon02.nif	2 transform target(s) nothing fans out to: FishController01, FishController02
+meshes/effects/fxcatapultprojectile.nif	1 transform target(s) nothing fans out to: FireballProjectile01
+meshes/effects/fxcatapultprojectile2.nif	1 transform target(s) nothing fans out to: FireballProjectile01
+meshes/effects/fxdirtmoundpreeffect.nif	1 transform target(s) nothing fans out to: glow
+meshes/effects/fxtg09nocturnalbirdsreverse.nif	1 transform target(s) nothing fans out to: wisps02
+meshes/effects/mgmagicfirepillarmidden01.nif	1 transform target(s) nothing fans out to: Point01
+meshes/effects/trailerfx/tfxdragondissolve.nif	1 transform target(s) nothing fans out to: glow
+meshes/furniture/blacksmithforgemarker.nif	2 transform target(s) nothing fans out to: BlacksmithForgeGlow, L2_FloorStones
+meshes/furniture/blacksmithforgemarkerwr.nif	2 transform target(s) nothing fans out to: BlacksmithForgeGlow, L2_FloorStones
+meshes/furniture/blacksmithingskyforgemarker.nif	1 transform target(s) nothing fans out to: L2_FloorStones
+meshes/interface/intperkskydome.nif	1 transform target(s) nothing fans out to: WarGas
+meshes/landscape/trees/wrtempletree02root/wrtempletree02root.nif	1 transform target(s) nothing fans out to: NPC Root [Root]
+meshes/magic/frosthandfx01.nif	1 transform target(s) nothing fans out to: pSmallSnow03-Emitter
+meshes/magic/nightingalestrifeprojectile01.nif	1 transform target(s) nothing fans out to: RefractMesh03
+meshes/magic/nightingalesubterfugeprojectile01.nif	1 transform target(s) nothing fans out to: RefractMesh03
+meshes/traps/whiterundragontrap/whiterundragontrap01.nif	1 transform target(s) nothing fans out to: DrawbridgeChains03

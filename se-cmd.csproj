@@ -16,18 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Tests\**" />
-    <EmbeddedResource Remove="Tests\**" />
-    <None Remove="Tests\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Remove="Commands\ExportNif.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Lets tests reach wire-format helpers that are not public API. -->
-    <InternalsVisibleTo Include="se-cmd.Tests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,31 +24,11 @@
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta7.25380.108" />
 
     <!--
-      The raw FBX node tree: reading and writing a file as a recursive list of
-      named records. Everything above it — skin deformers, bind poses, animation
-      curves, custom properties — is ours, in Fbx/.
-
-      This was MeshIO's raw layer, compiled in file by file from a submodule to
-      reach a writer MeshIO keeps internal. LeanMeshIO is that layer extracted,
-      with both directions public and the FileId and record-terminator bugs that
-      made the SDK reject our output fixed.
+      The conversion itself, and with it NIFSharp, LeanMeshIO and mopper.exe.
+      What is left in this project is the command line over it, plus the Havok
+      animation cache in AnimData/, which no converter needs.
     -->
-    <PackageReference Include="LeanMeshIO" Version="1.0.2" />
-
-    <!--
-      Reading and writing the NIF itself: nif.xml, the item tree, both stream
-      directions. What a file *means* — what a BSXFlags should say, how a
-      constraint maps onto an FBX property — stays here, in Nif/ and Conversion/.
-    -->
-    <PackageReference Include="NIFSharp" Version="1.0.1" />
-
-    <!--
-      Puts mopper.exe beside the built assembly, where MopperProcessGenerator
-      already looks for it. It is the fork's build, so -ccmm is present and a
-      collision mesh with more than one material can be built without the user
-      finding a mopper of their own.
-    -->
-    <PackageReference Include="Mopper.Native" Version="2.1.0" />
+    <PackageReference Include="NIFBX" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup>

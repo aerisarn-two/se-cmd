@@ -1,0 +1,866 @@
+meshes/actors/alduin/alduin.nif	1 sequence target(s) missing from the palette: AlduinAnim:0
+meshes/actors/atronachflame/character assets/fxatronachfiretrail.nif	4 sequence target(s) missing from the palette: NewFlameMesh01:0, NewFlameMesh01:1, Warp
+meshes/actors/atronachstorm/character assets/atronachstorm.nif	1 sequence target(s) missing from the palette: StormAtronach02
+meshes/actors/atronachstorm/character assets/fxatronachstormskinlightning.nif	1 sequence target(s) missing from the palette: FXAtronachStormSkinLightning
+meshes/actors/dlc01/chaurusflyer/character assets/charurusflyer.nif	1 sequence target(s) missing from the palette: ChaurunWingFX
+meshes/actors/dlc01/chaurusflyer/character assets/chaurusflyervariant.nif	1 sequence target(s) missing from the palette: ChaurunWingFX01
+meshes/actors/dlc01/dragon/dragonpurplebloodhead.nif	1 sequence target(s) missing from the palette: PurpleBloodHead
+meshes/actors/dlc01/dragon/dragonpurplebloodwingl.nif	1 sequence target(s) missing from the palette: PurpleBloodWingL
+meshes/actors/dlc01/dragon/dragonpurplebloodwingr.nif	1 sequence target(s) missing from the palette: PurpleBloodWingR
+meshes/actors/dlc01/dragon/dragonpurplebloodwingtail.nif	1 sequence target(s) missing from the palette: PurpleBloodTail
+meshes/actors/dlc01/dragon/dragon_icelake.nif	2 sequence target(s) missing from the palette: IceLakeDragon:0, fins02
+meshes/actors/dlc01/dragon/dragon_icelakebloodhead.nif	2 sequence target(s) missing from the palette: BloodHeadFins, BloodHeadicelake:0
+meshes/actors/dlc01/dragon/dragon_icelakebloodtail.nif	2 sequence target(s) missing from the palette: BloodTailIceLake:0, fins01bloodTail
+meshes/actors/dlc01/dragon/dragon_icelakebloodwingl.nif	1 sequence target(s) missing from the palette: BloodWingLIceLake
+meshes/actors/dlc01/dragon/dragon_icelakebloodwingr.nif	1 sequence target(s) missing from the palette: BloodWingRiceLake
+meshes/actors/dlc01/dragon/dragon_purple.nif	1 sequence target(s) missing from the palette: PurpleDragon
+meshes/actors/dlc01/elk/blackreachdeer.nif	2 sequence target(s) missing from the palette: BlackreachDeer:0, BlackreachDeerEye02
+meshes/actors/dlc01/sabrecat/dlc1sabrecat.nif	3 sequence target(s) missing from the palette: BlackreachCatAnim:0, SabreCat_LeftEye, SabreCat_RightEye
+meshes/actors/dlc01/spriggan/character assets/sprigganmatronvariant.nif	3 sequence target(s) missing from the palette: HandCovers, SprigganBodyLeaves01:0, SprigganBodyLeaves01:1
+meshes/actors/dlc01/spriggan/fxsprigganattachmentsmatronvariant.nif	18 sequence target(s) missing from the palette: GutMagicPArray03, GutPArray02, GutswarmPArray03
+meshes/actors/dlc01/spriggan/magsprigganmatronvariantbugsprayprojectile.nif	2 sequence target(s) missing from the palette: Cylinder09, pFlameSpellBase01bugs
+meshes/actors/dlc01/spriggan/magsprigganmatronvariantconccastingart.nif	2 sequence target(s) missing from the palette: GutMagicPArray03, PArray14Lhand
+meshes/actors/dlc01/spriggan/sprigganfxtestunified.nif	22 sequence target(s) missing from the palette: GutMagicPArray03, GutPArray02, GutswarmPArray03
+meshes/actors/dlc01/vampirebrute/character assets/vampirebrute.nif	1 sequence target(s) missing from the palette: VampireBrute_Mesh
+meshes/actors/dlc01/vampirebrute/character assets/vampirebrutebadazmofostone.nif	2 sequence target(s) missing from the palette: VampireBrute_Spikes01stone, VampireBrute_VariantStone:0
+meshes/actors/dlc01/vampirebrute/character assets/vampirebrutevariantalbino.nif	1 sequence target(s) missing from the palette: VampireBrute_Mesh
+meshes/actors/dlc01/vampirebrute/character assets/vampirebrutevariantgreen.nif	1 sequence target(s) missing from the palette: VampireBrute_VariantGreen
+meshes/actors/dlc02/ashman/dlc2ashspawnscriptedparticles.nif	5 sequence target(s) missing from the palette: PCloud03Sparks, PCloudChips, PCloudChips02
+meshes/actors/dlc02/benthiclurker/character assets/benthiclurkerprojectileexplosion.nif	49 sequence target(s) missing from the palette: Plane14:0, Plane15:0, Plane16:0
+meshes/actors/dlc02/benthiclurker/character assets/benthiclurkerwhipdust.nif	1 sequence target(s) missing from the palette: PCloud01
+meshes/actors/dlc02/benthiclurker/character assets/benthiclurkerwhipdustsnow.nif	1 sequence target(s) missing from the palette: PCloud02
+meshes/actors/dlc02/benthiclurker/character assets/benthictenticlehandleft.nif	6 sequence target(s) missing from the palette: Plane05:0, Plane07:0, Plane08:0
+meshes/actors/dlc02/benthiclurker/character assets/benthictenticlehandright.nif	6 sequence target(s) missing from the palette: Plane05:0, Plane07:0, Plane08:0
+meshes/actors/dlc02/benthiclurker/character assets/benthictenticlemouth.nif	9 sequence target(s) missing from the palette: Object02, Object03, Object04
+meshes/actors/dlc02/benthiclurker/character assets/benthictenticlestomp.nif	6 sequence target(s) missing from the palette: Plane05:0, Plane06:0, Plane07:0
+meshes/actors/dlc02/benthiclurker/character assets/lurkerstompexplosion.nif	26 sequence target(s) missing from the palette: Cylinder01, Plane01:0, Plane02:0
+meshes/actors/dlc02/dragon/dragon_blackvariant.nif	1 sequence target(s) missing from the palette: DragonBlackNewUV
+meshes/actors/dlc02/dragon/dragon_blackvariantheadbloodmesh.nif	1 sequence target(s) missing from the palette: BloodHead
+meshes/actors/dlc02/dragon/dragon_blackvarianttailbloodmesh.nif	1 sequence target(s) missing from the palette: BloodTail
+meshes/actors/dlc02/dragon/dragon_blackvariantwinglbloodmesh.nif	1 sequence target(s) missing from the palette: BloodWIngL
+meshes/actors/dlc02/dragon/dragon_blackvariantwingrbloodmesh.nif	1 sequence target(s) missing from the palette: BloodWIngR
+meshes/actors/dlc02/dragonpriestacolyte/dragonpriestacolyte01.nif	1 sequence target(s) missing from the palette: Dragon PriestFXnew
+meshes/actors/dlc02/dragonpriestacolyte/dragonpriestacolyte02.nif	1 sequence target(s) missing from the palette: Dragon PriestFXnew
+meshes/actors/dlc02/dragonpriestacolyte/dragonpriestacolyte03.nif	1 sequence target(s) missing from the palette: Dragon PriestFXnew
+meshes/actors/dlc02/dwarvenballistacenturion/character assets/ballistacenturionparticles.nif	14 sequence target(s) missing from the palette: SuperSpray02Whisps01, SuperSpray02Whisps02, SuperSpray02Whisps03
+meshes/actors/dlc02/netch/characterassets/netch.nif	1 sequence target(s) missing from the palette: netch_glowFX
+meshes/actors/dlc02/spider_poison/characterassets/eggsackpoisonexplosion.nif	17 sequence target(s) missing from the palette: GeoSphere05:0, GeoSphere06:0, GeoSphere07:0
+meshes/actors/dlc02/spider_poison/characterassets/expspideroilgastrap.nif	5 sequence target(s) missing from the palette: Mist01:0, Mist02:0, Mist03:0
+meshes/actors/dlc02/spider_poison/characterassets/spidercrumbleexplosionflame.nif	10 sequence target(s) missing from the palette: fireSpiderBit00:0, fireSpiderBit01:0, fireSpiderBit02:0
+meshes/actors/dlc02/spider_poison/characterassets/spidercrumbleexplosionfrost.nif	11 sequence target(s) missing from the palette: fireSpiderBit30:0, fireSpiderBit31:0, fireSpiderBit32:0
+meshes/actors/dlc02/spider_poison/characterassets/spidercrumbleexplosionpoison.nif	11 sequence target(s) missing from the palette: fireSpiderBit10:0, fireSpiderBit11:0, fireSpiderBit12:0
+meshes/actors/dlc02/spider_poison/characterassets/spidercrumbleexplosionshock.nif	10 sequence target(s) missing from the palette: fireSpiderBit40:0, fireSpiderBit41:0, fireSpiderBit42:0
+meshes/actors/dlc02/spider_poison/characterassets/spidercrumbleexplosionzombie.nif	11 sequence target(s) missing from the palette: fireSpiderBit20:0, fireSpiderBit21:0, fireSpiderBit22:0
+meshes/actors/dlc02/spider_poison/characterassets/spiderinhandfxfirecloak.nif	1 sequence target(s) missing from the palette: pFireballCore04
+meshes/actors/dlc02/spider_poison/characterassets/spiderinhandfxfrostcloak.nif	1 sequence target(s) missing from the palette: pFireballCore04
+meshes/actors/dlc02/spider_poison/characterassets/spiderinhandfxpoisoncloak.nif	1 sequence target(s) missing from the palette: pFireballCore04
+meshes/actors/dlc02/spider_poison/characterassets/spiderinhandfxshockcloak.nif	1 sequence target(s) missing from the palette: pFireballCore04
+meshes/actors/dlc02/spider_poison/characterassets/spiderpoisonexplosion.nif	4 sequence target(s) missing from the palette: GeoSphere02:0, GeoSphere03:0, GeoSphere04:0
+meshes/actors/dlc02/sprigganburnt/burntsprigganparticles.nif	3 sequence target(s) missing from the palette: PCloud01, PCloud02, PCloud03Sparks
+meshes/actors/dlc02/sprigganburnt/sprigganburnt.nif	3 sequence target(s) missing from the palette: InnerEmbers, Sphere01, SprigganFxTestUnified:0
+meshes/actors/dlc02/werebear/werebear_transformation.nif	3 sequence target(s) missing from the palette: werebear_body:0, werebear_body:1, werebear_body:2
+meshes/actors/dlc02/winglessdragon/characterassets/winglessdragon.nif	2 sequence target(s) missing from the palette: Dragon:0, Dragon:1
+meshes/actors/dragon/character assets/alduin.nif	2 sequence target(s) missing from the palette: AlduinAnim:0, AlduinAnim:1
+meshes/actors/dragon/character assets/alduinunderskin.nif	1 sequence target(s) missing from the palette: AlduinSoulRemodel
+meshes/actors/dragon/character assets/bossdragon.nif	2 sequence target(s) missing from the palette: Boss Dragon:0, Boss Dragon:1
+meshes/actors/dragon/character assets/decaydragon.nif	2 sequence target(s) missing from the palette: DecayDragon:0, Shape02
+meshes/actors/dragon/character assets/dragon.nif	2 sequence target(s) missing from the palette: Dragon:0, Dragon:1
+meshes/actors/dragon/character assets/dragonbloodtail.nif	1 sequence target(s) missing from the palette: DragonBloodTail
+meshes/actors/dragon/character assets/dragonbloodwingl.nif	1 sequence target(s) missing from the palette: DragonBloodWingL
+meshes/actors/dragon/character assets/dragonbloodwingr.nif	1 sequence target(s) missing from the palette: DragonBloodWingR
+meshes/actors/dragon/character assets/dragonbloodyhead.nif	1 sequence target(s) missing from the palette: DragonBloodHead
+meshes/actors/dragon/character assets/dragon_bronze_bloodtail.nif	1 sequence target(s) missing from the palette: BronzeDragonBloodTail
+meshes/actors/dragon/character assets/dragon_bronze_bloodwingl.nif	1 sequence target(s) missing from the palette: BronzeDragonBloodWingL
+meshes/actors/dragon/character assets/dragon_bronze_bloodwingr.nif	1 sequence target(s) missing from the palette: BronzeDragonBloodWingR
+meshes/actors/dragon/character assets/dragon_bronze_bloodyhead.nif	1 sequence target(s) missing from the palette: BronzeDragonBloodHead
+meshes/actors/dragon/character assets/dragon_ice_bloodtail.nif	1 sequence target(s) missing from the palette: IceDragonBloodTail
+meshes/actors/dragon/character assets/dragon_ice_bloodwingl.nif	1 sequence target(s) missing from the palette: IceDragonBloodWingL
+meshes/actors/dragon/character assets/dragon_ice_bloodwingr.nif	1 sequence target(s) missing from the palette: IceDragonBloodWingR
+meshes/actors/dragon/character assets/dragon_ice_bloodyhead.nif	1 sequence target(s) missing from the palette: IceDragonBloodHead
+meshes/actors/dragon/character assets/dragon_oh_bloodtail.nif	1 sequence target(s) missing from the palette: OhdDragonBloodTail
+meshes/actors/dragon/character assets/dragon_oh_bloodyhead.nif	2 sequence target(s) missing from the palette: OhdDragonBloodHead, Ohdaviing_Tail_DragonBloodTail
+meshes/actors/dragon/character assets/dragon_parth_bloodyhead.nif	1 sequence target(s) missing from the palette: PnaxDragonBloodHead
+meshes/actors/dragon/character assets/dragon_swamp_bloodtail.nif	1 sequence target(s) missing from the palette: SwampDragonBloodTail
+meshes/actors/dragon/character assets/dragon_swamp_bloodwingl.nif	1 sequence target(s) missing from the palette: SwampDragonBloodWingL
+meshes/actors/dragon/character assets/dragon_swamp_bloodwingr.nif	1 sequence target(s) missing from the palette: SwampDragonBloodWingR
+meshes/actors/dragon/character assets/dragon_swamp_bloodyhead.nif	1 sequence target(s) missing from the palette: SwampDragonBloodHead
+meshes/actors/dragon/character assets/fxdragonresurrectionstreaks.nif	1 sequence target(s) missing from the palette: PArray01Streaks02
+meshes/actors/dragon/character assets/parthurnax.nif	1 sequence target(s) missing from the palette: Parthurnax
+meshes/actors/dragon/character assets/underskin.nif	1 sequence target(s) missing from the palette: Underskin
+meshes/actors/dragon/dragonforest.nif	1 sequence target(s) missing from the palette: Swamp Dragon
+meshes/actors/dragon/dragonohdaviing.nif	1 sequence target(s) missing from the palette: Odahviing:0
+meshes/actors/dragon/dragonsnow.nif	1 sequence target(s) missing from the palette: Ice Dragon
+meshes/actors/dragon/dragontundra.nif	2 sequence target(s) missing from the palette: Bronze Dragon:0, Bronze Dragon:1
+meshes/actors/dragon/trailertemp/tempdragondeathposebake.nif	3 sequence target(s) missing from the palette: Dragon01, DragonGlow01, Underskin01
+meshes/actors/dragonpriest/character assets/dragon_priest.nif	1 sequence target(s) missing from the palette: Dragon PriestFXnew
+meshes/actors/dragonpriest/character assets/dragon_priestskinfx_mist.nif	1 sequence target(s) missing from the palette: Dragon PriestEffects
+meshes/actors/dragonpriest/character assets/fxdragonpriestlargeexplosion.nif	17 sequence target(s) missing from the palette: PCloud06, PCloud07, PCloudCloth02
+meshes/actors/dragonpriest/character assets/fxdragonpriestparticles01.nif	3 sequence target(s) missing from the palette: PArray01, PArray02, PArray03
+meshes/actors/dragonpriest/character assets/fxdragonpriestsmallexplosion.nif	2 sequence target(s) missing from the palette: PCloud01, PCloudCloth01
+meshes/actors/dwarvenspherecenturion/character assets/fxsteamsphereskin.nif	2 sequence target(s) missing from the palette: FXSteamSphereSkin:0, FXSteamSphereSkin:1
+meshes/actors/dwarvenspherecenturion/character assets/steamspherefx.nif	4 sequence target(s) missing from the palette: SuperSpray02Whisps02, SuperSpray02Whisps03, SuperSprayPuff01
+meshes/actors/dwarvenspider/character assets/dwarvenspidercenturionfx.nif	1 sequence target(s) missing from the palette: SuperSpray02Whisps02
+meshes/actors/dwarvenspider/character assets/dwarvenspidercenturionskinedsteam.nif	1 sequence target(s) missing from the palette: jet03
+meshes/actors/dwarvensteamcenturion/character assets/fxsteamcenturionfogskin.nif	1 sequence target(s) missing from the palette: FXSteamCenturionFogSkin
+meshes/actors/dwarvensteamcenturion/character assets/steamcenturionarmfx01.nif	2 sequence target(s) missing from the palette: Object01, Steam
+meshes/actors/dwarvensteamcenturion/character assets/steamcenturionarmfx02.nif	2 sequence target(s) missing from the palette: Object01, Steam
+meshes/actors/dwarvensteamcenturion/character assets/steamcenturionfx.nif	15 sequence target(s) missing from the palette: PArray01, PArray02, SteamCenturionFXPelvis
+meshes/actors/giant/character assets/animtestgiant.nif	1 sequence target(s) missing from the palette: giant_base
+meshes/actors/icewraith/character assets/fxicewraithmultiparticles.nif	2 sequence target(s) missing from the palette: SuperSprayMagicMyst02, SuperSprayMagicMyst09
+meshes/actors/icewraith/character assets/icewraith.nif	1 sequence target(s) missing from the palette: IceWraith
+meshes/actors/spriggan/character assets/spriggan.nif	4 sequence target(s) missing from the palette: SprigganBodyLeaves, SprigganFxHandCovers, SprigganFxTestUnified:0
+meshes/actors/spriggan/character assets/sprigganmatron.nif	4 sequence target(s) missing from the palette: HandCovers, SprigganBodyLeaves01:0, SprigganBodyLeaves01:1
+meshes/actors/spriggan/fxsprigganattachments.nif	18 sequence target(s) missing from the palette: GutMagicPArray03, GutPArray02, GutswarmPArray03
+meshes/actors/spriggan/fxsprigganattachmentsmatron.nif	18 sequence target(s) missing from the palette: GutMagicPArray03, GutPArray02, GutswarmPArray03
+meshes/actors/spriggan/sprigganfxtestunified.nif	22 sequence target(s) missing from the palette: GutMagicPArray03, GutPArray02, GutswarmPArray03
+meshes/actors/vampirelord/character assets/dlc1vampskeletonfxaddon.nif	1 sequence target(s) missing from the palette: VampireSkeletonFXMesh
+meshes/actors/vampirelord/character assets/vampirecape.nif	1 sequence target(s) missing from the palette: VampLordCapeMesh
+meshes/actors/vampirelord/character assets/vampirelord.nif	1 sequence target(s) missing from the palette: VampireLordBody
+meshes/actors/vampirelord/character assets/vampirelordarmor.nif	1 sequence target(s) missing from the palette: ArmorBase
+meshes/actors/vampirelord/character assets/vampirelordfemale.nif	1 sequence target(s) missing from the palette: FemaleBase
+meshes/actors/vampirelord/character assets/vampirelordfemalebasearmor.nif	1 sequence target(s) missing from the palette: ArmorBaseFemale
+meshes/actors/vampirelord/character assets/vampirelordfemalequeenarmor.nif	1 sequence target(s) missing from the palette: ArmorBaseFemale
+meshes/actors/vampirelord/character assets/vampirelordkingarmor.nif	2 sequence target(s) missing from the palette: ArmorBase:0, ArmorBase:1
+meshes/architecture/farmhouse/farmhousewindmill/farmhousewindmill.nif	5 sequence target(s) missing from the palette: DS01_AxelHolder:39, DS01_AxelHolder:40, Frame01:39
+meshes/architecture/farmhouse/lumbermill01waterwheel01.nif	2 sequence target(s) missing from the palette: PArray07, PArray08
+meshes/architecture/farmhouse/lumbermill01waterwheel02.nif	2 sequence target(s) missing from the palette: PArray05, PArray06
+meshes/architecture/solitude/animated/jailwall/sldjailwallcollapse01.nif	4 sequence target(s) missing from the palette: PArray01dust, RuinsPCloud01, pDustRim
+meshes/architecture/sovengarde/sovngardeinterior/sovspit01.nif	2 sequence target(s) missing from the palette: Shape01, Shape02
+meshes/architecture/whiterun/wrdrawbridge01.nif	1 sequence target(s) missing from the palette: DrawbridgeChains
+meshes/architecture/whiterun/wreffects/wrrapidrocks01.nif	1 sequence target(s) missing from the palette: rockRapid04
+meshes/architecture/whiterun/wreffects/wrstairsstreamrapids01.nif	1 sequence target(s) missing from the palette: WRStairsStreamRapids01Foam
+meshes/architecture/winterhold/winterholdsymbol02.nif	2 sequence target(s) missing from the palette: Cylinder01, WinterholdSymbol02:8
+meshes/clutter/banners/tgtq04bannerburnfx.nif	11 sequence target(s) missing from the palette: Banner1_Banner, Banner1_Banner03, GlowMesh:0
+meshes/clutter/beehive/beehive01.nif	10 sequence target(s) missing from the palette: BeeHive:0, MFlamesRoofA, MFlamesRoofB
+meshes/clutter/blackpool/blackpool.nif	1 sequence target(s) missing from the palette: BlackPool:0
+meshes/clutter/blackpool/blackpoolsecretdoor/nocturnalssecretdoor01.nif	4 sequence target(s) missing from the palette: Ground01:10, Ground01:6, ShaftMid01:4
+meshes/clutter/blackreach/blackreachgiantmushanim05.nif	1 sequence target(s) missing from the palette: Bone_Root
+meshes/clutter/blacksmith/blacksmithforge01/blacksmithforge01.nif	12 sequence target(s) missing from the palette: BlacksmithForge01:2, Flames:0, L2_Flames01:2
+meshes/clutter/common/candlelanternwithcandle01.nif	1 sequence target(s) missing from the palette: CandleLanternWithCandle:7
+meshes/clutter/common/hotiron.nif	1 sequence target(s) missing from the palette: HotIron:0
+meshes/clutter/containers/dwesoulgemcontainer01.nif	2 sequence target(s) missing from the palette: Chest:4, Lid02:4
+meshes/clutter/dawnbreakerpedestal/crystalpedestal.nif	1 sequence target(s) missing from the palette: Circle05:2
+meshes/clutter/dawnbreakerpedestal/da09meridiastatuefx.nif	11 sequence target(s) missing from the palette: Circle04:2, Crystal:0, Cylinder01:0
+meshes/clutter/dwemer/dwedresser01.nif	1 sequence target(s) missing from the palette: DoorRight
+meshes/clutter/elderscroll/1stpersonelderscrollhandattach.nif	2 sequence target(s) missing from the palette: ElderScrollFurled:1, ElderScrollFurledGlowOnly
+meshes/clutter/eyeofmagnus/eyeofmagnus01.nif	7 sequence target(s) missing from the palette: Cylinder01, GlowMesh:1, PArray_GroundWisps
+meshes/clutter/eyeofmagnus/eyeofmagnusremovefx.nif	6 sequence target(s) missing from the palette: BigParticles, CoreSwirls:0, Flash02:0
+meshes/clutter/eyeofmagnus/mgeyebarrierlarge.nif	4 sequence target(s) missing from the palette: MGEyeBarrierSmall03:0, MGEyeBarrierSmallRing01:0, PArray_GroundWisps02
+meshes/clutter/eyeofmagnus/mgeyebarriersmall.nif	4 sequence target(s) missing from the palette: MGEyeBarrierSmall01:0, MGEyeBarrierSmallRing:0, MGEyeBarrierSmallRing:1
+meshes/clutter/eyeofmagnus/mgeyebarriersmalltall.nif	4 sequence target(s) missing from the palette: MGEyeBarrierSmall01:0, MGEyeBarrierSmallRing:0, MGEyeBarrierSmallRing:1
+meshes/clutter/imperial/impcandelabracandle01.nif	3 sequence target(s) missing from the palette: ImpCandelabraCandle01:10, ImpCandelabraCandle01:7, ImpCandelabraCandle01:8
+meshes/clutter/imperial/impchandelliercandle01.nif	2 sequence target(s) missing from the palette: ImpChandellierCandle01:7, ImpChandellierCandle01:8
+meshes/clutter/imperial/impwallsconce02candleon01.nif	2 sequence target(s) missing from the palette: WallSconce02CandleOn01:7, WallSconce02CandleOn01:8
+meshes/clutter/imperial/impwallsconcecandle01.nif	1 sequence target(s) missing from the palette: ImpWallSconceCandle01:8
+meshes/clutter/imperial/impwallsconcecandle02.nif	1 sequence target(s) missing from the palette: ImpWallSconceCandle02:7
+meshes/clutter/lumbermill/lumbermilllog01/lumbermilllog01.nif	3 sequence target(s) missing from the palette: Dust, LumbermillCutLogJammed01, Splinters
+meshes/clutter/magicanomalyspawner/magicanomalyspawner.nif	6 sequence target(s) missing from the palette: GlowMesh01, GlowMesh02, RingMagic:0
+meshes/clutter/magicconduit/fxmagicconduitstream.nif	3 sequence target(s) missing from the palette: PCloud02, PCloudClog, Sphere01
+meshes/clutter/mehrunesdagonaltar/mehrunesdagonaltar01.nif	12 sequence target(s) missing from the palette: Gem01, Hilt01, Hilt01:3
+meshes/clutter/nightmother/nmbody01.nif	1 sequence target(s) missing from the palette: topobody:0
+meshes/clutter/powershrines/powershrine01/apprenticestone.nif	22 sequence target(s) missing from the palette: BlueBeam, BlueBeam:0, BlueBeam:1
+meshes/clutter/powershrines/powershrine01/atronachstone.nif	22 sequence target(s) missing from the palette: BlueBeam, BlueBeam:0, BlueBeam:1
+meshes/clutter/powershrines/powershrine01/ladystone.nif	22 sequence target(s) missing from the palette: BlueBeam, BlueBeam:0, BlueBeam:1
+meshes/clutter/powershrines/powershrine01/lordstone.nif	22 sequence target(s) missing from the palette: BlueBeam, BlueBeam:0, BlueBeam:1
+meshes/clutter/powershrines/powershrine01/loverstone.nif	22 sequence target(s) missing from the palette: BlueBeam, BlueBeam:0, BlueBeam:1
+meshes/clutter/powershrines/powershrine01/ritualstone.nif	22 sequence target(s) missing from the palette: BlueBeam, BlueBeam:0, BlueBeam:1
+meshes/clutter/powershrines/powershrine01/serpentstone.nif	22 sequence target(s) missing from the palette: BlueBeam, BlueBeam:0, BlueBeam:1
+meshes/clutter/powershrines/powershrine01/shadowstone.nif	22 sequence target(s) missing from the palette: BlueBeam, BlueBeam:0, BlueBeam:1
+meshes/clutter/powershrines/powershrine01/steedstone.nif	22 sequence target(s) missing from the palette: BlueBeam, BlueBeam:0, BlueBeam:1
+meshes/clutter/powershrines/powershrine01/thiefstone.nif	22 sequence target(s) missing from the palette: BlueBeam, BlueBeam:0, BlueBeam:1
+meshes/clutter/powershrines/powershrine01/towerstone.nif	22 sequence target(s) missing from the palette: BlueBeam, BlueBeam:0, BlueBeam:1
+meshes/clutter/powershrines/powershrine01/warriorstone.nif	22 sequence target(s) missing from the palette: BlueBeam, BlueBeam:0, BlueBeam:1
+meshes/clutter/powershrines/powershrine01/wizardstone.nif	22 sequence target(s) missing from the palette: BlueBeam, BlueBeam:0, BlueBeam:1
+meshes/clutter/quest/da13vinepustule01.nif	5 sequence target(s) missing from the palette: DA13VinePustule01:0, Glow:0, PBlobs
+meshes/clutter/ruins/dragonstone/ruinsdragonstone01.nif	3 sequence target(s) missing from the palette: DragonStone:3, DragonStone:4, DragonStone:6
+meshes/clutter/ruins/ruinscandlesconceon01.nif	1 sequence target(s) missing from the palette: Ruins_FloorCandleLampMid03:7
+meshes/clutter/ruins/ruinscandlesconceon02.nif	1 sequence target(s) missing from the palette: Object01:8
+meshes/clutter/ruins/ruinsfloorcandlelampmidon.nif	1 sequence target(s) missing from the palette: Ruins_FloorCandleLampMid:7
+meshes/clutter/ruins/ruinsfloorcandlelampmidon02.nif	1 sequence target(s) missing from the palette: Ruins_FloorCandleLampMid02:7
+meshes/clutter/ruins/ruinsfloorcandlelampsmon.nif	1 sequence target(s) missing from the palette: Ruins_FloorCandleLampSmall01:10
+meshes/clutter/ruins/ruinsfloorcandlelampsmon02.nif	2 sequence target(s) missing from the palette: Ruins_FloorCandleLampSmall02:10, Ruins_FloorCandleLampSmall02:8
+meshes/clutter/ruins/sarcophaguslid/norsarcophagustopanim01.nif	1 sequence target(s) missing from the palette: PArray01dust
+meshes/clutter/smelter/smelter01.nif	5 sequence target(s) missing from the palette: Cracks, PBurst, PCloud01
+meshes/clutter/statues/shrineofboethiah01.nif	8 sequence target(s) missing from the palette: BeamMeshStatic21, BloodSwirlGeo:0, LetterRays
+meshes/clutter/statues/vaerminastatue/statuevaerminasecretdoor01.nif	1 sequence target(s) missing from the palette: StatueVaermina
+meshes/clutter/woodfires/spitpotopen01.nif	1 sequence target(s) missing from the palette: Pot
+meshes/creationclub/_shared/dungeons/ayleidruins/interior/arsarcophagustopanim01.nif	1 sequence target(s) missing from the palette: PArray01dust
+meshes/creationclub/_shared/dungeons/ayleidruins/interior/fxcameraattachayleiddust.nif	1 sequence target(s) missing from the palette: PCloud02
+meshes/creationclub/_shared/dungeons/ayleidruins/interior/fxdustdrop01ar.nif	2 sequence target(s) missing from the palette: Plane02:0, SuperSpray03
+meshes/creationclub/_shared/dungeons/ayleidruins/interior/fxtwinklelights01.nif	5 sequence target(s) missing from the palette: GlowMesh:1, PArray_OuterArmsSparks02, ShineRing:0
+meshes/creationclub/_shared/plants/rootflamestalk01activator.nif	2 sequence target(s) missing from the palette: PlantBase, RootFlameStalkPlant01
+meshes/creationclub/_shared/plants/rootflamestalk02activator.nif	1 sequence target(s) missing from the palette: RootFlameStalkPlant02
+meshes/creationclub/_shared/plants/rootrotscaleactivator.nif	1 sequence target(s) missing from the palette: RootRotScalePlant
+meshes/creationclub/_shared/plants/rootscreamingmawactivator.nif	1 sequence target(s) missing from the palette: RootScreamingMawPlant
+meshes/critters/dragonfly/critterdragonfly01.nif	1 sequence target(s) missing from the palette: Wings
+meshes/critters/dragonfly/critterdragonfly02.nif	1 sequence target(s) missing from the palette: Wings01
+meshes/critters/fcjumpingsalmon/fcambwaterfallsalmon01.nif	2 sequence target(s) missing from the palette: FishController01, FishController02
+meshes/dlc01/actors/forgemaster/forgemaster.nif	15 sequence target(s) missing from the palette: SteamCenturion:0, SteamLCalf, SteamLFoot
+meshes/dlc01/actors/forgemaster/forgmasterfx.nif	17 sequence target(s) missing from the palette: PArray01, PArray02, SteamCenturionFXPelvis
+meshes/dlc01/architecture/snowelfruins/dlc01sebf_blastroof.nif	29 sequence target(s) missing from the palette: HolesSmall01_Elements06:0, HolesSmall01_Elements07:0, HolesSmall01_Elements08:0
+meshes/dlc01/architecture/snowelfruins/dlc01sebf_blastroofremain.nif	12 sequence target(s) missing from the palette: ColumnRubble01, Obje, Object04
+meshes/dlc01/architecture/snowelfruins/dlc01sebf_column01.nif	1 sequence target(s) missing from the palette: PCloudPowerCore03
+meshes/dlc01/architecture/snowelfruins/dlc01sebf_columnaway.nif	2 sequence target(s) missing from the palette: PCloudPowerCore01, PCloudPowerCore02
+meshes/dlc01/architecture/snowelfruins/seaurielspedestal01.nif	4 sequence target(s) missing from the palette: ElvenBow, g_BeamGlow:2, p_Magic
+meshes/dlc01/architecture/snowelfruins/seruinstemplepuzzle01/seruinstemplepuzzle01.nif	6 sequence target(s) missing from the palette: SERuinsTemplePuzzle01:15, Water (Channels), WaterRipple:0
+meshes/dlc01/architecture/snowelfruins/seruinswaygate01.nif	5 sequence target(s) missing from the palette: p_Dust, p_Dust [PRIME], p_Dust@#1
+meshes/dlc01/architecture/snowelfruins/sewayshrineportal01.nif	4 sequence target(s) missing from the palette: EdgeGlow, PORTAL, Refraction
+meshes/dlc01/armor/auriel/aurielsshield.nif	1 sequence target(s) missing from the palette: ShieldGlow01:0
+meshes/dlc01/clutter/chauruscocoon/chauruscocoonexplosion.nif	4 sequence target(s) missing from the palette: GeoSphere02:0, GeoSphere03:0, GeoSphere04:0
+meshes/dlc01/critters/ancestormothgroupattach.nif	4 sequence target(s) missing from the palette: AncestorMoth, AncestorMoth01, AncestorMoth02
+meshes/dlc01/critters/ancestormothstaticcloud.nif	4 sequence target(s) missing from the palette: AncestorMoth, AncestorMoth01, AncestorMoth02
+meshes/dlc01/critters/dlc1skullhawkgo.nif	1 sequence target(s) missing from the palette: PCloud01
+meshes/dlc01/dungeons/castle/animated/scportal/casscportal01.nif	7 sequence target(s) missing from the palette: CenterBeam00, CenterBeam00:0, CenterBeam00:1
+meshes/dlc01/dungeons/castle/animated/scportalbowl/casscportalbowl01.nif	19 sequence target(s) missing from the palette: Base, Base:0, Blood01:5
+meshes/dlc01/dungeons/dwemer/animated/dwetowerentrance01/dwetowerentrance01.nif	6 sequence target(s) missing from the palette: p_Dust, p_Dust Base, p_Dust [PRIME]
+meshes/dlc01/effects/aetherialtimewound.nif	4 sequence target(s) missing from the palette: Clouds, MagicStreams, PArraySnowFlakeBunches
+meshes/dlc01/effects/ambient/dlc1fxdwesteambthalft01.nif	1 sequence target(s) missing from the palette: SuperSpray02Whisps
+meshes/dlc01/effects/ambient/dlc1fxdwesteambthalft02.nif	3 sequence target(s) missing from the palette: Heat, Steam:0, Steam:1
+meshes/dlc01/effects/ashpileghostdlc01soulcairn.nif	2 sequence target(s) missing from the palette: PCloud04, Puddle02:0
+meshes/dlc01/effects/dawnguardlightbeam01.nif	5 sequence target(s) missing from the palette: Caustics01, Caustics02, g_Dust01:0
+meshes/dlc01/effects/dlc01_scrollattunementfx.nif	3 sequence target(s) missing from the palette: Plane01:0, Sphere01, Sphere02
+meshes/dlc01/effects/dlc1aurielsskyboltexplosion01.nif	5 sequence target(s) missing from the palette: Flash01:0, Torus03smallSlow:0, lightRays01BigCenter:0
+meshes/dlc01/effects/dlc1bloodexplosion500.nif	3 sequence target(s) missing from the palette: pBloodDrops10, pBloodLines04, pBloodMeatChunk01
+meshes/dlc01/effects/dlc1charusfrozeawakeexplosion.nif	2 sequence target(s) missing from the palette: PArray01, PArrayWisps
+meshes/dlc01/effects/dlc1columnhavokexplosion.nif	3 sequence target(s) missing from the palette: PArray01thich01, PArray02thin01, PArray02thinEst01
+meshes/dlc01/effects/dlc1eclipseburstfx01.nif	12 sequence target(s) missing from the palette: BigCLouds:2, DarkSun01:0, DarkSun:0
+meshes/dlc01/effects/dlc1encbatswarmfx01.nif	1 sequence target(s) missing from the palette: PCloud01
+meshes/dlc01/effects/dlc1falmerfrozeawakeexplosion.nif	2 sequence target(s) missing from the palette: PArray01, PArrayWisps
+meshes/dlc01/effects/dlc1frozenchaurusexplosion.nif	11 sequence target(s) missing from the palette: FrozenChaurusChunks_frag_000:0, FrozenChaurusChunks_frag_13_frag_000:0, FrozenChaurusChunks_frag_13_frag_01:0
+meshes/dlc01/effects/dlc1frozenfalmerexplosion.nif	6 sequence target(s) missing from the palette: FrozenFalmerHead:0, FrozenFalmerLeftHand:0, FrozenFalmerLeftLeg:0
+meshes/dlc01/effects/dlc1fxcameraattachdlcsoulcairnblowingfog.nif	1 sequence target(s) missing from the palette: PCloud01
+meshes/dlc01/effects/dlc1fxcameraattachsoulcairnsoot.nif	2 sequence target(s) missing from the palette: PCloudEmbers01, PClouddust01
+meshes/dlc01/effects/dlc1gargoyledustexplosion01.nif	23 sequence target(s) missing from the palette: BrutRock_frag_07_Elements10:0, BrutRock_frag_07_Elements11:0, BrutRock_frag_07_Elements12:0
+meshes/dlc01/effects/dlc1harkonashpile01.nif	4 sequence target(s) missing from the palette: AshPileMesh01:0, AshPileMesh:0, PCloud02
+meshes/dlc01/effects/dlc1readelderscrollblank.nif	4 sequence target(s) missing from the palette: PCloudLetters01, ScrollGlow08:0, ScrollGlow10:0
+meshes/dlc01/effects/dlc1readelderscrollcam.nif	8 sequence target(s) missing from the palette: Mountains, Object01:0, Plane02
+meshes/dlc01/effects/dlc1readelderscrollparta.nif	1 sequence target(s) missing from the palette: Rivers05
+meshes/dlc01/effects/dlc1readelderscrollpartb.nif	1 sequence target(s) missing from the palette: Rivers06
+meshes/dlc01/effects/dlc1readelderscrollpartc.nif	1 sequence target(s) missing from the palette: Rivers07
+meshes/dlc01/effects/dlc1snowelfflathavokexplosion.nif	3 sequence target(s) missing from the palette: PArray01thich, PArray02thin, PArray02thinEst
+meshes/dlc01/effects/dlc1snowelftelekinesishandl.nif	2 sequence target(s) missing from the palette: PCloudPowerCore, lightRays:0
+meshes/dlc01/effects/dlc1snowelftelekinesishandr.nif	2 sequence target(s) missing from the palette: PCloudPowerCore01, lightRays01:0
+meshes/dlc01/effects/dlc1soulcairncameraattachborderfogfx.nif	1 sequence target(s) missing from the palette: PCloud16
+meshes/dlc01/effects/dlc1wayshrinelightbeam01.nif	4 sequence target(s) missing from the palette: Glow, g_InnerGlow, g_OuterGlow
+meshes/dlc01/effects/dlcfxcameraattachsoulcairnsoot.nif	2 sequence target(s) missing from the palette: PCloudEmbers01, PClouddust01
+meshes/dlc01/effects/draguremergeground01.nif	3 sequence target(s) missing from the palette: PCloud02DustNoAnim, PCloud02Rocky, PCloud02Specs
+meshes/dlc01/effects/draguremergeground01cap.nif	1 sequence target(s) missing from the palette: GROUND
+meshes/dlc01/effects/fxcameraattachbubbles.nif	2 sequence target(s) missing from the palette: Circle01Refract09:0, bubbles
+meshes/dlc01/effects/fxcameraattachsplash.nif	2 sequence target(s) missing from the palette: Circle01Refract08:0, PCloud01
+meshes/dlc01/effects/powerwordgaan.nif	4 sequence target(s) missing from the palette: GLOW12, PowerWordGaanGlow, STREAKSARRAY12
+meshes/dlc01/effects/powerwordgaanicelake.nif	4 sequence target(s) missing from the palette: GLOW12, PowerWordGaanGlow, STREAKSARRAY12
+meshes/dlc01/effects/powerwordhaas.nif	4 sequence target(s) missing from the palette: GLOW10, PowerWordHaasGlow, STREAKSARRAY10
+meshes/dlc01/effects/powerwordhaasicelake.nif	4 sequence target(s) missing from the palette: GLOW10, PowerWordHaasGlow, STREAKSARRAY10
+meshes/dlc01/effects/powerwordlah.nif	4 sequence target(s) missing from the palette: GLOW11, PowerWordLahGlow, STREAKSARRAY11
+meshes/dlc01/effects/powerwordlahicelake.nif	4 sequence target(s) missing from the palette: GLOW11, PowerWordLahGlow, STREAKSARRAY11
+meshes/dlc01/effects/sc_crater01fx.nif	5 sequence target(s) missing from the palette: CenterBeam:0, CenterBeam:1, PArrayStraight
+meshes/dlc01/effects/shieldgloweffect01.nif	1 sequence target(s) missing from the palette: ShieldGlow01
+meshes/dlc01/effects/snowelfthronesheild.nif	2 sequence target(s) missing from the palette: IceWall:0, Refract
+meshes/dlc01/effects/summonundeaddragontarget.nif	6 sequence target(s) missing from the palette: DarkBack05:1, Object02:0, Object02:1
+meshes/dlc01/effects/summonundeadtarget.nif	6 sequence target(s) missing from the palette: DarkBack04:1, Object01:0, Object01:1
+meshes/dlc01/furniture/wayshrinewaterpourmarker/wayshrinepourmarker.nif	5 sequence target(s) missing from the palette: Water:0, WaterRipple:0, g_PouringWater:0
+meshes/dlc01/furniture/wayshrinewaterscoopmarker/wayshrinescoopmarker.nif	5 sequence target(s) missing from the palette: WATER, Water:0, WaterRipple
+meshes/dlc01/interface/intvampireperkskydome.nif	9 sequence target(s) missing from the palette: FillerGas, WarGas, WizFillerGas02
+meshes/dlc01/landscape/dlc01frozenlakebreakexplosion.nif	2 sequence target(s) missing from the palette: PArray01, Plane01:0
+meshes/dlc01/magic/crystalabsorbsoulcairntargetpointfx.nif	3 sequence target(s) missing from the palette: PCloud01, PCloud04cloudier, pSparks
+meshes/dlc01/magic/dlc01_soulrendprojectile.nif	3 sequence target(s) missing from the palette: GeoSphere06:0, HandObject04, PArray06
+meshes/dlc01/magic/dlc01_soulrendprojectile01.nif	2 sequence target(s) missing from the palette: GeoSphere06:0, HandObject04
+meshes/dlc01/magic/dlc01_soulrendprojectile02.nif	2 sequence target(s) missing from the palette: GeoSphere06:0, HandObject04
+meshes/dlc01/magic/dlc01_soulrendreanitarget.nif	3 sequence target(s) missing from the palette: Object03:0, PArray04, PArray05
+meshes/dlc01/magic/dlc01_sunaurabodyfx.nif	4 sequence target(s) missing from the palette: FlameCloakMesh03:0, FlameCloakMesh04:0, FlameCloakMesh:0
+meshes/dlc01/magic/dlc01_sunauralightspellfx.nif	2 sequence target(s) missing from the palette: GlowMeshLightSpell\:0, GlowMeshLightSpell\:1
+meshes/dlc01/magic/dlc1aurielshrinecastfx.nif	1 sequence target(s) missing from the palette: pSparkles
+meshes/dlc01/magic/dlc1aurielsskyboltexplosion01.nif	5 sequence target(s) missing from the palette: Flash01:0, Torus03smallSlow:0, lightRays01BigCenter:0
+meshes/dlc01/magic/dlc1batdraincloak01.nif	3 sequence target(s) missing from the palette: IceCloakMesh:0, IceCloakMesh:1, PArray02
+meshes/dlc01/magic/dlc1batsabsorbcastpointfx01.nif	1 sequence target(s) missing from the palette: PCloud03
+meshes/dlc01/magic/dlc1batsabsorbtargetpointfx.nif	2 sequence target(s) missing from the palette: PArray03BATHit, pStrips01DarkSoul01
+meshes/dlc01/magic/dlc1drainvitalcastpointfx01.nif	1 sequence target(s) missing from the palette: PCloud03
+meshes/dlc01/magic/dlc1drainvitaltargetpointfx.nif	2 sequence target(s) missing from the palette: PCloud01, SoulEffect01
+meshes/dlc01/magic/dlc1gargoylebrutemeleefx.nif	2 sequence target(s) missing from the palette: pFireballCore05, pFireballCore06
+meshes/dlc01/magic/dlc1sebossblastbackfx.nif	4 sequence target(s) missing from the palette: GeoSphere01, Plane06:0, RipplesSlowTime:0
+meshes/dlc01/magic/dlc1sebossglowingfx.nif	2 sequence target(s) missing from the palette: GlowMeshLightSpell:0, GlowMeshLightSpell:1
+meshes/dlc01/magic/dlc1shadowshieldfx.nif	9 sequence target(s) missing from the palette: FlameCloakMesh03:0, FlameCloakMesh04:0, FlameCloakMesh:0
+meshes/dlc01/magic/dlc1soulcairnhorsesummontargetfx.nif	4 sequence target(s) missing from the palette: DarkBack04:1, DarkBack:0, RefractMesh01
+meshes/dlc01/magic/dlc1sunburstfx01.nif	7 sequence target(s) missing from the palette: Glow:0, LowerFlame:1, LowerFlame:2
+meshes/dlc01/magic/dlc1vampbatseatenbyeffect.nif	1 sequence target(s) missing from the palette: PCloud01
+meshes/dlc01/magic/dlc1vampchangeexplosion.nif	3 sequence target(s) missing from the palette: Flash02:0, pFireBall, pSmallSparks
+meshes/dlc01/magic/dlc1vampdraintargetpointfx.nif	3 sequence target(s) missing from the palette: PCloud01, SoulEffect01, pStrips01DarkSoul01
+meshes/dlc01/magic/dlc1vampharkondeathfx.nif	3 sequence target(s) missing from the palette: PCloud01BATS, pBloodyBits, pSparksFollow01
+meshes/dlc01/magic/dlc1vampireabsorbexplosion.nif	4 sequence target(s) missing from the palette: Flash02:0, Flash02:1, Torus01:0
+meshes/dlc01/magic/dlc1vampireabsorbproj01.nif	3 sequence target(s) missing from the palette: Cylinder02:0, FlameSide:0, Wisps02:0
+meshes/dlc01/magic/dlc1vampiredetectlifeexplosion.nif	2 sequence target(s) missing from the palette: Ripples:0, Ripples:1
+meshes/dlc01/magic/dlc1vampiredrainspray01.nif	3 sequence target(s) missing from the palette: pBaseSprayBulk, pSparksBase, pWisps01
+meshes/dlc01/magic/dlc1vampireparalyzehandfx.nif	4 sequence target(s) missing from the palette: BrightGlowMesh:0, HeatRefraction:0, pChargeFire
+meshes/dlc01/magic/dlc1vampirereanimatehandfx.nif	4 sequence target(s) missing from the palette: BrightGlowMesh:0, HeatRefraction:0, pChargeFire
+meshes/dlc01/magic/dlc1vamplordbatsfx.nif	1 sequence target(s) missing from the palette: PCloud01
+meshes/dlc01/magic/dlc1vamplordfloatfx.nif	4 sequence target(s) missing from the palette: Flash02:0, PArray02, SmokeSmallTrail
+meshes/dlc01/magic/dlc1vampmistformfx.nif	1 sequence target(s) missing from the palette: PArray01
+meshes/dlc01/magic/dlc1vamptelekinesishandfx.nif	3 sequence target(s) missing from the palette: PCloudPowerCore, RefractCubes01:0, lightRays:0
+meshes/dlc01/magic/dlc1_suncloakspellhandfx.nif	6 sequence target(s) missing from the palette: Circle04:0, Flash02:0, SuperSpray06
+meshes/dlc01/magic/dlc1_vampirebanehandfx.nif	6 sequence target(s) missing from the palette: Circle04:0, Flash02:0, SuperSpray06
+meshes/dlc01/soulcairn/sc_chest.nif	1 sequence target(s) missing from the palette: glow01
+meshes/dlc01/soulcairn/sc_chest02.nif	1 sequence target(s) missing from the palette: Glow01
+meshes/dlc01/traps/lighttrap/lighttrap01.nif	6 sequence target(s) missing from the palette: DawnStone01:0, Glow01:0, Glow02:0
+meshes/dlc01/traps/planttrap/poisonplant01.nif	2 sequence target(s) missing from the palette: Bulb01, PCloud01
+meshes/dlc02/architecture/ravenrock/dlc2blacksmithforge01rr.nif	13 sequence target(s) missing from the palette: BlacksmithForge01:2, BlacksmithForgeGlow, BlacksmithForgeGlow:0
+meshes/dlc02/architecture/ravenrock/dlc2blacksmithforge01rrnop.nif	9 sequence target(s) missing from the palette: BlacksmithForge01:2, BlacksmithForgeGlow, BlacksmithForgeGlow:0
+meshes/dlc02/architecture/ravenrock/dlc2smelter.nif	3 sequence target(s) missing from the palette: Cracks, Slag (Bucket):0, Slag (Mould):0
+meshes/dlc02/architecture/riekling/dlc2rieklingtent01.nif	3 sequence target(s) missing from the palette: p_DustLeft, p_DustRear, p_DustRight
+meshes/dlc02/clothes/miraakrobes/miraakboots_0.nif	1 sequence target(s) missing from the palette: MiraakBoots
+meshes/dlc02/clothes/miraakrobes/miraakboots_1.nif	1 sequence target(s) missing from the palette: MiraakBoots
+meshes/dlc02/clothes/miraakrobes/miraakgloves_0.nif	1 sequence target(s) missing from the palette: MiraakGloves
+meshes/dlc02/clothes/miraakrobes/miraakgloves_1.nif	1 sequence target(s) missing from the palette: MiraakGloves
+meshes/dlc02/clothes/miraakrobes/miraakhelm_0.nif	1 sequence target(s) missing from the palette: MiraakHelm
+meshes/dlc02/clothes/miraakrobes/miraakhelm_1.nif	1 sequence target(s) missing from the palette: MiraakHelm
+meshes/dlc02/clothes/miraakrobes/miraakrobesnoskin_0.nif	2 sequence target(s) missing from the palette: MiraakPauldrons, MiraakRobes:0
+meshes/dlc02/clothes/miraakrobes/miraakrobesnoskin_1.nif	2 sequence target(s) missing from the palette: MiraakPauldrons, MiraakRobes:0
+meshes/dlc02/clutter/dlc2spawnextract.nif	2 sequence target(s) missing from the palette: DLC2SpawnExtract:4, Object03
+meshes/dlc02/clutter/expspidercraftingchest.nif	1 sequence target(s) missing from the palette: spiderbox:2
+meshes/dlc02/dungeons/apocrypha/animated/aposconces/apoheadscone02ani.nif	1 sequence target(s) missing from the palette: Glow01:5
+meshes/dlc02/dungeons/apocrypha/animated/aposconces/apoheadscone03ani.nif	1 sequence target(s) missing from the palette: Glow01:6
+meshes/dlc02/dungeons/apocrypha/animated/aposconces/apomouthsconce02ani.nif	1 sequence target(s) missing from the palette: Glow01:5
+meshes/dlc02/dungeons/apocrypha/animated/aposconces/apomouthsconce03ani.nif	1 sequence target(s) missing from the palette: Glow01:6
+meshes/dlc02/dungeons/apocrypha/animated/aposcryetrigger01/aposcryetrigger01.nif	7 sequence target(s) missing from the palette: PetalA01, PetalB01, PetalC01
+meshes/dlc02/dungeons/apocrypha/animated/forbiddenbook/apoforbiddenbook01.nif	34 sequence target(s) missing from the palette: Book:10, Book:12, GeoSphere01:0
+meshes/dlc02/dungeons/apocrypha/animated/forbiddenbook02/apoforbiddenbook02.nif	34 sequence target(s) missing from the palette: Book:10, Book:12, GeoSphere01:0
+meshes/dlc02/dungeons/apocrypha/animated/hermaeusmorasface01.nif	16 sequence target(s) missing from the palette: Bubbles, Cylinder01, EyeFixed:0
+meshes/dlc02/dungeons/apocrypha/animated/hermaeusmorasface02.nif	17 sequence target(s) missing from the palette: Bubbles, Cylinder01, Object02
+meshes/dlc02/dungeons/apocrypha/animated/hermaeusmorasface03.nif	14 sequence target(s) missing from the palette: Bubbles, Cylinder01, Plane01
+meshes/dlc02/dungeons/apocrypha/clutter/apowarpbook01.nif	1 sequence target(s) missing from the palette: Book01:9
+meshes/dlc02/dungeons/apocrypha/exterior/controlring/apocontrolringarch01.nif	1 sequence target(s) missing from the palette: ApoControlRingArch01:15
+meshes/dlc02/dungeons/apocrypha/exterior/controlring/apocontrolringarch01rubble.nif	9 sequence target(s) missing from the palette: Base, Object32:15, Object34:15
+meshes/dlc02/dungeons/apocrypha/exterior/controlring/apocontrolringcolumn01.nif	1 sequence target(s) missing from the palette: ApoControlRingColumn01:15
+meshes/dlc02/dungeons/apocrypha/exterior/controlring/apocontrolringcolumn01rubble.nif	3 sequence target(s) missing from the palette:  sdf:15, ApoControlRingColumn01Rubble:15, Object05:15
+meshes/dlc02/dungeons/apocrypha/exterior/controlring/apocontrolringtop01.nif	6 sequence target(s) missing from the palette: ApoControlRingTop01:16, Object01, PArray01
+meshes/dlc02/dungeons/apocrypha/exterior/controlring/explosionstandingstone01.nif	2 sequence target(s) missing from the palette: Rubble, pSmallSparks
+meshes/dlc02/dungeons/dwemer/animated/dlc2dwecontrolcube/dlc2dwecontrolcube.nif	6 sequence target(s) missing from the palette: DLC2CubeCenter:1, Gear01:1, Gear03:1
+meshes/dlc02/dungeons/dwemer/animated/dlc2dwecontrolcube02/dlc2dwecontrolcube02.nif	8 sequence target(s) missing from the palette: DLC2CubeCenter:1, Gear01:1, Gear03:1
+meshes/dlc02/dungeons/dwemer/animated/dwedynamotrigger01/dwedynamotrigger01.nif	1 sequence target(s) missing from the palette: Dynamo01
+meshes/dlc02/dungeons/dwemer/animated/dwekagrumezgauntlet/dwekagrumezwallr.nif	1 sequence target(s) missing from the palette: WallR
+meshes/dlc02/dungeons/dwemer/animated/dwekagrumezgauntlet/dwekagrumezwallsl.nif	2 sequence target(s) missing from the palette: WallF, WallR
+meshes/dlc02/dungeons/dwemer/animated/dwekagrumezpanel01/kagrumezcontrolgemact01.nif	3 sequence target(s) missing from the palette: Gem:0, Gem:1, g_Glow
+meshes/dlc02/dungeons/dwemer/animated/dweptnwallanim/dweptnwallanim01.nif	1 sequence target(s) missing from the palette: L2_Facade
+meshes/dlc02/dungeons/dwemer/animated/dweptnwallanim/dweptnwallanim02.nif	1 sequence target(s) missing from the palette: L2_Facade
+meshes/dlc02/dungeons/dwemer/animated/dweptnwallanim/dweptnwallhalfanim01.nif	1 sequence target(s) missing from the palette: L2_Facade
+meshes/dlc02/dungeons/dwemer/animated/dwesteammeter01/dwesteammeter01.nif	1 sequence target(s) missing from the palette: Piston01:47
+meshes/dlc02/dungeons/dwemer/readingroom/dlc2dwereadrmint01.nif	9 sequence target(s) missing from the palette: AreaGlow, Beamx09, GemHolder:48
+meshes/dlc02/dungeons/nordic/animated/combatpuzzle01/combatpuzzle01.nif	4 sequence target(s) missing from the palette: Pillar01:9, StoneDrum01:10, StoneDrum01:11
+meshes/dlc02/dungeons/nordic/dlc2norenchanteddias02/dlc2norenchanteddias02.nif	7 sequence target(s) missing from the palette: AdditiveGlow:0, AdditiveGlow:1, Heat:0
+meshes/dlc02/dungeons/nordic/powerworddiiv.nif	4 sequence target(s) missing from the palette: DiivGlow, GLOW16, PowerWordDiivMesh01
+meshes/dlc02/dungeons/nordic/powerwordgaar.nif	4 sequence target(s) missing from the palette: GLOW18, GaarGlow, PowerWordGaarMesh01
+meshes/dlc02/dungeons/nordic/powerwordgol.nif	5 sequence target(s) missing from the palette: GLOW13, GolGlow, PowerWordGolMesh01
+meshes/dlc02/dungeons/nordic/powerwordmid.nif	4 sequence target(s) missing from the palette: GLOW22, MidGlow, PowerWordMidMesh01
+meshes/dlc02/dungeons/nordic/powerwordmul.nif	4 sequence target(s) missing from the palette: GLOW14, MulGlow, PowerWordMulMesh01
+meshes/dlc02/dungeons/nordic/powerwordnos.nif	4 sequence target(s) missing from the palette: GLOW19, NosGlow, PowerWordNosMesh01
+meshes/dlc02/dungeons/nordic/powerwordqah.nif	4 sequence target(s) missing from the palette: GLOW15, PowerWordQahMesh01, QahGlow
+meshes/dlc02/dungeons/nordic/powerwordshaan.nif	4 sequence target(s) missing from the palette: GLOW21, PowerWordShaanMesh01, STREAKSARRAY21
+meshes/dlc02/dungeons/nordic/powerwordven.nif	4 sequence target(s) missing from the palette: GLOW17, PowerWordVenMesh01, STREAKSARRAY17
+meshes/dlc02/dungeons/nordic/powerwordvur.nif	4 sequence target(s) missing from the palette: GLOW20, PowerWordVurMesh01, STREAKSARRAY20
+meshes/dlc02/effects/ashbreath.nif	2 sequence target(s) missing from the palette: SuperSprayPuff, jet:0
+meshes/dlc02/effects/ashexp01.nif	4 sequence target(s) missing from the palette: Flash02:0, Torus01:0, pFireBall
+meshes/dlc02/effects/ashhandfx01.nif	5 sequence target(s) missing from the palette: Circle01:0, GeoSphere01, Object03:1
+meshes/dlc02/effects/ashruneprojectile01.nif	7 sequence target(s) missing from the palette: Glow:0, Plane01, RuneSymbolBright
+meshes/dlc02/effects/dlc2apocryphabookwarp/dlc2apocryphabookwarp01.nif	8 sequence target(s) missing from the palette: 2DTentacle1, 2DTentacle2, 2DTentacle3
+meshes/dlc02/effects/dlc2apocryphabookwarp01.nif	2 sequence target(s) missing from the palette: Line01, g_Glow
+meshes/dlc02/effects/dlc2ashspawnexp01.nif	5 sequence target(s) missing from the palette: Flash02:0, SmallFlames, Torus01:0
+meshes/dlc02/effects/dlc2ashspawnhandeffects.nif	6 sequence target(s) missing from the palette: BrightGlowMesh:0, HeatRefraction:0, pChargeFire
+meshes/dlc02/effects/dlc2ashspawnpile01.nif	2 sequence target(s) missing from the palette: AshPileMesh:0, PCloudSmoke
+meshes/dlc02/effects/dlc2ashspawnprojectile01.nif	6 sequence target(s) missing from the palette: FlameSide02:0, Glow:0, SuperSprayEmbers
+meshes/dlc02/effects/dlc2ashspawnscriptedparticles.nif	5 sequence target(s) missing from the palette: PCloud03Sparks, PCloudChips, PCloudChips02
+meshes/dlc02/effects/dlc2constellationexplosion.nif	4 sequence target(s) missing from the palette: GeoSphere01, GeoSphere01:0, Ripples:0
+meshes/dlc02/effects/dlc2cycloneshoutprojectile.nif	8 sequence target(s) missing from the palette: CloudMesh02:0, CloudMesh02:1, CloudMesh08:0
+meshes/dlc02/effects/dlc2cycloneshoutprojectile02.nif	8 sequence target(s) missing from the palette: CloudMesh04:0, CloudMesh04:1, CloudMesh05:0
+meshes/dlc02/effects/dlc2cycloneshoutprojectile03.nif	8 sequence target(s) missing from the palette: CloudMesh10:0, CloudMesh10:1, CloudMesh:0
+meshes/dlc02/effects/dlc2fxwhirlwindcloakhandeffects01.nif	4 sequence target(s) missing from the palette: Cylinder01:0, Cylinder04, Globe:1
+meshes/dlc02/effects/dlc2hmdaedra01handeffects.nif	5 sequence target(s) missing from the palette: BrightGlowMesh:0, HeatRefraction:0, pChargeWisps
+meshes/dlc02/effects/dlc2hmdaedraballexp01.nif	5 sequence target(s) missing from the palette: Flash02:2, Torus01:0, Torus02:0
+meshes/dlc02/effects/dlc2hmdaedraexp01.nif	3 sequence target(s) missing from the palette: Flash02:0, Woosh:0, pParticles
+meshes/dlc02/effects/dlc2hmdaedrafxmouth01.nif	1 sequence target(s) missing from the palette: PCloudPowerCore
+meshes/dlc02/effects/dlc2hmdaedrahandprojectile01.nif	4 sequence target(s) missing from the palette: CentralWisp:0, Cloudy:0, Glow2:0
+meshes/dlc02/effects/dlc2hmdaedramouthexp01.nif	3 sequence target(s) missing from the palette: Circle02:2, Flash01:1, ImpactMist01:0
+meshes/dlc02/effects/dlc2hmdaedraragpile01.nif	3 sequence target(s) missing from the palette: PCloud02, RagPile:0, RagPile:1
+meshes/dlc02/effects/dlc2miraakteleportexp.nif	7 sequence target(s) missing from the palette: GlowWarpy01:0, Glows01:0, OuterSphere02:0
+meshes/dlc02/effects/dlc2miraakteleportfx.nif	7 sequence target(s) missing from the palette: GlowWarpy:0, Glows:0, OuterSphere01:0
+meshes/dlc02/effects/dlc2miraakteleportreturnexp.nif	6 sequence target(s) missing from the palette: GlowWarpy01, GlowWarpy01:0, OuterSphere02:0
+meshes/dlc02/effects/dlc2miraakteleportreturnfx01.nif	6 sequence target(s) missing from the palette: GlowWarpy01, GlowWarpy01:0, OuterSphere02:0
+meshes/dlc02/effects/dlc2summonkarstaagtargetfx.nif	9 sequence target(s) missing from the palette: DarkBack04:1, DarkBack:0, LineEffects:0
+meshes/dlc02/effects/dlc2telmithrynteleportfx.nif	4 sequence target(s) missing from the palette: Glows01:0, Glows03:0, RefractMesh02
+meshes/dlc02/effects/dlc2whirlwindcloak01.nif	6 sequence target(s) missing from the palette: CloudCloakMesh01:0, CloudCloakMesh01:1, GlowMesh02:0
+meshes/dlc02/effects/dragonbornaspectburst.nif	2 sequence target(s) missing from the palette: PArray01Streaks03, glow01:0
+meshes/dlc02/effects/dragonbornfx01.nif	1 sequence target(s) missing from the palette: DBAarm:0
+meshes/dlc02/effects/dragonbornfx02.nif	2 sequence target(s) missing from the palette: DBAChest, DBAarm:0
+meshes/dlc02/effects/dragonbornfx03.nif	5 sequence target(s) missing from the palette: DBAChest, DBAEyes:0, DBAEyes:1
+meshes/dlc02/effects/dragonbornfxf01.nif	1 sequence target(s) missing from the palette: DBAarm01:0
+meshes/dlc02/effects/dragonbornfxf02.nif	2 sequence target(s) missing from the palette: DBAChest01, DBAarm01:0
+meshes/dlc02/effects/dragonbornfxf03.nif	5 sequence target(s) missing from the palette: DBAChest01, DBAEyes01:0, DBAEyes01:1
+meshes/dlc02/effects/hmkillsmiraaktentacles.nif	5 sequence target(s) missing from the palette: Black:0, Black:1, WordBurnedIntoChestSkin:0
+meshes/dlc02/effects/magicinstruments.nif	5 sequence target(s) missing from the palette: Drum:0, g_Glow, g_Pulse01:0
+meshes/dlc02/effects/miraakskeleton.nif	6 sequence target(s) missing from the palette: MiraakBoots02, MiraakGloves02, MiraakHelm02
+meshes/dlc02/effects/miraakstreak.nif	1 sequence target(s) missing from the palette: SuperSpray01
+meshes/dlc02/effects/miraakteleportinexplosion.nif	24 sequence target(s) missing from the palette: Cylinder03, Plane107:0, Plane108:0
+meshes/dlc02/effects/miraakteleportoutexplosion.nif	29 sequence target(s) missing from the palette: Cylinder02, MiraakBoots, MiraakGloves
+meshes/dlc02/effects/poisongasexplosion.nif	1 sequence target(s) missing from the palette: PArray01
+meshes/dlc02/effects/runeashprojectile.nif	7 sequence target(s) missing from the palette: Glow:0, Plane01, RuneSymbolBright
+meshes/dlc02/effects/runefrenzyprojectile.nif	7 sequence target(s) missing from the palette: Glow01:0, Plane02, RuneSymbolBright01
+meshes/dlc02/effects/runepoisonprojectile.nif	7 sequence target(s) missing from the palette: Glow02:0, Plane03, RuneSymbolBright02
+meshes/dlc02/effects/tentaclebookattach.nif	8 sequence target(s) missing from the palette: Object02, Object03, Object04
+meshes/dlc02/effects/tentacleexplosionshort.nif	49 sequence target(s) missing from the palette: Plane14:0, Plane15:0, Plane16:0
+meshes/dlc02/effects/tentaclehazard01.nif	13 sequence target(s) missing from the palette: Plane119:0, Plane120:0, Plane121:0
+meshes/dlc02/effects/tentaclehazardlarge.nif	28 sequence target(s) missing from the palette: Cylinder03, Plane153:0, Plane154:0
+meshes/dlc02/effects/wordburnedintochestskin.nif	9 sequence target(s) missing from the palette: WordBurnedIntoChestSkin01, WordBurnedIntoChestSkin:0, WordBurnedIntoChestSkin:1
+meshes/dlc02/effects/wordburnedintochestskinafter.nif	4 sequence target(s) missing from the palette: Plane09, SkaalTorso:0, StreaksChes
+meshes/dlc02/landscape/standingstone/dlc2standingstonebeast.nif	2 sequence target(s) missing from the palette: DLC2SSBeast:2, PArray01
+meshes/dlc02/landscape/standingstone/dlc2standingstoneearth.nif	2 sequence target(s) missing from the palette: DLC2SSEarth:5, PArray05
+meshes/dlc02/landscape/standingstone/dlc2standingstonerock.nif	2 sequence target(s) missing from the palette: DLC2SSRock:6, PArray07
+meshes/dlc02/landscape/standingstone/dlc2standingstonesun.nif	2 sequence target(s) missing from the palette: DLC2SSSun:4, PArray03
+meshes/dlc02/landscape/standingstone/dlc2standingstonetree.nif	2 sequence target(s) missing from the palette: DLC2SSTree:9, PArray02
+meshes/dlc02/landscape/standingstone/dlc2standingstonewater.nif	2 sequence target(s) missing from the palette: DLC2SSWater:8, PArray06
+meshes/dlc02/landscape/standingstone/dlc2standingstonewind.nif	2 sequence target(s) missing from the palette: DLC2SSWind:7, PArray04
+meshes/dlc02/magic/dlc2apocryphacastfx.nif	2 sequence target(s) missing from the palette: pSparksHitEffects02, pStripsHitEffects01
+meshes/dlc02/magic/dlc2apocryphahealtargetfx.nif	2 sequence target(s) missing from the palette: Object01:0, PArray01
+meshes/dlc02/magic/dlc2apocrypharewardcastfx.nif	4 sequence target(s) missing from the palette: pCharacters, pSparksHitEffects02, pStrips01
+meshes/dlc02/weapons/bounddaggerencheffects.nif	10 sequence target(s) missing from the palette: 1stPersonDaedricDagger:0, FlamesHit01, FlamesHit01:0
+meshes/dlc02/weapons/miraak/miraakstaffprojectile.nif	1 sequence target(s) missing from the palette: SuperSpray01
+meshes/dlc02/weapons/miraak/miraakswordtentacles.nif	1 sequence target(s) missing from the palette: Tenticle
+meshes/dungeons/dwemer/animated/astrolabe/armillary/dweastrolabearmillary01.nif	1 sequence target(s) missing from the palette: dustPArray04
+meshes/dungeons/dwemer/animated/astrolabe/hub/dweastrolabehub01.nif	50 sequence target(s) missing from the palette: GlowMesh12, GlowMesh12:0, GlowMesh21
+meshes/dungeons/dwemer/animated/astrolabe/lens/dweastrolabelens01.nif	7 sequence target(s) missing from the palette: BeamMeshStatic120, BeamMeshStatic121, BeamMeshStatic122
+meshes/dungeons/dwemer/animated/observatory/armillary/dweobservatoryarmillary01.nif	16 sequence target(s) missing from the palette: Circle04, Flash04, GlowMesh11
+meshes/dungeons/dwemer/animated/observatory/dome01/dweobservatorydome01.nif	8 sequence target(s) missing from the palette: Circle07, Circle07:2, Flash06
+meshes/dungeons/dwemer/animated/observatory/dome02/dweobservatorydome02.nif	8 sequence target(s) missing from the palette: Circle06, Circle06:2, Flash07
+meshes/dungeons/dwemer/animated/observatory/dome03/dweobservatorydome03.nif	8 sequence target(s) missing from the palette: Circle05, Circle05:2, Flash08
+meshes/dungeons/dwemer/animated/observatory/fxdweobservatorymapbeam.nif	18 sequence target(s) missing from the palette: BeamMeshStatic122, BeamMeshStatic122:0, BeamMeshStatic123
+meshes/dungeons/imperial/customfx/cg01destroyedbridge.nif	6 sequence target(s) missing from the palette: PCloud01, PCloud02, PCloud03
+meshes/dungeons/imperial/customfx/impforthallcollapsefx01.nif	4 sequence target(s) missing from the palette: PCloud01, Plane01:0, pDustRim
+meshes/dungeons/nordic/chambers/norrunicamphitheatrewordtiid.nif	4 sequence target(s) missing from the palette: DragonRunesTidd01, PArray02, Plane04
+meshes/dungeons/nordic/chambers/powerwordaus.nif	4 sequence target(s) missing from the palette: PArray34, Plane38, PowerWordAus01
+meshes/dungeons/nordic/chambers/powerwordbah.nif	4 sequence target(s) missing from the palette: PArray26, Plane30, PowerWordBah01
+meshes/dungeons/nordic/chambers/powerworddiin.nif	4 sequence target(s) missing from the palette: GLOW02, PowerWordDiinMesh01, STREAKSARRAY02
+meshes/dungeons/nordic/chambers/powerworddrem.nif	4 sequence target(s) missing from the palette: PArray23, Plane27, PowerWordDrem01
+meshes/dungeons/nordic/chambers/powerworddun.nif	4 sequence target(s) missing from the palette: PArray13, Plane17, PowerWordDun01
+meshes/dungeons/nordic/chambers/powerwordfaas.nif	4 sequence target(s) missing from the palette: PArray08, Plane12, PowerWordFaas04
+meshes/dungeons/nordic/chambers/powerwordfeim.nif	4 sequence target(s) missing from the palette: PArray35, Plane39, PowerWordFeim01
+meshes/dungeons/nordic/chambers/powerwordfiik.nif	4 sequence target(s) missing from the palette: PArray28, Plane32, PowerWordfiik01
+meshes/dungeons/nordic/chambers/powerwordfo.nif	4 sequence target(s) missing from the palette: GLOW00, PowerWordFo01, STREAKSARRAY00
+meshes/dungeons/nordic/chambers/powerwordfus.nif	4 sequence target(s) missing from the palette: PArray40, Plane44, PowerWordTemplateGlow
+meshes/dungeons/nordic/chambers/powerwordgrah.nif	4 sequence target(s) missing from the palette: PArray12, Plane16, PowerWordGrah01
+meshes/dungeons/nordic/chambers/powerwordgron.nif	4 sequence target(s) missing from the palette: PArray37, Plane41, PowerWordGron01
+meshes/dungeons/nordic/chambers/powerwordgul.nif	4 sequence target(s) missing from the palette: PArray21, Plane25, PowerWordGul01
+meshes/dungeons/nordic/chambers/powerwordgutmeyzul.nif	4 sequence target(s) missing from the palette: PArray41, Plane45, PowerWordTemplateGlow
+meshes/dungeons/nordic/chambers/powerwordhaal.nif	4 sequence target(s) missing from the palette: PArray15, Plane19, PowerWordHaal01
+meshes/dungeons/nordic/chambers/powerwordiiz.nif	4 sequence target(s) missing from the palette: PArray17, Plane21, PowerWordIiz01
+meshes/dungeons/nordic/chambers/powerwordkaan.nif	4 sequence target(s) missing from the palette: PArray22, Plane26, PowerWordKaan01
+meshes/dungeons/nordic/chambers/powerwordkest.nif	7 sequence target(s) missing from the palette: PArray07, Plane11, PowerWordKest04
+meshes/dungeons/nordic/chambers/powerwordklo.nif	4 sequence target(s) missing from the palette: KloLetterStreaks, PArray03, Plane05
+meshes/dungeons/nordic/chambers/powerwordkrah.nif	4 sequence target(s) missing from the palette: GLOW01, PowerWordKrahMesh01, STREAKSARRAY01
+meshes/dungeons/nordic/chambers/powerwordkrein.nif	4 sequence target(s) missing from the palette: PArray39, Plane43, PowerWordKrein01
+meshes/dungeons/nordic/chambers/powerwordkrii.nif	4 sequence target(s) missing from the palette: PArray32, Plane36, PowerWordKrii01
+meshes/dungeons/nordic/chambers/powerwordlaas.nif	4 sequence target(s) missing from the palette: GLOW03, LaasSStreaks, PowerWordLaasMesh01
+meshes/dungeons/nordic/chambers/powerwordlo.nif	4 sequence target(s) missing from the palette: PArray29, Plane33, PowerWordLo01
+meshes/dungeons/nordic/chambers/powerwordlun.nif	4 sequence target(s) missing from the palette: PArray33, Plane37, PowerWordLun01
+meshes/dungeons/nordic/chambers/powerwordmaar.nif	4 sequence target(s) missing from the palette: PArray10, Plane14, PowerWordMaar04
+meshes/dungeons/nordic/chambers/powerwordmey.nif	4 sequence target(s) missing from the palette: PArray20, Plane24, PowerWordMey01
+meshes/dungeons/nordic/chambers/powerwordmir.nif	4 sequence target(s) missing from the palette: GLOW07, PowerWordMirMesh01Glow, STREAKSARRAY07
+meshes/dungeons/nordic/chambers/powerwordnah.nif	4 sequence target(s) missing from the palette: PArray06, Plane10, PowerWordNah04
+meshes/dungeons/nordic/chambers/powerwordnir.nif	4 sequence target(s) missing from the palette: GLOW05, PowerWordNirMesh01, STREAKSARRAY05
+meshes/dungeons/nordic/chambers/powerwordnus.nif	4 sequence target(s) missing from the palette: PArray19, Plane23, PowerWordNus01
+meshes/dungeons/nordic/chambers/powerwordov.nif	4 sequence target(s) missing from the palette: PArray24, Plane28, PowerWordOv01
+meshes/dungeons/nordic/chambers/powerwordqo.nif	4 sequence target(s) missing from the palette: PArray27, Plane31, PowerWordQo01
+meshes/dungeons/nordic/chambers/powerwordraan.nif	4 sequence target(s) missing from the palette: GLOW06, PowerWordRaanMesh01, STREAKSARRAY06
+meshes/dungeons/nordic/chambers/powerwordru.nif	4 sequence target(s) missing from the palette: PArray09, Plane13, PowerWordRu04
+meshes/dungeons/nordic/chambers/powerwordsah.nif	4 sequence target(s) missing from the palette: PArray30, Plane34, PowerWordSah01
+meshes/dungeons/nordic/chambers/powerwordshul.nif	4 sequence target(s) missing from the palette: PArray39, Plane43, PowerWordShulGlow
+meshes/dungeons/nordic/chambers/powerwordslen.nif	4 sequence target(s) missing from the palette: PArray18, Plane22, PowerWordSlen01
+meshes/dungeons/nordic/chambers/powerwordstrun.nif	4 sequence target(s) missing from the palette: PArray25, Plane29, PowerWordStrun01
+meshes/dungeons/nordic/chambers/powerwordsu.nif	4 sequence target(s) missing from the palette: PArray11, Plane15, PowerWordSu04
+meshes/dungeons/nordic/chambers/powerwordtah.nif	4 sequence target(s) missing from the palette: GLOW08, PowerWordTahMesh01, STREAKSARRAY08
+meshes/dungeons/nordic/chambers/powerwordtoor.nif	4 sequence target(s) missing from the palette: PArray38, Plane42, PowerWordToor01
+meshes/dungeons/nordic/chambers/powerwordul.nif	4 sequence target(s) missing from the palette: PArray04, Plane06, PowerWordUlletters01
+meshes/dungeons/nordic/chambers/powerwordviik.nif	4 sequence target(s) missing from the palette: PArray16, Plane20, PowerWordViik01
+meshes/dungeons/nordic/chambers/powerwordwuld.nif	4 sequence target(s) missing from the palette: PArray05, Plane09, PowerWordWuldx01
+meshes/dungeons/nordic/chambers/powerwordyah.nif	4 sequence target(s) missing from the palette: GLOW04, PowerWordYahMesh01, STREAKSARRAY04
+meshes/dungeons/nordic/chambers/powerwordyol.nif	6 sequence target(s) missing from the palette: GLOW09, PowerWordYolMesh01, STREAKSARRAY09
+meshes/dungeons/nordic/chambers/powerwordzii.nif	4 sequence target(s) missing from the palette: PArray36, Plane40, PowerWordZii01
+meshes/dungeons/nordic/chambers/powerwordzul.nif	4 sequence target(s) missing from the palette: PArray31, Plane35, PowerWordZul01
+meshes/dungeons/nordic/chambers/powerwordzun.nif	4 sequence target(s) missing from the palette: PArray14, Plane18, PowerWordZun01
+meshes/dungeons/nordic/exterior/dragonmound/dragonmoundbase.nif	2 sequence target(s) missing from the palette: Base01, Base01:4
+meshes/dungeons/nordic/exterior/dragonmound/dragonmoundbasealt.nif	2 sequence target(s) missing from the palette: BaseAlt01, BaseAlt01:4
+meshes/dungeons/nordic/exterior/dragonmound/dragonmounddirtcap.nif	2 sequence target(s) missing from the palette: DragonMoundDirtCap:0, DragonMoundDirtCap:1
+meshes/dungeons/nordic/exterior/dragonmound/dragonmounddirtcapalt.nif	1 sequence target(s) missing from the palette: DragonMoundDirtCapAlt:0
+meshes/dungeons/nordic/exterior/magicstonealteration01.nif	1 sequence target(s) missing from the palette: MagicStoneRestoration01:8
+meshes/dungeons/nordic/exterior/magicstoneconjuration01.nif	1 sequence target(s) missing from the palette: MagicStoneRestoration01:8
+meshes/dungeons/nordic/exterior/magicstonedestruction01.nif	1 sequence target(s) missing from the palette: MagicStoneRestoration01:8
+meshes/dungeons/nordic/exterior/magicstoneillusion01.nif	1 sequence target(s) missing from the palette: MagicStoneRestoration01:8
+meshes/dungeons/nordic/exterior/magicstonerestoration01.nif	1 sequence target(s) missing from the palette: MagicStoneRestoration01:8
+meshes/dungeons/nordic/secretpass/animated/rmsmdoor02/norsecrmsmdoorsm02.nif	1 sequence target(s) missing from the palette: PArray01dust
+meshes/dungeons/riften/ratwayhall/riftenrwdoorspecial01.nif	1 sequence target(s) missing from the palette: Door:24
+meshes/effects/ashpile01.nif	2 sequence target(s) missing from the palette: AshPileMesh01:0, AshPileMesh:0
+meshes/effects/ashpileghost01.nif	2 sequence target(s) missing from the palette: PCloud02, Puddle:0
+meshes/effects/ashpileghostblack.nif	2 sequence target(s) missing from the palette: PCloud04, Puddle02:0
+meshes/effects/ashpileghostdark01.nif	2 sequence target(s) missing from the palette: PCloud02, Puddle:0
+meshes/effects/bfxburningbeamanim.nif	2 sequence target(s) missing from the palette: PCloudFire06, PCloudFire07
+meshes/effects/bloodspraydecap01.nif	4 sequence target(s) missing from the palette: pBloodDrops07, pBloodDrops08, pBloodSpray06
+meshes/effects/critterdragonfly01.nif	1 sequence target(s) missing from the palette: Wings
+meshes/effects/critterdragonfly02.nif	1 sequence target(s) missing from the palette: Wings01
+meshes/effects/cwcatapultexplosion.nif	5 sequence target(s) missing from the palette: Flash02:0, PCloud01, lightRaysIC01:0
+meshes/effects/cwfxcatapultprojectile.nif	5 sequence target(s) missing from the palette: Cylinder02, FireballProjectile01, FlameSide:0
+meshes/effects/cwoiltrapprojectile02.nif	4 sequence target(s) missing from the palette: Cylinder02, FlameSide:0, OilTrapProjectile01Mesh01:0
+meshes/effects/da09crystallightbeam01.nif	4 sequence target(s) missing from the palette: Cylinder09:0, Cylinder09:2, Object02:1
+meshes/effects/da09visionfx01.nif	2 sequence target(s) missing from the palette: Plane01:0, Plane01:1
+meshes/effects/dragoncrash/fxdragoncrashfurrow01.nif	7 sequence target(s) missing from the palette: PArray02, PArray03, PArray04
+meshes/effects/dragondeathtestexport.nif	23 sequence target(s) missing from the palette: Dragon_Base, Dragon_BaseGlow, Dragon_BaseMeat
+meshes/effects/ectopile01.nif	5 sequence target(s) missing from the palette: EctoPlasm01:0, EctoPlasm02:0, EctoSmoke01
+meshes/effects/effigyolaffxlight.nif	6 sequence target(s) missing from the palette: GlowMesh:0, RefractiomMesh:0, WispsGround01:0
+meshes/effects/explosionsplash.nif	9 sequence target(s) missing from the palette: BaseMesh03:0, Drops, Drops01
+meshes/effects/fallingdustexplosion01.nif	1 sequence target(s) missing from the palette: PCloud01
+meshes/effects/fxalduinexplosion.nif	93 sequence target(s) missing from the palette: DragonShell00, DragonShell00:0, DragonShell01
+meshes/effects/fxalduinsoulescape.nif	9 sequence target(s) missing from the palette: PArray01StreaksHead, PArray01StreaksHead01, PArray01StreaksHead02
+meshes/effects/fxalduintimrift.nif	5 sequence target(s) missing from the palette: OuterWisps:0, PArray01, PArraySmoke
+meshes/effects/fxambwaterfallsalmon01.nif	2 sequence target(s) missing from the palette: FishController01, FishController02
+meshes/effects/fxambwaterfallsalmon02.nif	2 sequence target(s) missing from the palette: FishController01, FishController02
+meshes/effects/fxbatgroup.nif	3 sequence target(s) missing from the palette: Plane02:0, Plane04:0, SuperSpray03
+meshes/effects/fxbirdflockfleepine.nif	1 sequence target(s) missing from the palette: PCloudPineSm
+meshes/effects/fxcameraattachblowingfog.nif	1 sequence target(s) missing from the palette: PCloud01
+meshes/effects/fxcameraattachdrips.nif	1 sequence target(s) missing from the palette: PCloud02drips
+meshes/effects/fxcameraattachdryneedleswindyup.nif	1 sequence target(s) missing from the palette: PCloudDryNeedlesUp01
+meshes/effects/fxcameraattachdust.nif	1 sequence target(s) missing from the palette: PCloud02
+meshes/effects/fxcameraattachdustfalmer.nif	1 sequence target(s) missing from the palette: PCloud13
+meshes/effects/fxcameraattachfinedust.nif	1 sequence target(s) missing from the palette: PCloudFineDust
+meshes/effects/fxcameraattachfinemist.nif	1 sequence target(s) missing from the palette: PCloudFineMist
+meshes/effects/fxcameraattachfluffs.nif	1 sequence target(s) missing from the palette: PCloudFluffs
+meshes/effects/fxcameraattachfog.nif	1 sequence target(s) missing from the palette: PCloud15
+meshes/effects/fxcameraattachgroundfog.nif	1 sequence target(s) missing from the palette: PCloudGroundFog
+meshes/effects/fxcameraattachleaves.nif	1 sequence target(s) missing from the palette: PCloudLeaves
+meshes/effects/fxcameraattachleaveswindy.nif	1 sequence target(s) missing from the palette: PCloudLeaves01
+meshes/effects/fxcameraattachleaveswindyup.nif	1 sequence target(s) missing from the palette: PCloudLeaves01Up
+meshes/effects/fxcameraattachneedles.nif	1 sequence target(s) missing from the palette: PCloudNeedles
+meshes/effects/fxcameraattachneedleswindy.nif	1 sequence target(s) missing from the palette: PCloudNeedles01
+meshes/effects/fxcameraattachneedleswindyup.nif	1 sequence target(s) missing from the palette: PCloudNeedlesUp01
+meshes/effects/fxcameraattachsmokeheavy.nif	1 sequence target(s) missing from the palette: PCloud12
+meshes/effects/fxcameraattachturbulentfog.nif	1 sequence target(s) missing from the palette: PCloud16
+meshes/effects/fxcameraattachupsnow.nif	2 sequence target(s) missing from the palette: PCloud06DefocusedSnow, PCloud06UpSnow
+meshes/effects/fxcameraattachwispyfog.nif	1 sequence target(s) missing from the palette: PCloud17
+meshes/effects/fxcatapultprojectile.nif	5 sequence target(s) missing from the palette: Cylinder02:0, FireballProjectile01, FlameSide:0
+meshes/effects/fxcatapultprojectile2.nif	5 sequence target(s) missing from the palette: Cylinder02:0, FireballProjectile01, FlameSide:0
+meshes/effects/fxcobwebexplosion02.nif	1 sequence target(s) missing from the palette: PCloud02
+meshes/effects/fxcobwebroundwall01.nif	1 sequence target(s) missing from the palette: webs:0
+meshes/effects/fxda09meridiacrystalglow.nif	4 sequence target(s) missing from the palette: Circle05:2, Flash05:1, GlowMesh12:0
+meshes/effects/fxda14portaldoor.nif	4 sequence target(s) missing from the palette: DarkBack04:1, DarkBack:0, OuterWisps:0
+meshes/effects/fxda16barrier.nif	5 sequence target(s) missing from the palette: outerGlow10:0, outerGlowBlack09:0, outerGlowBlack10:0
+meshes/effects/fxda16barrierdoor.nif	4 sequence target(s) missing from the palette: FrontWispMesh02, blackGlow04, brightGlow03
+meshes/effects/fxda16skullofcorruptiondestruction.nif	8 sequence target(s) missing from the palette: Glow01dark:0, Glow:0, OuterWisps:0
+meshes/effects/fxdirtgiantexplosion.nif	3 sequence target(s) missing from the palette: SuperSprayDirt, SuperSprayDust, SuperSprayRocks
+meshes/effects/fxdirtmoundpreeffect.nif	9 sequence target(s) missing from the palette: Cylinder01, Cylinder02, PArray01Streaks02
+meshes/effects/fxdragonbite.nif	1 sequence target(s) missing from the palette: SuperSpray01
+meshes/effects/fxdragondeathlhandbits.nif	1 sequence target(s) missing from the palette: PCloud07
+meshes/effects/fxdragondeathlhandfire.nif	1 sequence target(s) missing from the palette: PCloud08
+meshes/effects/fxdragondeathrhandbits.nif	1 sequence target(s) missing from the palette: PCloud05
+meshes/effects/fxdragondeathrhandfire.nif	1 sequence target(s) missing from the palette: PCloud06
+meshes/effects/fxdragonmounddirtexplosion.nif	36 sequence target(s) missing from the palette: DirtClod15:0, DirtClod16:0, DirtClod17:0
+meshes/effects/fxdustburstmed.nif	2 sequence target(s) missing from the palette: PArray01, PArray02
+meshes/effects/fxdustburstsm.nif	2 sequence target(s) missing from the palette: PArray03, PArray04
+meshes/effects/fxdustbursttiny.nif	2 sequence target(s) missing from the palette: PArray05, PArray06
+meshes/effects/fxdustdrop01.nif	2 sequence target(s) missing from the palette: Plane02:0, SuperSpray03
+meshes/effects/fxdustdrop02.nif	2 sequence target(s) missing from the palette: Plane03:0, SuperSpray05
+meshes/effects/fxfirewithembers02toggle.nif	10 sequence target(s) missing from the palette: Flames02grant03:0, Flames02grant03:1, Flames02grant04:0
+meshes/effects/fxfirewithembersheavytoggle.nif	13 sequence target(s) missing from the palette: Flames02grant03:0, Flames02grant03:1, Flames02grant04:0
+meshes/effects/fxfootstepsattachsnow.nif	4 sequence target(s) missing from the palette: PArray01, PArray02, SuperSprayLeft
+meshes/effects/fxgastrapblast.nif	5 sequence target(s) missing from the palette: FireArea, FireArea01Sparks, Glow
+meshes/effects/fxhalldirscairnbeam.nif	7 sequence target(s) missing from the palette: FXAmbBeamXbDustBig02, Glow02:0, Glow:0
+meshes/effects/fxhermaeusmorada04.nif	6 sequence target(s) missing from the palette: DarkBack11:0, FrontWispMesh04, OuterWisps05:0
+meshes/effects/fxicewraithdeathexplosion.nif	5 sequence target(s) missing from the palette: PCloud01, PCloud09, PCloud10
+meshes/effects/fxirkngthandcollapsedustcloud.nif	2 sequence target(s) missing from the palette: PArray01dust, PArray01dust01
+meshes/effects/fxlabyrinthianbarrier.nif	4 sequence target(s) missing from the palette: outerGlow10:0, outerGlowBlack09:0, refract01:0
+meshes/effects/fxmg02saarthalresonance.nif	3 sequence target(s) missing from the palette: PCloud01, PCloud02, Refract:0
+meshes/effects/fxpoisongaswithonoff.nif	3 sequence target(s) missing from the palette: Circle01Refract03:0, PPoisonCloud06, PPoisonCloud11Fast
+meshes/effects/fxpoisongaswithonoffdark.nif	3 sequence target(s) missing from the palette: Circle01Refract09:0, PPoisonCloud11, PPoisonCloud11Fast01
+meshes/effects/fxreadelderscrollcamattach.nif	1 sequence target(s) missing from the palette: ScrollGlow02
+meshes/effects/fxshadowmereemerge.nif	14 sequence target(s) missing from the palette: Cylinder01, PCloudThick, PCloudThin
+meshes/effects/fxshrineofboethiaorb.nif	4 sequence target(s) missing from the palette: outerGlowBlue:0, refract01, refract01:0
+meshes/effects/fxskyhaventemple.nif	10 sequence target(s) missing from the palette: Flash04, Flash04:1, GlowMesh37:0
+meshes/effects/fxsovingardportal.nif	12 sequence target(s) missing from the palette: BowlGlow, BowlMiddleRing, BowlOuterRing
+meshes/effects/fxsparkfountaintoggle.nif	1 sequence target(s) missing from the palette: SuperSpraySparks02
+meshes/effects/fxspiderwebstripexplosion.nif	2 sequence target(s) missing from the palette: PArray01webs, PArrayDirt
+meshes/effects/fxtg08nightingaleceremony.nif	9 sequence target(s) missing from the palette: DarkBack:0, Glow, Glow:0
+meshes/effects/fxtg08nightingaleceremonybeams.nif	14 sequence target(s) missing from the palette: BeamMeshStatic21, BeamMeshStatic21:0, BeamMeshStatic22
+meshes/effects/fxtg09nocturnalbirds.nif	612 sequence target(s) missing from the palette: BirdMesh228:0, BirdMesh229:0, BirdMesh229:0@#104
+meshes/effects/fxtg09nocturnalbirdsreverse.nif	186 sequence target(s) missing from the palette: BirdMesh331:0, BirdMesh331:0@#101, BirdMesh331:0@#104
+meshes/effects/fxtimetravelcamattach.nif	4 sequence target(s) missing from the palette: PCloud02, Plane03, Plane04
+meshes/effects/fxtimewarpcamattach.nif	3 sequence target(s) missing from the palette: Cylinder01, Plane05, ScrollGlow03
+meshes/effects/fxvalthumebloodpool.nif	1 sequence target(s) missing from the palette: L1_GooBase09:0
+meshes/effects/fxwerewolftransitionskin.nif	2 sequence target(s) missing from the palette: WereWolfLow01:0, WereWolfLow01:1
+meshes/effects/fx_azuraevilmagiccloud.nif	4 sequence target(s) missing from the palette: EvilBlackSmokeCloud04, EvilRefract02:0, Glowystuff03_Evil01:1
+meshes/effects/fx_azuragoodmagiccloud.nif	4 sequence target(s) missing from the palette: EvilRefract03:0, Glowystuff03_Evil12:1, SnowSpin02_Good04
+meshes/effects/gallusfxbody01.nif	6 sequence target(s) missing from the palette: BackGlow, BackGlow:0, GlowMesh01
+meshes/effects/greybeardwords/fxgreybeardshoutdah.nif	6 sequence target(s) missing from the palette: H01, Object03, Object13
+meshes/effects/greybeardwords/fxgreybeardshoutdun.nif	6 sequence target(s) missing from the palette: DUN, DUNletters, DUNstreaks
+meshes/effects/greybeardwords/fxgreybeardshoutfaas.nif	6 sequence target(s) missing from the palette: FAAS, FAASletters, FAASstreaks
+meshes/effects/greybeardwords/fxgreybeardshoutfeim.nif	6 sequence target(s) missing from the palette: FEIM, FEIMLetterStreaks, FEIMLetters
+meshes/effects/greybeardwords/fxgreybeardshoutfus.nif	6 sequence target(s) missing from the palette: F01, FusLetterStreaks, Object02
+meshes/effects/greybeardwords/fxgreybeardshoutgrah.nif	6 sequence target(s) missing from the palette: GRAH, GRAHStreaks, GRAHletters
+meshes/effects/greybeardwords/fxgreybeardshoutgron.nif	6 sequence target(s) missing from the palette: GRON, GronLetters, GronStreaks
+meshes/effects/greybeardwords/fxgreybeardshoutkest.nif	6 sequence target(s) missing from the palette: GreyLetters, LetterGlow, LetterStreaks01
+meshes/effects/greybeardwords/fxgreybeardshoutkoor.nif	6 sequence target(s) missing from the palette: KOOR1, KOOR2, KOOR3
+meshes/effects/greybeardwords/fxgreybeardshoutkrein.nif	6 sequence target(s) missing from the palette: KREIN1, KREIN2, KREIN3
+meshes/effects/greybeardwords/fxgreybeardshoutlok.nif	6 sequence target(s) missing from the palette: LOKBase, LOKBaseGlow, LOKletterGlow
+meshes/effects/greybeardwords/fxgreybeardshoutmaar.nif	6 sequence target(s) missing from the palette: MAAR, MAARletters, MAARstreaks
+meshes/effects/greybeardwords/fxgreybeardshoutnah.nif	6 sequence target(s) missing from the palette: ParticlesDust02, ParticlesGlow02, Plane07
+meshes/effects/greybeardwords/fxgreybeardshoutro.nif	6 sequence target(s) missing from the palette: ParticlesDust, ParticlesGlow, ShadowLetters
+meshes/effects/greybeardwords/fxgreybeardshoutru.nif	6 sequence target(s) missing from the palette: ParticlesDust10, ParticlesGlow11, RU
+meshes/effects/greybeardwords/fxgreybeardshoutshul.nif	6 sequence target(s) missing from the palette: KREIN04, ParticlesDust21, ParticlesGlow20
+meshes/effects/greybeardwords/fxgreybeardshoutsu.nif	6 sequence target(s) missing from the palette: ParticlesDust08, ParticlesGlow07, SU
+meshes/effects/greybeardwords/fxgreybeardshouttoor.nif	6 sequence target(s) missing from the palette: ParticlesDust19, ParticlesGlow18, TOOR1
+meshes/effects/greybeardwords/fxgreybeardshoutvah.nif	5 sequence target(s) missing from the palette: ParticlesDust14, VAR, VAR1
+meshes/effects/greybeardwords/fxgreybeardshoutwuld.nif	6 sequence target(s) missing from the palette: ParticlesDust01, ParticlesGlow01, Plane04
+meshes/effects/greybeardwords/fxgreybeardshoutyol.nif	6 sequence target(s) missing from the palette: ParticlesDust17, ParticlesGlow16, YOL1
+meshes/effects/greybeardwords/fxgreybeardshoutzii.nif	6 sequence target(s) missing from the palette: ParticlesDust05, ParticlesGlow05, ZII
+meshes/effects/impacteffects/bloodspraywerewolfeat01.nif	3 sequence target(s) missing from the palette: pBloodBigSpray03, pBloodDrops10, pBloodStrings03
+meshes/effects/irkngthandpipeexplosion.nif	4 sequence target(s) missing from the palette: PCloudSmoke06, lightRays:0, pPipePieces
+meshes/effects/mg07labyrinthianlightbeam.nif	9 sequence target(s) missing from the palette: Cylinder09:0, Cylinder09:1, Cylinder09:2
+meshes/effects/mg07labyrinthianshockwave.nif	7 sequence target(s) missing from the palette: Cylinder03, PArray03, RefractMesh03:0
+meshes/effects/mgaugurfx01.nif	5 sequence target(s) missing from the palette: GlowMesh:1, PArray_OuterArmsSparks02, ShineRing:0
+meshes/effects/mgmagicfirepillar01.nif	8 sequence target(s) missing from the palette: CoalsBase:0, CoalsBase:1, MeshInnerCore:0
+meshes/effects/mgmagicfirepillareye01.nif	6 sequence target(s) missing from the palette: CoalsBase:0, CoalsBase:1, MeshInnerCore:0
+meshes/effects/mgmagicfirepillarmidden01.nif	7 sequence target(s) missing from the palette: CoalsBase:0, MeshInnerCore:0, MeshOuterFlame:0
+meshes/effects/mgmagicfirepillarsmall.nif	6 sequence target(s) missing from the palette: CoalsBase01:0, CoalsBase01:1, MeshInnerCore01:0
+meshes/effects/ms04memoryfxbody01.nif	2 sequence target(s) missing from the palette: GlowMesh01:0, Plane01
+meshes/effects/ms06potemabanish.nif	8 sequence target(s) missing from the palette: DarkBackGlow, GlowMesh:1, PArray_OuterArms
+meshes/effects/ms06potemasummon.nif	8 sequence target(s) missing from the palette: DarkBackGlow, GlowMesh:1, PArray_OuterArms
+meshes/effects/oiltrapexplosion01.nif	4 sequence target(s) missing from the palette: Flash02:0, WispsGround, WispsGround:0
+meshes/effects/ruinspuzzledoorfx.nif	3 sequence target(s) missing from the palette: PCloud01, pDustRim, pDustRimMore01
+meshes/effects/trailerfx/fxcameraattachtrailervtundra.nif	1 sequence target(s) missing from the palette: PCloud07
+meshes/effects/trailerfx/tfx01.nif	1 sequence target(s) missing from the palette: SuperSprayBreath
+meshes/effects/trailerfx/tfx02.nif	2 sequence target(s) missing from the palette: pBloodDrops04, pBloodDrops05
+meshes/effects/trailerfx/tfx03.nif	1 sequence target(s) missing from the palette: SuperSprayBreath01
+meshes/effects/trailerfx/tfxbirdflockfleepine.nif	3 sequence target(s) missing from the palette: PCloudPineSm, PCloudPineSm01, PCloudPineSm02
+meshes/effects/trailerfx/tfxcamerash16clouds.nif	1 sequence target(s) missing from the palette: PCloud10
+meshes/effects/trailerfx/tfxcamerawarp.nif	1 sequence target(s) missing from the palette: L2_Plane04:0
+meshes/effects/trailerfx/tfxdragonbreath.nif	1 sequence target(s) missing from the palette: SuperSprayBreath01
+meshes/effects/trailerfx/tfxdragondissolve.nif	24 sequence target(s) missing from the palette: Dragon, DragonChestBones:0, DragonGlow
+meshes/effects/trailerfx/tfxdragonlandingimpactsnow.nif	2 sequence target(s) missing from the palette: SuperSprayDirtSnow, SuperSprayDust01
+meshes/effects/trailerfx/tfxdragontakeoff.nif	4 sequence target(s) missing from the palette: SuperSpray05, SuperSpray06, SuperSpray07
+meshes/effects/trailerfx/tfxfootsteps.nif	2 sequence target(s) missing from the palette: SuperSprayLeft, SuperSprayRight
+meshes/effects/trailerfx/tfxmanbreathfast.nif	1 sequence target(s) missing from the palette: SuperSprayBreath
+meshes/effects/trailerfx/tfxmanfootstep.nif	2 sequence target(s) missing from the palette: SuperSprayLeft, SuperSprayRight
+meshes/effects/trailerfx/tfxswordblood.nif	2 sequence target(s) missing from the palette: pBloodDrops04, pBloodDrops05
+meshes/effects/trailerfx/tfxvoicepush.nif	7 sequence target(s) missing from the palette: RefractMesh03:0, Trail09:0, Trail10:0
+meshes/effects/trapoillampexplosion.nif	16 sequence target(s) missing from the palette: Flash02:0, LampPart01:0, LampPart02:0
+meshes/effects/workingexamples/fxexplosionworkingexample.nif	2 sequence target(s) missing from the palette: Plane01:0, SuperSpray01
+meshes/furniture/blacksmithforgemarker.nif	13 sequence target(s) missing from the palette: BlacksmithForge01:2, BlacksmithForgeGlow, BlacksmithForgeGlow:0
+meshes/furniture/blacksmithforgemarkerwr.nif	13 sequence target(s) missing from the palette: BlacksmithForge01:2, BlacksmithForgeGlow, BlacksmithForgeGlow:0
+meshes/furniture/blacksmithingskyforgemarker.nif	11 sequence target(s) missing from the palette: BlacksmithForge01:5, Flames, Glow:0
+meshes/furniture/clutter/blacksmithsharpeningwheelanimating.nif	1 sequence target(s) missing from the palette: PArray01
+meshes/furniture/clutter/boethiahpillarfurniture01.nif	5 sequence target(s) missing from the palette: BloodPillar02, BloodPillar02:0, PIllarGlow
+meshes/furniture/clutter/milllogpile.nif	7 sequence target(s) missing from the palette: Dust, DustSabotage, PArrayBouncedDust
+meshes/furniture/clutter/woodchoppingblockanimating.nif	1 sequence target(s) missing from the palette: PArray02
+meshes/furniture/dragonfurniture/imptowerwallcollapse/imptowerwallcollapse01.nif	5 sequence target(s) missing from the palette: PArray01dust, PArray01dust01, PArray01dust02
+meshes/furniture/dragonfurniture/imptowerwallcollapse/imptowerwallcollapsefrost.nif	8 sequence target(s) missing from the palette: FirebreathGlow, FirebreathPCloud01, FirebreathPCloud02add
+meshes/furniture/fxspiderwebkitdoorspecial.nif	3 sequence target(s) missing from the palette: WetWeb, dryWeb, dryWeb02
+meshes/furniture/sfarmhousemill.nif	1 sequence target(s) missing from the palette: PSplinters
+meshes/furniture/smeltermarker.nif	8 sequence target(s) missing from the palette: Cracks, PBurst, PBurstSmoke
+meshes/interface/intmenufogparticles.nif	2 sequence target(s) missing from the palette: EmitGEo:0, PArray01
+meshes/interface/intperkline01.nif	1 sequence target(s) missing from the palette: Plane05:0
+meshes/interface/intperkskydome.nif	6 sequence target(s) missing from the palette: FillerGas, WarGas, WarGas:1
+meshes/interface/intperkstars01.nif	3 sequence target(s) missing from the palette: Glow01:0, Glow:0, Plane01:0
+meshes/interface/intskillstoperktransitioneffect.nif	1 sequence target(s) missing from the palette: PCloud03
+meshes/interface/logo/logo01ae_animated.nif	1 sequence target(s) missing from the palette: GameBryoController
+meshes/landscape/trees/wrtempletree02root/wrtempletree02root.nif	1 sequence target(s) missing from the palette: NPC Root [Root]
+meshes/magic/absorbbeam01.nif	2 sequence target(s) missing from the palette: pSparksBase, pWisps01
+meshes/magic/absorbbluebeam01.nif	2 sequence target(s) missing from the palette: pSparksBase, pWisps01
+meshes/magic/absorbbluecastpointfx01.nif	1 sequence target(s) missing from the palette: PCloud03
+meshes/magic/absorbbluehandfx01.nif	2 sequence target(s) missing from the palette: OuterWisps01:0, OuterWisps01:1
+meshes/magic/absorbbluetargetpointfx.nif	2 sequence target(s) missing from the palette: PCloud01, pStrips01DarkSoul01
+meshes/magic/absorbcastpointfx01.nif	1 sequence target(s) missing from the palette: PCloud03
+meshes/magic/absorbgreenbeam01.nif	2 sequence target(s) missing from the palette: pSparksBase, pWisps01
+meshes/magic/absorbgreencastpointfx01.nif	1 sequence target(s) missing from the palette: PCloud03
+meshes/magic/absorbgreenhandfx01.nif	2 sequence target(s) missing from the palette: OuterWisps01:0, OuterWisps01:1
+meshes/magic/absorbgreentargetpointfx.nif	2 sequence target(s) missing from the palette: PCloud01, pStrips01DarkSoul01
+meshes/magic/absorbredhandfx01.nif	2 sequence target(s) missing from the palette: OuterWisps01:0, OuterWisps01:1
+meshes/magic/absorbspelleffect.nif	3 sequence target(s) missing from the palette: Circle02, pSparks, pWisps
+meshes/magic/absorbspellhiteffect01.nif	3 sequence target(s) missing from the palette: Circle03, pSparks01, pWisps01
+meshes/magic/absorbtargetpointfx.nif	2 sequence target(s) missing from the palette: PCloud01, pStrips01DarkSoul01
+meshes/magic/alterposfxhand01.nif	13 sequence target(s) missing from the palette: BigCube01:0, BigCube01:1, Cylinder01:0
+meshes/magic/aurawhisperbodyfx.nif	5 sequence target(s) missing from the palette: BackGlow, BackGlow:0, GlowMesh01
+meshes/magic/baneundeadcastbodyfx.nif	6 sequence target(s) missing from the palette: BrightGlowMesh01, BrightGlowMesh01:0, HeatRefraction01:0
+meshes/magic/baneundeadhandeffects.nif	4 sequence target(s) missing from the palette: BrightGlowMesh:0, Sparks02, pFireballCore04
+meshes/magic/blizzardcastbodyfx.nif	5 sequence target(s) missing from the palette: BrightGlowMesh01, BrightGlowMesh01:0, Flash04:0
+meshes/magic/blizzardhandeffects.nif	3 sequence target(s) missing from the palette: BrightGlowMesh:0, Sparks02, pFireballCore04
+meshes/magic/blizzardhazard.nif	10 sequence target(s) missing from the palette: FXMistLow02:0, FXMistLow02:1, PArray01
+meshes/magic/blizzardthroatofworldhazard.nif	8 sequence target(s) missing from the palette: FXMistLow02:0, FXMistLow02:1, PArray02Shards01
+meshes/magic/callofvalortargetfx01.nif	2 sequence target(s) missing from the palette: Object02:0, PArray02
+meshes/magic/commandtargetfx.nif	4 sequence target(s) missing from the palette: LineEffects:0, Object03, Object03:0
+meshes/magic/da16skulldreamsteelhitfx.nif	2 sequence target(s) missing from the palette: RefractMesh01:0, pStrips01DarkSoul01
+meshes/magic/da16skullexplosionfx.nif	9 sequence target(s) missing from the palette: Cylinder05, DarkBack01:0, PArray01
+meshes/magic/da16skullhandfx01.nif	3 sequence target(s) missing from the palette: GeoSphere01, HandObject03:1, pFireballCore04
+meshes/magic/da16skullofcorruptiondestructionbodyfx.nif	10 sequence target(s) missing from the palette: BrightGlowMesh01, BrightGlowMesh01:0, Flash04:0
+meshes/magic/da16skullofcorruptiondestructionhandeffects.nif	3 sequence target(s) missing from the palette: BrightGlowMesh:0, BrightGlowMesh:1, pFireballCore04
+meshes/magic/detectlifefxhand01.nif	3 sequence target(s) missing from the palette: Circle02:0, Circle02:1, pSmallHandParts01
+meshes/magic/disarmshouttargetfx.nif	4 sequence target(s) missing from the palette: GlowMeshShield, GlowMeshWeapon, LineEffects01:0
+meshes/magic/disguisecastpointfx01.nif	4 sequence target(s) missing from the palette: pStrips01DarkSoul02, pStrips01DarkSoul03, pStrips01DarkSoulGlow
+meshes/magic/disguisetargeteffects.nif	1 sequence target(s) missing from the palette: GlowMesh01:0
+meshes/magic/disguisetargetpointfx.nif	2 sequence target(s) missing from the palette: pStrips01DarkSoul01, pStrips01DarkSoulGlow
+meshes/magic/dismayshouttargetfx.nif	4 sequence target(s) missing from the palette: LineEffects:0, Object03, Object03:0
+meshes/magic/dragonflamewaveproject01.nif	3 sequence target(s) missing from the palette: RefractMesh03, Wisps03:0, Wisps03:1
+meshes/magic/dragonrendhiteffect.nif	7 sequence target(s) missing from the palette: DarkGlow:0, Flash02:0, PArray01
+meshes/magic/elemetalfuryenchaddon01.nif	2 sequence target(s) missing from the palette: PArray01, PArrayLoose
+meshes/magic/expilusionmassdark01.nif	8 sequence target(s) missing from the palette: GeoSphere01, GeoSphere01:0, GeoSphere01:1
+meshes/magic/expilusionmasslight01.nif	8 sequence target(s) missing from the palette: GeoSphere01, GeoSphere01:0, GeoSphere01:1
+meshes/magic/explosionatronachstormattack.nif	30 sequence target(s) missing from the palette: Flash02:0, Flash02:1, Flash03:0
+meshes/magic/explosionfrost01.nif	6 sequence target(s) missing from the palette: Flash02:0, Flash02:1, PArray02
+meshes/magic/explosionillusionlight01.nif	7 sequence target(s) missing from the palette: Flash02:0, Flash02:1, lightRaysIC01:0
+meshes/magic/explosionilusiondark01.nif	9 sequence target(s) missing from the palette: Flash02:0, Flash02:1, lightRays:0
+meshes/magic/explosionshock01.nif	18 sequence target(s) missing from the palette: Flash02:0, Flash02:1, ProceduralGeometry
+meshes/magic/explosionshockmass01.nif	4 sequence target(s) missing from the palette: Flash02:0, Flash02:1, Torus01:0
+meshes/magic/expparalyzemass01.nif	7 sequence target(s) missing from the palette: GeoSphere01:0, GeoSphere01:1, Glow:0
+meshes/magic/fireball01handeffects.nif	5 sequence target(s) missing from the palette: BrightGlowMesh:0, HeatRefraction:0, pChargeFire
+meshes/magic/fireballdragonprojectile01.nif	4 sequence target(s) missing from the palette: Cylinder02:0, FlameSide:0, Wisps02:0
+meshes/magic/fireballexp01.nif	4 sequence target(s) missing from the palette: Flash02:0, Torus01:0, pFireBall
+meshes/magic/fireballexpsmall01.nif	2 sequence target(s) missing from the palette: Flash02:0, pFireBall
+meshes/magic/fireballprojectile01.nif	3 sequence target(s) missing from the palette: Cylinder02:0, FlameSide:0, Wisps02:0
+meshes/magic/fireballprojectile02.nif	4 sequence target(s) missing from the palette: Cylinder02:0, Cylinder03:0, FlameSide:0
+meshes/magic/fireboltprojectile.nif	2 sequence target(s) missing from the palette: Cylinder11, pFireballCore09
+meshes/magic/firesprayfx01.nif	2 sequence target(s) missing from the palette: Cylinder09, pFlameSpellBase04
+meshes/magic/firestormareaeffect.nif	9 sequence target(s) missing from the palette: Glow:0, LowerFlame:1, LowerFlame:2
+meshes/magic/firestormcastbodyfx.nif	6 sequence target(s) missing from the palette: BrightGlowMesh01, BrightGlowMesh01:0, HeatRefraction01:0
+meshes/magic/firestormhandeffects.nif	4 sequence target(s) missing from the palette: BrightGlowMesh:0, Sparks02, pFireballCore04
+meshes/magic/firewallfx01.nif	4 sequence target(s) missing from the palette: Circle01:0, Cylinder10:0, WispsGround01
+meshes/magic/frostbarrier01.nif	7 sequence target(s) missing from the palette: Circle01:0, IceMesh:0, IceMesh:1
+meshes/magic/frostbarrierlarge01.nif	4 sequence target(s) missing from the palette: Circle01:0, IceMesh:0, PArray01
+meshes/magic/frostbolthandfx01.nif	3 sequence target(s) missing from the palette: BrightGlowMesh:1, PCloud05, pSmallSnow03
+meshes/magic/frosthandfx01.nif	3 sequence target(s) missing from the palette: PCloud05, pSmallSnow03, pSmallSnow03-Emitter
+meshes/magic/frostruneprojectile.nif	7 sequence target(s) missing from the palette: Glow:0, Plane01, RuneSymbol
+meshes/magic/fxfirecloak01.nif	8 sequence target(s) missing from the palette: FlameCloakMesh:0, FlameCloakMesh:1, GlowMesh01
+meshes/magic/fxfirecloakhandeffects.nif	5 sequence target(s) missing from the palette: BrightGlowMesh:0, FlameCloakMesh01:0, FlameCloakMesh01:1
+meshes/magic/fxfrostballwispyprojectile.nif	5 sequence target(s) missing from the palette: Flash01:0, IceCloakMesh:0, IceCloakMesh:1
+meshes/magic/fxicecloak01.nif	7 sequence target(s) missing from the palette: GlowMesh01, GlowMesh01:0, GlowMesh:0
+meshes/magic/fxicecloakhandeffects.nif	6 sequence target(s) missing from the palette: BrightGlowMesh:0, FlameCloakMesh01:0, FlameCloakMesh01:1
+meshes/magic/fxicestormprojectile.nif	7 sequence target(s) missing from the palette: Flash01:0, IceCloakMesh:0, IceCloakMesh:1
+meshes/magic/fxlightspellhandeffects.nif	6 sequence target(s) missing from the palette: Circle04:0, Flash02:0, SuperSpray06
+meshes/magic/fxshockcloak01.nif	5 sequence target(s) missing from the palette: GlowMesh01, GlowMesh01:0, GlowMesh:0
+meshes/magic/fxshockcloakhandeffects.nif	6 sequence target(s) missing from the palette: FlameCloakMesh01:0, FlameCloakMesh01:1, PCloudPowerCore
+meshes/magic/fxtimerift.nif	4 sequence target(s) missing from the palette: Clouds, MagicStreams, PArraySnowFlakeBunches
+meshes/magic/fxwwspiritextracthit.nif	6 sequence target(s) missing from the palette: EnergyMesh:0, HandObject03:1, OuterGlow:0
+meshes/magic/healcontargetfx01.nif	3 sequence target(s) missing from the palette: GeoSphere04:0, Object02:0, PArray02
+meshes/magic/healfxhand01.nif	5 sequence target(s) missing from the palette: PCloudPowerCore, Sphere01:0, lightRays:0
+meshes/magic/healinghazard.nif	6 sequence target(s) missing from the palette: Flash01:1, GeoSphere06:0, pGlows
+meshes/magic/healmystcontargetfx01.nif	3 sequence target(s) missing from the palette: GeoSphere04:0, Object02:0, PArray02
+meshes/magic/healmystfxhand01.nif	6 sequence target(s) missing from the palette: PCloudPowerCore, Sphere01:0, glow:0
+meshes/magic/healmysttargetfx.nif	3 sequence target(s) missing from the palette: GeoSphere03:0, Object01:0, PArray01
+meshes/magic/healritualcastbodyfx.nif	5 sequence target(s) missing from the palette: BigHealGlow, BrightGlowMesh01, BrightGlowMesh01:0
+meshes/magic/healritualhandeffects.nif	4 sequence target(s) missing from the palette: BrightGlowMesh:0, Sparks02, pFireballCore04
+meshes/magic/healtargetfx.nif	3 sequence target(s) missing from the palette: GeoSphere03:0, Object01:0, PArray01
+meshes/magic/iceprojectile01.nif	3 sequence target(s) missing from the palette: GlowCenter:0, IceGlow:0, PCloud06
+meshes/magic/iceprojectile02.nif	5 sequence target(s) missing from the palette: GlowCenter:0, IceGlow:0, Icicle01_Low02:1
+meshes/magic/icesprayprojectile01.nif	2 sequence target(s) missing from the palette: BrightGlowMesh01:1, pWisps
+meshes/magic/illusionmassgreencastbodyfx.nif	2 sequence target(s) missing from the palette: BrightGlowMesh01, BrightGlowMesh01:0
+meshes/magic/illusionmassgreenhandeffects.nif	3 sequence target(s) missing from the palette: BrightGlowMesh:0, Sparks02, pFireballCore04
+meshes/magic/illusionmassredcastbodyfx.nif	2 sequence target(s) missing from the palette: BrightGlowMesh01, BrightGlowMesh01:0
+meshes/magic/illusionmassredhandeffects.nif	3 sequence target(s) missing from the palette: BrightGlowMesh:0, Sparks02, pFireballCore04
+meshes/magic/illusionnegfxbody01.nif	5 sequence target(s) missing from the palette: GlowMesh01:0, lightRaysIC:0, pSparksHitEffects
+meshes/magic/illusionnegfxhand01.nif	3 sequence target(s) missing from the palette: Circle02, PCloudPowerCore, pSmallHandParts01
+meshes/magic/illusionposfxbody01.nif	4 sequence target(s) missing from the palette: GlowMesh01:0, lightRaysIC:0, pSparksHitEffects
+meshes/magic/illusionposfxhand01.nif	3 sequence target(s) missing from the palette: Circle02, PCloudPowerCore, pSmallHandParts01
+meshes/magic/invisfxbody01.nif	6 sequence target(s) missing from the palette: BackGlow, BackGlow:0, GlowMesh01
+meshes/magic/invisfxhand01.nif	15 sequence target(s) missing from the palette: BigCube01:0, BigCube01:1, Cylinder01:0
+meshes/magic/lightningbolt01.nif	6 sequence target(s) missing from the palette: ProceduralGeometry, ProceduralGeometry@#1, ProceduralGeometry@#3
+meshes/magic/lightningbolt02.nif	6 sequence target(s) missing from the palette: ProceduralGeometry, ProceduralGeometry@#1, ProceduralGeometry@#3
+meshes/magic/lightningbolt03.nif	2 sequence target(s) missing from the palette: ProceduralGeometry, object0
+meshes/magic/lightningbolt04.nif	2 sequence target(s) missing from the palette: ProceduralGeometry, object0
+meshes/magic/lightningboltdwarvenspider.nif	2 sequence target(s) missing from the palette: ProceduralGeometry, object0
+meshes/magic/lightningmassbolt03.nif	9 sequence target(s) missing from the palette: Cylinder09:0, Cylinder09:1, Cylinder09:2
+meshes/magic/lightningstormcastbodyfx.nif	6 sequence target(s) missing from the palette: BrightGlowMesh01, BrightGlowMesh01:0, HeatRefraction01:0
+meshes/magic/lightningstormhandeffects.nif	4 sequence target(s) missing from the palette: BrightGlowMesh:0, Sparks02, pFireballCore04
+meshes/magic/lightspellactorfx.nif	5 sequence target(s) missing from the palette: Circle02, Flash, SuperSpray04
+meshes/magic/lightspellhazard.nif	5 sequence target(s) missing from the palette: Circle03, Flash01, SuperSpray05
+meshes/magic/magdragonfire01.nif	5 sequence target(s) missing from the palette: FireCone, L2_MAGdragonFireGWarp, MAGdragonFireGlowLong
+meshes/magic/magdragonfrost01.nif	5 sequence target(s) missing from the palette: FireCone, MAGdragonFireGlowLong, PArray02
+meshes/magic/magdragonmouthfireskin.nif	1 sequence target(s) missing from the palette: DragonMouthFireSkin:0
+meshes/magic/magdragonpowerabsorb.nif	3 sequence target(s) missing from the palette: PArray01Streaks, PCloud02, glow:0
+meshes/magic/magdragonpowerabsorbman.nif	2 sequence target(s) missing from the palette: PArray01Streaks01, PArray01Streaks02
+meshes/magic/magdwarvencenturionsteambreath.nif	2 sequence target(s) missing from the palette: SuperSprayPuff, jet:0
+meshes/magic/maggreybeardpowerabsorb.nif	2 sequence target(s) missing from the palette: PArray01Streaks03, glow01:0
+meshes/magic/magicespikevolleyexplosion.nif	5 sequence target(s) missing from the palette: PCloud01, PCloud09, PCloud10
+meshes/magic/magspidermouthwetskin.nif	1 sequence target(s) missing from the palette: MAGSpiderMouthWetSkin
+meshes/magic/magspiderspithiteffect.nif	2 sequence target(s) missing from the palette: ChamferBox01:0, PArray02
+meshes/magic/magsprigganbugsprayprojectile.nif	2 sequence target(s) missing from the palette: Cylinder09, pFlameSpellBase01bugs
+meshes/magic/magsprigganconccastingart.nif	2 sequence target(s) missing from the palette: GutMagicPArray03, PArray14Lhand
+meshes/magic/magsprigganmatronbugsprayprojectile.nif	2 sequence target(s) missing from the palette: Cylinder09, pFlameSpellBase01bugs
+meshes/magic/magsprigganmatronconccastingart.nif	2 sequence target(s) missing from the palette: GutMagicPArray03, PArray14Lhand
+meshes/magic/mufflehitfx.nif	8 sequence target(s) missing from the palette: pLeftGlow, pLeftGlow01, pLeftGlowLocal
+meshes/magic/nighteyefxhand01.nif	6 sequence target(s) missing from the palette: Cylinder01:0, GeoSphere01:0, GeoSphere01:1
+meshes/magic/nightingalestrifeprojectile01.nif	6 sequence target(s) missing from the palette: Cylinder02:0, FlameSide:0, RefractMesh03
+meshes/magic/nightingalestrifetargetpointfx.nif	1 sequence target(s) missing from the palette: pStrips01DarkSoul01
+meshes/magic/nightingalesubterfugeprojectile01.nif	6 sequence target(s) missing from the palette: Cylinder02:0, FlameSide:0, RefractMesh03
+meshes/magic/paralyzefxbody01.nif	6 sequence target(s) missing from the palette: BackGlow, BackGlow:0, GlowMesh01
+meshes/magic/paralyzefxhand01.nif	5 sequence target(s) missing from the palette: Cylinder01:0, GeoSphere01:0, GeoSphere01:1
+meshes/magic/paralyzemasscastbodyfx.nif	2 sequence target(s) missing from the palette: BrightGlowMesh01, BrightGlowMesh01:0
+meshes/magic/paralyzemasshandeffects.nif	3 sequence target(s) missing from the palette: BrightGlowMesh:0, Sparks02, pFireballCore04
+meshes/magic/paralyzetargetfx.nif	4 sequence target(s) missing from the palette: LineEffects:0, Object03, Object03:0
+meshes/magic/poisoncloak01.nif	1 sequence target(s) missing from the palette: pSmallSparks03
+meshes/magic/poisonsprayprojectile01.nif	4 sequence target(s) missing from the palette: PCloudSplashAnim01, pDarkWisps, pFluidDrops
+meshes/magic/reanimatehandfx01.nif	5 sequence target(s) missing from the palette: GeoSphere01:0, GeoSphere01:1, HandCircle01:0
+meshes/magic/reanimateprojectile.nif	5 sequence target(s) missing from the palette: GeoSphere06:0, GeoSphere06:1, GeoSphere06:2
+meshes/magic/reanimateritualcastbodyfx.nif	8 sequence target(s) missing from the palette: BrightGlowMesh01, BrightGlowMesh01:0, Flash04:0
+meshes/magic/reanimateritualhandeffects.nif	3 sequence target(s) missing from the palette: BrightGlowMesh:0, BrightGlowMesh:1, pFireballCore04
+meshes/magic/reanimatetargetfx.nif	3 sequence target(s) missing from the palette: Object03:0, PArray04, PArray05
+meshes/magic/runefireprojectile01.nif	7 sequence target(s) missing from the palette: Glow:0, Plane01, RuneSymbolBright
+meshes/magic/runefrostprojectile01.nif	7 sequence target(s) missing from the palette: Glow:0, Plane01, RuneSymbolBright
+meshes/magic/runelightningprojectile01.nif	15 sequence target(s) missing from the palette: Glow:0, Plane01, ProceduralGeometry
+meshes/magic/runetest.nif	7 sequence target(s) missing from the palette: Glow:0, Plane01, RuneSymbol
+meshes/magic/shieldritualcastbodyfx.nif	5 sequence target(s) missing from the palette: BigHealGlow, BrightGlowMesh01, BrightGlowMesh01:0
+meshes/magic/shieldritualhandeffects.nif	4 sequence target(s) missing from the palette: BrightGlowMesh:0, Sparks02, pFireballCore04
+meshes/magic/shieldspellbodyfx.nif	5 sequence target(s) missing from the palette: BackGlow, BackGlow:0, GlowMesh01
+meshes/magic/shieldspellhand01.nif	9 sequence target(s) missing from the palette: BigCube01:0, BigCube01:1, Circle01
+meshes/magic/shockhandeffects.nif	3 sequence target(s) missing from the palette: PCloudPowerCore, PCloudPowerHand, glow:0
+meshes/magic/shockwallfx01.nif	7 sequence target(s) missing from the palette: Circle01:0, Cylinder10:0, ProceduralGeometry
+meshes/magic/shoutareaexplosion01.nif	6 sequence target(s) missing from the palette: GeoSphere01, GeoSphere01:0, Glow:0
+meshes/magic/shoutareaexplosionsmall01.nif	6 sequence target(s) missing from the palette: GeoSphere01, GeoSphere01:0, Glow:0
+meshes/magic/shoutareaexplosionwarm.nif	6 sequence target(s) missing from the palette: GeoSphere01, GeoSphere01:0, Glow:0
+meshes/magic/shoutselfareaeffect01.nif	6 sequence target(s) missing from the palette: GeoSphere01, GeoSphere01:0, Glow:0
+meshes/magic/slowtimehiteffect.nif	3 sequence target(s) missing from the palette: GeoSphere01, GeoSphere01:0, Ripples:0
+meshes/magic/soultrapcastpointfx01.nif	2 sequence target(s) missing from the palette: pStrips01DarkSoul02, pStrips01DarkSoul03
+meshes/magic/soultraphandeffects.nif	6 sequence target(s) missing from the palette: GlowBright:0, PCloudPowerCore, PCloudPowerCore01
+meshes/magic/soultraptargeteffects.nif	4 sequence target(s) missing from the palette: CenterDark, GlowMesh01, GlowMesh01:0
+meshes/magic/soultraptargetpointfx.nif	1 sequence target(s) missing from the palette: pStrips01DarkSoul01
+meshes/magic/staffofmagnusbolt01.nif	9 sequence target(s) missing from the palette: Cylinder09:0, Cylinder09:1, Cylinder09:2
+meshes/magic/staffofmagnusfxhand01.nif	4 sequence target(s) missing from the palette: Circle02:0, Circle02:1, PCloudPowerCore
+meshes/magic/stormhazard.nif	4 sequence target(s) missing from the palette: CloudMesh:0, CloudMesh:1, DarkMesh
+meshes/magic/summonbanishhandfx01.nif	3 sequence target(s) missing from the palette: GeoSphere01, Object03:1, OuterWisps01
+meshes/magic/summonbanishtargetfx.nif	7 sequence target(s) missing from the palette: Cylinder05, DarkBack01:0, DarkBack04:1
+meshes/magic/summoncommandhandfx01.nif	3 sequence target(s) missing from the palette: GeoSphere03, Object03Hand2:1, PArray04
+meshes/magic/summonhandfx01.nif	4 sequence target(s) missing from the palette: Circle01:0, GeoSphere01, Object03:1
+meshes/magic/summonritualcastbodyfx.nif	10 sequence target(s) missing from the palette: BrightGlowMesh01, BrightGlowMesh01:0, Flash04:0
+meshes/magic/summonritualhandeffects.nif	3 sequence target(s) missing from the palette: BrightGlowMesh:0, BrightGlowMesh:1, pFireballCore04
+meshes/magic/summontargetfx.nif	9 sequence target(s) missing from the palette: DarkBack04:1, DarkBack:0, LineEffects:0
+meshes/magic/summonvalortargetfx.nif	9 sequence target(s) missing from the palette: DarkBack04:1, DarkBack:0, LineEffects:0
+meshes/magic/telekinesisfxhand01.nif	3 sequence target(s) missing from the palette: PCloudPowerCore, RefractCubes01:0, lightRays:0
+meshes/magic/tg06controlhandeffects.nif	2 sequence target(s) missing from the palette: PCloudPowerHand, glow:0
+meshes/magic/tg06controllocationfx.nif	3 sequence target(s) missing from the palette: Cylinder01, Object01:0, PCloudPowerHand01
+meshes/magic/tg08irkngthandmercershockwave.nif	12 sequence target(s) missing from the palette: Flash02:0, Flash02:1, GeoSphere01
+meshes/magic/throwvoiceimpact.nif	3 sequence target(s) missing from the palette: PCloud01, PCloud02, RefractMesh:0
+meshes/magic/timeteleporttargetfx.nif	2 sequence target(s) missing from the palette: PArray02, RefractMesh:0
+meshes/magic/turnundeadfxhand01.nif	4 sequence target(s) missing from the palette: PCloudPowerCore, glow:0, lightRays:0
+meshes/magic/turnundeadhazard.nif	6 sequence target(s) missing from the palette: Flash01:1, GeoSphere06:0, pGlows
+meshes/magic/turnundeadmassexplosion.nif	6 sequence target(s) missing from the palette: GeoSphere01, GeoSphere01:0, Ripples:0
+meshes/magic/turnundeadtargetfx.nif	3 sequence target(s) missing from the palette: LineEffects:0, Object03:0, PArray03
+meshes/magic/wardbodyfx.nif	5 sequence target(s) missing from the palette: HitFlash:2, PArray02, Shine04:0
+meshes/magic/wardinhandfx.nif	5 sequence target(s) missing from the palette: Hand01:0, HandShine:0, WardShieldHand01
+meshes/magic/waterbreathingtargetfx.nif	3 sequence target(s) missing from the palette: GeoSphere03:0, Object01:0, PArray01
+meshes/traps/bowtrap/bowtrapboltexplosion.nif	11 sequence target(s) missing from the palette: BackPart01:0, BackPart02:0, BladePart01:0
+meshes/traps/dwefirepillar/trapdwefirepillar01.nif	1 sequence target(s) missing from the palette: PArray01
+meshes/traps/fallingrocks/riggedrockfall01fx.nif	4 sequence target(s) missing from the palette: PCloud01, pDustRim, pDustRimMore01
+meshes/traps/oiltrappuddle01/oiltrappuddle01.nif	1 sequence target(s) missing from the palette: Puddle
+meshes/traps/oiltrappuddle01/oiltrappuddle01light.nif	1 sequence target(s) missing from the palette: Puddle
+meshes/traps/swingingblade/trapbladeswinging01dustfx.nif	3 sequence target(s) missing from the palette: pDustRimMore01, pDustRimMore02, pDustRimMore03
+meshes/traps/whiterundragontrap/whiterundragontrap01.nif	3 sequence target(s) missing from the palette: DrawbridgeChains03, PArray01MachineSmoke, PArray01YokeDust
+meshes/water/dlc2oceanwavecurveouter.nif	6 sequence target(s) missing from the palette: PCloudSmoke07, WATER, WaterFoam
+meshes/water/dlc2oceanwavesstraight.nif	6 sequence target(s) missing from the palette: PCloudSmoke07, WATER, WaterFoam
+meshes/weapons/akaviri/fxdragonsbaneswordstreak.nif	1 sequence target(s) missing from the palette: Plane01
+meshes/weapons/boundweapons/boundaxeencheffects.nif	10 sequence target(s) missing from the palette: 1stPersonDaedricBattleAxe, FlamesHit03, FlamesHit03:0
+meshes/weapons/boundweapons/boundbow.nif	3 sequence target(s) missing from the palette: DaedricBow:0, FlamesMesh01:0, Refraction:0
+meshes/weapons/boundweapons/boundbowencheffects.nif	7 sequence target(s) missing from the palette: FlamesHit01, FlamesHit01:0, FlamesHit02
+meshes/weapons/boundweapons/boundswordencheffects.nif	10 sequence target(s) missing from the palette: 1stPersonDaedricSword, FlamesHit01, FlamesHit01:0
+meshes/weapons/draugr/fxdraugrmagicaxestreak.nif	2 sequence target(s) missing from the palette: Plane01, Plane02
+meshes/weapons/draugr/fxdraugrmagicbowstreak.nif	1 sequence target(s) missing from the palette: Plane01
+meshes/weapons/draugr/fxdraugrmagicswordstreak.nif	1 sequence target(s) missing from the palette: Plane01
+meshes/_byoh/clutter/house crafting/soil01.nif	1 sequence target(s) missing from the palette: Soil01:1

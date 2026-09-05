@@ -1,0 +1,27 @@
+--- 13:57:29 starting, batches of 1000
+Skyrim - Meshes0.bsa: 18862 meshes
+  13:58:13 Skyrim - Meshes0.bsa batch 1: 1000 checked, 295 divergent, 00:00:43
+  13:58:55 Skyrim - Meshes0.bsa batch 2: 2000 checked, 614 divergent, 00:01:25
+  13:59:39 Skyrim - Meshes0.bsa batch 3: 3000 checked, 883 divergent, 00:02:09
+  14:00:53 Skyrim - Meshes0.bsa batch 4: 4000 checked, 1137 divergent, 00:03:23
+  14:01:58 Skyrim - Meshes0.bsa batch 5: 5000 checked, 1362 divergent, 00:04:28
+  14:02:49 Skyrim - Meshes0.bsa batch 6: 6000 checked, 1613 divergent, 00:05:20
+  14:03:51 Skyrim - Meshes0.bsa batch 7: 7000 checked, 2111 divergent, 00:06:21
+  14:05:13 Skyrim - Meshes0.bsa batch 8: 8000 checked, 2461 divergent, 00:07:43
+  14:07:02 Skyrim - Meshes0.bsa batch 9: 9000 checked, 2877 divergent, 00:09:32
+  14:08:49 Skyrim - Meshes0.bsa batch 10: 10000 checked, 3247 divergent, 00:11:19
+  14:09:31 Skyrim - Meshes0.bsa batch 11: 11000 checked, 3445 divergent, 00:12:01
+  14:10:05 Skyrim - Meshes0.bsa batch 12: 12000 checked, 3605 divergent, 00:12:35
+  14:10:53 Skyrim - Meshes0.bsa batch 13: 13000 checked, 3833 divergent, 00:13:23
+  14:12:06 Skyrim - Meshes0.bsa batch 14: 14000 checked, 4157 divergent, 00:14:36
+  14:12:52 Skyrim - Meshes0.bsa batch 15: 15000 checked, 4494 divergent, 00:15:22
+  14:13:30 Skyrim - Meshes0.bsa batch 16: 16000 checked, 4820 divergent, 00:16:01
+  14:14:06 Skyrim - Meshes0.bsa batch 17: 17000 checked, 5065 divergent, 00:16:36
+  14:14:51 Skyrim - Meshes0.bsa batch 18: 18000 checked, 5292 divergent, 00:17:21
+  14:15:46 Skyrim - Meshes0.bsa batch 19: 18862 checked, 5491 divergent, 00:18:16
+Skyrim - Meshes1.bsa: 3185 meshes
+  14:16:04 Skyrim - Meshes1.bsa batch 1: 19862 checked, 5743 divergent, 00:18:34
+  14:16:33 Skyrim - Meshes1.bsa batch 2: 20862 checked, 5811 divergent, 00:19:03
+  14:17:12 Skyrim - Meshes1.bsa batch 3: 21862 checked, 6217 divergent, 00:19:42
+  14:17:22 Skyrim - Meshes1.bsa batch 4: 22047 checked, 6265 divergent, 00:19:52
+--- 14:17:22 done: 22047 checked, 6265 divergent

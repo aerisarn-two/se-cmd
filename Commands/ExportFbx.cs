@@ -1,9 +1,9 @@
 using LeanMeshIO;
 using NIFSharp;
 using System.CommandLine;
-using SECmd.Conversion;
-using SECmd.Fbx;
-using SECmd.Nif;
+using NIFBX.Conversion;
+using NIFBX.Fbx;
+using NIFBX.Nif;
 
 namespace SECmd.Commands
 {

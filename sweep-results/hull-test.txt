@@ -1,0 +1,17 @@
+meshes/armor/ebonymail/cuirassf_gnd.nif	hull 0: a corner moved 0.0954, 15.1 % of its 0.631 span
+meshes/clothes/barkeeper/m/torsognd.nif	hull 0: a corner moved 0.0214, 3.9 % of its 0.543 span
+meshes/clothes/beggarclothes/bootsgo.nif	hull 0: a corner moved 0.0203, 5.5 % of its 0.367 span
+meshes/clothes/monk/monkbootsgnd.nif	hull 0: a corner moved 0.0357, 8.8 % of its 0.405 span
+meshes/clothes/necromancer/necromancerbootsgnd.nif	hull 0: a corner moved 0.0357, 8.8 % of its 0.405 span
+meshes/clothes/warlock/warlockbootsgnd.nif	hull 0: a corner moved 0.0357, 8.8 % of its 0.405 span
+meshes/clutter/blackpool/blackpoolchamber/nocturnalschamber01.nif	hull 0: a corner moved 0.2835, 8.7 % of its 3.264 span
+meshes/clutter/deadanimals/wallmountedbear01.nif	hull 0: a corner moved 0.0730, 6.4 % of its 1.147 span
+meshes/clutter/deadanimals/wallmountedbear02.nif	hull 0: a corner moved 0.0730, 6.4 % of its 1.147 span
+meshes/clutter/deadanimals/wallmountedelkfemale02.nif	hull 0: a corner moved 0.0881, 7.5 % of its 1.177 span
+meshes/clutter/deadanimals/wallmountedelkmale02.nif	hull 3: a corner moved 0.0389, 2.6 % of its 1.496 span
+meshes/clutter/deadanimals/wallmountedsabrecat01.nif	hull 0: a corner moved 0.0915, 7.6 % of its 1.211 span
+meshes/clutter/deadanimals/wallmountedwolf01.nif	hull 0: a corner moved 0.0281, 4.0 % of its 0.709 span
+meshes/clutter/flowerbasket.nif	hull 0: a corner moved 0.0657, 7.8 % of its 0.840 span
+meshes/traps/riggedrockfall/riggedrockfall01.nif	hull 2: a corner moved 0.3874, 22.4 % of its 1.725 span
+meshes/weapons/daedric/daedricdagger.nif	hull 0: a corner moved 0.0657, 10.3 % of its 0.638 span
+meshes/_byoh/clutter/woodensword/woodensword.nif	hull 1: a corner moved 0.0371, 3.5 % of its 1.063 span

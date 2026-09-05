@@ -1,0 +1,2 @@
+meshes/actors/dragon/character assets/dragon_oh_bloodyhead.nif	1 sequence target(s) missing from the palette: Ohdaviing_Tail_DragonBloodTail
+meshes/actors/spriggan/character assets/sprigganmatron.nif	2 sequence target(s) missing from the palette: SprigganBodyLeaves01:0, SprigganBodyLeaves01:1

@@ -10,10 +10,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "se-cmd", "se-cmd.csproj", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HKX2", "External\HKX2Library\HKX2\HKX2.csproj", "{DA3707F2-C26F-8093-00B2-C7E3908C235E}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "se-cmd.Tests", "Tests\se-cmd.Tests.csproj", "{BFB94176-7584-4318-9019-B0181022D27D}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,24 +44,9 @@ Global
 		{DA3707F2-C26F-8093-00B2-C7E3908C235E}.Release|x64.Build.0 = Release|Any CPU
 		{DA3707F2-C26F-8093-00B2-C7E3908C235E}.Release|x86.ActiveCfg = Release|Any CPU
 		{DA3707F2-C26F-8093-00B2-C7E3908C235E}.Release|x86.Build.0 = Release|Any CPU
-		{BFB94176-7584-4318-9019-B0181022D27D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BFB94176-7584-4318-9019-B0181022D27D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BFB94176-7584-4318-9019-B0181022D27D}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{BFB94176-7584-4318-9019-B0181022D27D}.Debug|x64.Build.0 = Debug|Any CPU
-		{BFB94176-7584-4318-9019-B0181022D27D}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{BFB94176-7584-4318-9019-B0181022D27D}.Debug|x86.Build.0 = Debug|Any CPU
-		{BFB94176-7584-4318-9019-B0181022D27D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BFB94176-7584-4318-9019-B0181022D27D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BFB94176-7584-4318-9019-B0181022D27D}.Release|x64.ActiveCfg = Release|Any CPU
-		{BFB94176-7584-4318-9019-B0181022D27D}.Release|x64.Build.0 = Release|Any CPU
-		{BFB94176-7584-4318-9019-B0181022D27D}.Release|x86.ActiveCfg = Release|Any CPU
-		{BFB94176-7584-4318-9019-B0181022D27D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{BFB94176-7584-4318-9019-B0181022D27D} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {3BF75EC2-64C1-4AC2-8C37-1AD48DE42A10}

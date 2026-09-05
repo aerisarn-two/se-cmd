@@ -1,0 +1,79 @@
+meshes/architecture/farmhouse/inndestroyed01.nif	collision mesh 0: a vertex sits 2.189 units from the nearest one it should match
+meshes/architecture/farmhouse/inndestroyed02.nif	collision mesh 0: a vertex sits 2.189 units from the nearest one it should match
+meshes/architecture/highhrothgar/hhlgbayl01.nif	collision mesh 0: 604 triangles became 602
+meshes/architecture/highhrothgar/hhlgbaylangle.nif	collision mesh 0: 790 triangles became 788
+meshes/architecture/highhrothgar/hhlgbaylentrance01b.nif	collision mesh 0: 415 triangles became 414
+meshes/architecture/highhrothgar/hhmainhallfgate01.nif	collision mesh 0: 107 triangles became 105
+meshes/architecture/highhrothgar/hhmainhallfgate02.nif	collision mesh 0: 107 triangles became 105
+meshes/architecture/markarth/mrkfrontwalldam02ext.nif	collision mesh 0: 5006 triangles became 5001
+meshes/architecture/riften/rtcanalsl01.nif	collision mesh 0: a vertex sits 2.040 units from the nearest one it should match
+meshes/architecture/riften/rtcanalsl01inner01.nif	collision mesh 0: a vertex sits 2.174 units from the nearest one it should match
+meshes/architecture/riften/rtcanalsr01.nif	collision mesh 0: a vertex sits 2.174 units from the nearest one it should match
+meshes/architecture/riften/rtkeep01.nif	collision mesh 0: a vertex sits 2.418 units from the nearest one it should match
+meshes/architecture/riften/rtkeepl01.nif	collision mesh 0: a vertex sits 2.176 units from the nearest one it should match
+meshes/architecture/solitude/clutter/sbigplanter01.nif	1 collision meshes became 0
+meshes/architecture/solitude/farms/slighthouse01.nif	collision mesh 0: a vertex sits 2.313 units from the nearest one it should match
+meshes/architecture/solitude/interiors/sshrinelroof01.nif	collision mesh 0: 117 triangles became 116
+meshes/architecture/solitude/sbluepalace.nif	collision mesh 1: 919 triangles became 918
+meshes/architecture/solitude/sbluepalaceroof.nif	collision mesh 0: 963 triangles became 962
+meshes/architecture/solitude/slighthouse01.nif	collision mesh 0: a vertex sits 2.313 units from the nearest one it should match
+meshes/architecture/solitude/swindmill.nif	collision mesh 0: a vertex sits 2.460 units from the nearest one it should match
+meshes/architecture/whiterun/wrinteriors/wrcastle/wrintcastleplatstairs01.nif	collision mesh 0: 45 triangles became 43
+meshes/architecture/whiterun/wrinteriors/wrjorvaskr/wrintchfloorwoodplatfloorstairs01.nif	collision mesh 0: 180 triangles became 179
+meshes/architecture/windhelm/tempassets/tempmarket.nif	collision mesh 0: 16877 triangles became 16873
+meshes/architecture/windhelm/tempassets/tempwindpalace.nif	collision mesh 0: 13184 triangles became 13183
+meshes/architecture/windhelm/tempassets/testhousevolume1.nif	collision mesh 0: 13344 triangles became 13340
+meshes/architecture/windhelm/whmarket02.nif	collision mesh 0: 8192 triangles became 8191
+meshes/architecture/windhelm/whmarket02destroyed.nif	collision mesh 0: 8192 triangles became 8191
+meshes/architecture/windhelm/whmarket03.nif	collision mesh 0: a vertex sits 2.242 units from the nearest one it should match
+meshes/architecture/windhelm/whstables.nif	collision mesh 0: 2415 triangles became 2413
+meshes/clutter/bones/humanarmrightstatic.nif	collision mesh 0: surface area changed by -1.28%
+meshes/clutter/bones/humanfootleftstatic.nif	collision mesh 0: surface area changed by -1.01%
+meshes/clutter/bones/humanhandleftstatic.nif	collision mesh 0: surface area changed by -1.00%
+meshes/clutter/bones/humanhandrightstatic.nif	collision mesh 0: surface area changed by -1.00%
+meshes/clutter/bones/humanskullstatic.nif	collision mesh 0: surface area changed by -1.01%
+meshes/clutter/civilwar/civilwarmapflag01.nif	collision mesh 0: 12 triangles became 8
+meshes/clutter/civilwar/civilwarmapflag02.nif	collision mesh 0: 12 triangles became 8
+meshes/clutter/hagraven/hagravenhangingball01.nif	collision mesh 0: surface area changed by -1.07%
+meshes/clutter/hagraven/hagravenhangingball02.nif	collision mesh 0: surface area changed by -1.07%
+meshes/clutter/keypegholder01.nif	collision mesh 0: 74 triangles became 65
+meshes/clutter/stockade/stockadebridgelong01.nif	collision mesh 0: 178 triangles became 177
+meshes/creationclub/_shared/dungeons/ayleidruins/interior/arrubblecrystalfragment03.nif	collision mesh 0: 61 triangles became 60
+meshes/creationclub/_shared/dungeons/ayleidruins/interior/arrubblecrystalfragment04.nif	collision mesh 0: surface area changed by -1.72%
+meshes/creationclub/_shared/dungeons/ayleidruins/interior/arrubblecrystalfragment06.nif	collision mesh 0: surface area changed by -2.23%
+meshes/creationclub/_shared/dungeons/ayleidruins/interior/arrubbletilesingle04.nif	collision mesh 0: surface area changed by -1.02%
+meshes/dlc01/architecture/farmhouse/dlc1inndestroyed01.nif	collision mesh 0: a vertex sits 2.189 units from the nearest one it should match
+meshes/dlc01/architecture/snowelfruins/snowelftemple01.nif	collision mesh 0: 8836 triangles became 8832
+meshes/dlc01/dungeons/castle/casvariant/casextstairs02.nif	collision mesh 0: bounding box moved by 0.700 units
+meshes/dlc01/dungeons/castle/casvariant/casextstairs03.nif	collision mesh 0: bounding box moved by 0.700 units
+meshes/dlc02/architecture/skaalvillage/dlc2skaalvilhousewind04.nif	collision mesh 0: 626 triangles became 624
+meshes/dlc02/architecture/telvannitower/telvannitowerint01.nif	collision mesh 0: 9980 triangles became 9960
+meshes/dungeons/caves/ice/smallroom/caveiroomicorner03.nif	collision mesh 0: 247 triangles became 246
+meshes/dungeons/dwemer/animated/astrolabe/dweastrolabechamber01.nif	collision mesh 0: a vertex sits 2.105 units from the nearest one it should match
+meshes/dungeons/dwemer/animated/observatory/dweobservatorychamber01.nif	collision mesh 0: a vertex sits 2.105 units from the nearest one it should match
+meshes/dungeons/dwemer/levers/ruinslever01/dwelever01.nif	collision mesh 1: surface area changed by -1.10%
+meshes/dungeons/dwemer/levers/ruinslever02/dwelever02.nif	collision mesh 1: surface area changed by -1.10%
+meshes/dungeons/imperial/exterior/impextstairs02.nif	collision mesh 0: bounding box moved by 0.700 units
+meshes/dungeons/imperial/exterior/impextstairs03.nif	collision mesh 0: bounding box moved by 0.700 units
+meshes/dungeons/imperial/exteriorice/impexticestairs02.nif	collision mesh 0: bounding box moved by 0.700 units
+meshes/dungeons/mines/minelargehall/minelhalldoornarrow01.nif	collision mesh 0: 248 triangles became 246
+meshes/dungeons/nordic/levers/ruinslever01/norlever01.nif	collision mesh 1: surface area changed by -1.10%
+meshes/dungeons/nordic/levers/ruinslever02/norlever02.nif	collision mesh 1: surface area changed by -1.10%
+meshes/dungeons/riften/ratwayhall/riftenrwdoorjail01.nif	collision mesh 1: surface area changed by 1.60%
+meshes/dungeons/riften/thievesguild/riftenrwarmorydoorlock01.nif	collision mesh 0: surface area changed by -1.81%
+meshes/dungeons/ship/katariah/shipkatariahanchorchain01.nif	collision mesh 0: surface area changed by -1.21%
+meshes/dungeons/ship/katariah/shipkatariahanchorwoodhole01.nif	collision mesh 0: surface area changed by -1.11%
+meshes/dungeons/ship/questitems/shipanchorchain01.nif	collision mesh 0: surface area changed by -1.21%
+meshes/dungeons/ship/shiplarge01.nif	collision mesh 0: 4360 triangles became 4359
+meshes/dungeons/ship/shiplarge01anim01.nif	collision mesh 0: 4360 triangles became 4359
+meshes/dungeons/ship/shiplargeanim01.nif	collision mesh 0: 4360 triangles became 4359
+meshes/dungeons/ship/shiplargedaintysload01.nif	collision mesh 0: 4388 triangles became 4387
+meshes/dungeons/ship/shiplargeinside01.nif	collision mesh 0: 8071 triangles became 8070
+meshes/dungeons/ship/shiplargekatariah01.nif	collision mesh 0: a vertex sits 2.042 units from the nearest one it should match
+meshes/dungeons/ship/shiplargekatariahinside01.nif	collision mesh 0: 13310 triangles became 13309
+meshes/dungeons/ship/shipwrecklarge01.nif	collision mesh 0: a vertex sits 2.037 units from the nearest one it should match
+meshes/dungeons/ship/shipwrecklarge02.nif	collision mesh 0: 11044 triangles became 11043
+meshes/dungeons/ship/shipwrecklarge03.nif	collision mesh 0: a vertex sits 2.037 units from the nearest one it should match
+meshes/dungeons/ship/shipwrecklarge04.nif	collision mesh 0: 4139 triangles became 4138
+meshes/traps/hingetrap/traphingetrigger01.nif	collision mesh 0: 62 triangles became 60
+meshes/traps/macetrap/trapmace01.nif	collision mesh 0: surface area changed by -3.64%

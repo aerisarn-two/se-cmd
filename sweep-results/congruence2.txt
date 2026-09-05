@@ -1,0 +1,54 @@
+meshes/architecture/farmhouse/inndestroyed01.nif	collision mesh 0: a rebuilt vertex sits 2.189 units from anything in the source
+meshes/architecture/farmhouse/inndestroyed02.nif	collision mesh 0: a rebuilt vertex sits 2.189 units from anything in the source
+meshes/architecture/riften/rtcanalsl01.nif	collision mesh 0: a rebuilt vertex sits 2.040 units from anything in the source
+meshes/architecture/riften/rtcanalsl01inner01.nif	collision mesh 0: a rebuilt vertex sits 2.174 units from anything in the source
+meshes/architecture/riften/rtcanalsr01.nif	collision mesh 0: a rebuilt vertex sits 2.174 units from anything in the source
+meshes/architecture/riften/rtkeep01.nif	collision mesh 0: a rebuilt vertex sits 2.418 units from anything in the source
+meshes/architecture/riften/rtkeepl01.nif	collision mesh 0: a rebuilt vertex sits 2.176 units from anything in the source
+meshes/architecture/solitude/clutter/sbigplanter01.nif	1 collision meshes became 0
+meshes/architecture/solitude/farms/slighthouse01.nif	collision mesh 0: a rebuilt vertex sits 2.313 units from anything in the source
+meshes/architecture/solitude/slighthouse01.nif	collision mesh 0: a rebuilt vertex sits 2.313 units from anything in the source
+meshes/architecture/solitude/swindmill.nif	collision mesh 0: a rebuilt vertex sits 2.460 units from anything in the source
+meshes/architecture/windhelm/whmarket03.nif	collision mesh 0: a rebuilt vertex sits 2.242 units from anything in the source
+meshes/clutter/bones/humanarmrightstatic.nif	collision mesh 0: surface area changed by -1.28%
+meshes/clutter/bones/humanfootleftstatic.nif	collision mesh 0: surface area changed by -1.01%
+meshes/clutter/bones/humanhandleftstatic.nif	collision mesh 0: surface area changed by -1.00%
+meshes/clutter/bones/humanhandrightstatic.nif	collision mesh 0: surface area changed by -1.00%
+meshes/clutter/bones/humanskullstatic.nif	collision mesh 0: surface area changed by -1.01%
+meshes/clutter/civilwar/civilwarmapflag01.nif	collision mesh 0: surface area changed by -12.20%
+meshes/clutter/civilwar/civilwarmapflag02.nif	collision mesh 0: surface area changed by -12.20%
+meshes/clutter/hagraven/hagravenhangingball01.nif	collision mesh 0: surface area changed by -1.07%
+meshes/clutter/hagraven/hagravenhangingball02.nif	collision mesh 0: surface area changed by -1.07%
+meshes/clutter/keypegholder01.nif	collision mesh 0: surface area changed by -1.00%
+meshes/creationclub/_shared/dungeons/ayleidruins/interior/arrubblecrystalfragment03.nif	collision mesh 0: surface area changed by -1.00%
+meshes/creationclub/_shared/dungeons/ayleidruins/interior/arrubblecrystalfragment04.nif	collision mesh 0: surface area changed by -1.72%
+meshes/creationclub/_shared/dungeons/ayleidruins/interior/arrubblecrystalfragment06.nif	collision mesh 0: surface area changed by -2.23%
+meshes/creationclub/_shared/dungeons/ayleidruins/interior/arrubbletilesingle04.nif	collision mesh 0: surface area changed by -1.02%
+meshes/dlc01/architecture/farmhouse/dlc1inndestroyed01.nif	collision mesh 0: a rebuilt vertex sits 2.189 units from anything in the source
+meshes/dlc01/dungeons/castle/casvariant/casextstairs02.nif	collision mesh 0: bounding box moved by 0.700 units
+meshes/dlc01/dungeons/castle/casvariant/casextstairs03.nif	collision mesh 0: bounding box moved by 0.700 units
+meshes/dungeons/dwemer/animated/astrolabe/dweastrolabechamber01.nif	collision mesh 0: a rebuilt vertex sits 2.105 units from anything in the source
+meshes/dungeons/dwemer/animated/observatory/dweobservatorychamber01.nif	collision mesh 0: a rebuilt vertex sits 2.105 units from anything in the source
+meshes/dungeons/dwemer/levers/ruinslever01/dwelever01.nif	collision mesh 1: surface area changed by -1.10%
+meshes/dungeons/dwemer/levers/ruinslever02/dwelever02.nif	collision mesh 1: surface area changed by -1.10%
+meshes/dungeons/imperial/exterior/impextstairs02.nif	collision mesh 0: bounding box moved by 0.700 units
+meshes/dungeons/imperial/exterior/impextstairs03.nif	collision mesh 0: bounding box moved by 0.700 units
+meshes/dungeons/imperial/exteriorice/impexticestairs02.nif	collision mesh 0: bounding box moved by 0.700 units
+meshes/dungeons/nordic/levers/ruinslever01/norlever01.nif	collision mesh 1: surface area changed by -1.10%
+meshes/dungeons/nordic/levers/ruinslever02/norlever02.nif	collision mesh 1: surface area changed by -1.10%
+meshes/dungeons/riften/ratwayhall/riftenrwdoorjail01.nif	collision mesh 1: surface area changed by 1.60%
+meshes/dungeons/riften/thievesguild/riftenrwarmorydoorlock01.nif	collision mesh 0: surface area changed by -1.81%
+meshes/dungeons/ship/katariah/shipkatariahanchorchain01.nif	collision mesh 0: surface area changed by -1.21%
+meshes/dungeons/ship/katariah/shipkatariahanchorwoodhole01.nif	collision mesh 0: surface area changed by -1.11%
+meshes/dungeons/ship/questitems/shipanchorchain01.nif	collision mesh 0: surface area changed by -1.21%
+meshes/dungeons/ship/shiplarge01.nif	collision mesh 0: a rebuilt vertex sits 2.042 units from anything in the source
+meshes/dungeons/ship/shiplarge01anim01.nif	collision mesh 0: a rebuilt vertex sits 2.042 units from anything in the source
+meshes/dungeons/ship/shiplargeanim01.nif	collision mesh 0: a rebuilt vertex sits 2.042 units from anything in the source
+meshes/dungeons/ship/shiplargedaintysload01.nif	collision mesh 0: a rebuilt vertex sits 2.042 units from anything in the source
+meshes/dungeons/ship/shiplargeinside01.nif	collision mesh 0: a rebuilt vertex sits 2.037 units from anything in the source
+meshes/dungeons/ship/shiplargekatariah01.nif	collision mesh 0: a rebuilt vertex sits 2.042 units from anything in the source
+meshes/dungeons/ship/shipwrecklarge01.nif	collision mesh 0: a rebuilt vertex sits 2.037 units from anything in the source
+meshes/dungeons/ship/shipwrecklarge02.nif	collision mesh 0: a rebuilt vertex sits 2.037 units from anything in the source
+meshes/dungeons/ship/shipwrecklarge03.nif	collision mesh 0: a rebuilt vertex sits 2.037 units from anything in the source
+meshes/traps/hingetrap/traphingetrigger01.nif	collision mesh 0: surface area changed by -1.71%
+meshes/traps/macetrap/trapmace01.nif	collision mesh 0: surface area changed by -3.64%

@@ -1,0 +1,1 @@
+meshes/architecture/solitude/clutter/sbigplanter01.nif	bhkCollisionObject 1->0, bhkCompressedMeshShape 1->0, bhkCompressedMeshShapeData 1->0, bhkMoppBvTreeShape 1->0, bhkRigidBodyT 1->0

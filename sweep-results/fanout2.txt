@@ -1,0 +1,8 @@
+meshes/critters/fcjumpingsalmon/fcambwaterfallsalmon01.nif	2 transform target(s) nothing fans out to: FishController01, FishController02
+meshes/dlc01/critters/ancestormothgroupattach.nif	4 transform target(s) nothing fans out to: AncestorMoth, AncestorMoth01, AncestorMoth02
+meshes/dlc01/critters/ancestormothstaticcloud.nif	4 transform target(s) nothing fans out to: AncestorMoth, AncestorMoth01, AncestorMoth02
+meshes/effects/cwfxcatapultprojectile.nif	1 transform target(s) nothing fans out to: FireballProjectile01
+meshes/effects/fxambwaterfallsalmon01.nif	2 transform target(s) nothing fans out to: FishController01, FishController02
+meshes/effects/fxambwaterfallsalmon02.nif	2 transform target(s) nothing fans out to: FishController01, FishController02
+meshes/effects/fxcatapultprojectile.nif	1 transform target(s) nothing fans out to: FireballProjectile01
+meshes/effects/fxcatapultprojectile2.nif	1 transform target(s) nothing fans out to: FireballProjectile01

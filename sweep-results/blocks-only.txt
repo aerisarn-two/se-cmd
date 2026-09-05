@@ -1,0 +1,3 @@
+meshes/architecture/solitude/clutter/sbigplanter01.nif	bhkCollisionObject 1->0, bhkCompressedMeshShape 1->0, bhkCompressedMeshShapeData 1->0, bhkMoppBvTreeShape 1->0, bhkRigidBodyT 1->0
+meshes/architecture/sovengarde/sovbonerib01.nif	SOVBoneRib01_rb_mopp_mesh: the MOPP backend failed and was retried -- attempt 1 of 3 -ccmm exited with code 1: wine client error:0: recvmsg: Connection reset by peer
+meshes/architecture/sovengarde/sovrockterracel01.nif	SovRockTerraceL01_rb_mopp_mesh: the MOPP backend failed and was retried -- attempt 1 of 3 -ccmm exited with code 1: wine client error:0: recvmsg: Connection reset by peer
