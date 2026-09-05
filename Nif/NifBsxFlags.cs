@@ -1,3 +1,5 @@
+using NIFSharp;
+
 namespace SECmd.Nif
 {
     /// <summary>

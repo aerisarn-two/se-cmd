@@ -1,3 +1,4 @@
+using NIFSharp;
 using System.Runtime.InteropServices;
 using SECmd.Nif;
 

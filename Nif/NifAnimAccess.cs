@@ -1,3 +1,4 @@
+using NIFSharp;
 using SECmd.Fbx;
 using SECmd.Conversion;
 

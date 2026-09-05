@@ -1,3 +1,4 @@
+using NIFSharp;
 using SECmd.Nif;
 
 namespace SECmd.Havok

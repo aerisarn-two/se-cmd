@@ -1,5 +1,6 @@
 using Mutagen.Bethesda;
 using Mutagen.Bethesda.Archives;
+using NIFSharp;
 using SECmd.Conversion;
 using SECmd.Fbx;
 using SECmd.Nif;

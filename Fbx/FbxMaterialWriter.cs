@@ -1,3 +1,4 @@
+using NIFSharp;
 using System.Globalization;
 using LeanMeshIO.Formats.Fbx;
 using SECmd.Conversion;

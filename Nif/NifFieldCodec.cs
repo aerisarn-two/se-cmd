@@ -1,3 +1,4 @@
+using NIFSharp;
 using System.Globalization;
 
 namespace SECmd.Nif

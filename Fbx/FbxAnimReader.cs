@@ -1,3 +1,4 @@
+using NIFSharp;
 using SECmd.Nif;
 using LeanMeshIO.Formats.Fbx;
 using SECmd.Conversion;

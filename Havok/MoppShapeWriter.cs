@@ -1,3 +1,4 @@
+using NIFSharp;
 using System.Globalization;
 using System.Text;
 using SECmd.Nif;

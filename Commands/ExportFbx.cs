@@ -1,4 +1,5 @@
 using LeanMeshIO;
+using NIFSharp;
 using System.CommandLine;
 using SECmd.Conversion;
 using SECmd.Fbx;

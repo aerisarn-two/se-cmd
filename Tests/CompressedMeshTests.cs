@@ -1,3 +1,4 @@
+using NIFSharp;
 using SECmd.Havok;
 using SECmd.Nif;
 using Xunit;

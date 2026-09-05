@@ -1,3 +1,4 @@
+using NIFSharp;
 using SECmd.Conversion;
 using SECmd.Nif;
 

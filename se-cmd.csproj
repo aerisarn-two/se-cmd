@@ -26,10 +26,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="External\nifxml\nif.xml" LogicalName="nif.xml" />
-  </ItemGroup>
-
-  <ItemGroup>
     <!-- Lets tests reach wire-format helpers that are not public API. -->
     <InternalsVisibleTo Include="se-cmd.Tests" />
   </ItemGroup>
@@ -49,6 +45,13 @@
       made the SDK reject our output fixed.
     -->
     <PackageReference Include="LeanMeshIO" Version="1.0.2" />
+
+    <!--
+      Reading and writing the NIF itself: nif.xml, the item tree, both stream
+      directions. What a file *means* — what a BSXFlags should say, how a
+      constraint maps onto an FBX property — stays here, in Nif/ and Conversion/.
+    -->
+    <PackageReference Include="NIFSharp" Version="1.0.1" />
 
     <!--
       Puts mopper.exe beside the built assembly, where MopperProcessGenerator
