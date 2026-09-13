@@ -4,11 +4,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.14.36301.6
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "se-cmd", "se-cmd.csproj", "{B1ED6E6A-1309-4293-9A50-F73A79F3AD56}"
-	ProjectSection(ProjectDependencies) = postProject
-		{DA3707F2-C26F-8093-00B2-C7E3908C235E} = {DA3707F2-C26F-8093-00B2-C7E3908C235E}
-	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HKX2", "External\HKX2Library\HKX2\HKX2.csproj", "{DA3707F2-C26F-8093-00B2-C7E3908C235E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,18 +27,6 @@ Global
 		{B1ED6E6A-1309-4293-9A50-F73A79F3AD56}.Release|x64.Build.0 = Release|Any CPU
 		{B1ED6E6A-1309-4293-9A50-F73A79F3AD56}.Release|x86.ActiveCfg = Release|Any CPU
 		{B1ED6E6A-1309-4293-9A50-F73A79F3AD56}.Release|x86.Build.0 = Release|Any CPU
-		{DA3707F2-C26F-8093-00B2-C7E3908C235E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DA3707F2-C26F-8093-00B2-C7E3908C235E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DA3707F2-C26F-8093-00B2-C7E3908C235E}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{DA3707F2-C26F-8093-00B2-C7E3908C235E}.Debug|x64.Build.0 = Debug|Any CPU
-		{DA3707F2-C26F-8093-00B2-C7E3908C235E}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{DA3707F2-C26F-8093-00B2-C7E3908C235E}.Debug|x86.Build.0 = Debug|Any CPU
-		{DA3707F2-C26F-8093-00B2-C7E3908C235E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DA3707F2-C26F-8093-00B2-C7E3908C235E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DA3707F2-C26F-8093-00B2-C7E3908C235E}.Release|x64.ActiveCfg = Release|Any CPU
-		{DA3707F2-C26F-8093-00B2-C7E3908C235E}.Release|x64.Build.0 = Release|Any CPU
-		{DA3707F2-C26F-8093-00B2-C7E3908C235E}.Release|x86.ActiveCfg = Release|Any CPU
-		{DA3707F2-C26F-8093-00B2-C7E3908C235E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
