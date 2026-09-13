@@ -10,12 +10,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="External\HKX2Library\**" />
-    <EmbeddedResource Remove="External\HKX2Library\**" />
-    <None Remove="External\HKX2Library\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Remove="Commands\ExportNif.cs" />
   </ItemGroup>
 
