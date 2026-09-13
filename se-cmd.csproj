@@ -43,6 +43,9 @@
       and the skeleton.hkx written from it could no longer be byte-exact.
     -->
     <PackageReference Include="HKX2" Version="1.0.0" />
+
+    <!-- Local until SKAssets.Export is published; see the command's remarks. -->
+    <ProjectReference Include="..\SKAssets\src\SKAssets.Export\SKAssets.Export.csproj" />
   </ItemGroup>
 
 </Project>

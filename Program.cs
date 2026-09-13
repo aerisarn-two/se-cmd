@@ -11,6 +11,8 @@ namespace SECmd
             Commands.RetargetCreature.Register(root);
             Commands.ExportFbx.Register(root);
             Commands.ImportFbx.Register(root);
+            Commands.ImportCreature.Register(root);
+            Commands.ExportCreature.Register(root);
 
             root.Parse(args).Invoke();
         }
