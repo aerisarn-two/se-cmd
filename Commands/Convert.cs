@@ -350,9 +350,15 @@ namespace SECmd.Commands
             CreatureImport back = CreatureExchange.Import(document, database, project);
             DirectoryInfo folder = into.CreateSubdirectory(name);
 
+            // A scene this library built says which files it came from, and those
+            // are the names to write back. One it did not is a single mesh with no
+            // name of its own, and calling it skeleton.nif -- which is what the
+            // import defaults to -- would rename somebody's armour.
+            bool carriesNames = contents.Sources.Count > 0;
+
             foreach ((string file, NifModel model) in back.Meshes.OrderBy(m => m.Key, StringComparer.Ordinal))
             {
-                string target = Path.Combine(folder.FullName, file);
+                string target = Path.Combine(folder.FullName, carriesNames ? file : name + ".nif");
                 model.Save(target);
                 log.Wrote(target);
             }

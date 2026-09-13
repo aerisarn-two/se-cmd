@@ -46,11 +46,24 @@ namespace SECmd
         private static string[] Dropped(RootCommand root, string[] args)
         {
             if (args.Length == 0) return args;
-            if (args.Any(a => a.StartsWith('-'))) return args;
 
-            if (args.Any(a => root.Subcommands.Any(c => c.Name == a || c.Aliases.Contains(a))))
+            // A command first means somebody typed a command, whatever follows it.
+            if (root.Subcommands.Any(c => c.Name == args[0] || c.Aliases.Contains(args[0])))
                 return args;
 
+            // A path first means a drop, and the options after it are convert's own:
+            // `se-cmd creature/folder -o somewhere` is a reasonable thing to type and
+            // was refused while any dash anywhere vetoed the whole reading.
+            if (Commands.Convert.Handles(args[0]))
+                return ["convert", .. args];
+
+            // Otherwise a dash settles it: a mistyped command should get the error it
+            // deserves rather than be read as a filename.
+            if (args[0].StartsWith('-')) return args;
+
+            // And last, the selection-order case: a drop from a file manager arrives
+            // in whatever order it was made in, so a readme picked up with the meshes
+            // must not decide what the whole drop means.
             return args.Any(Commands.Convert.Handles) ? ["convert", .. args] : args;
         }
     }
