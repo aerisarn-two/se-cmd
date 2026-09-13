@@ -7,7 +7,11 @@ namespace SECmd
 
         static void Main(string[] args)
         {
-            RootCommand root = new("se-cmd utility");
+            // Anything this writes says which version wrote it: the NIF header's
+            // author field and the FBX's Creator, both of which outlive the run.
+            NIFBX.Authoring.Signature = Build.Signature;
+
+            RootCommand root = new($"se-cmd {Build.Version}");
             Commands.RetargetCreature.Register(root);
             Commands.ExportFbx.Register(root);
             Commands.ImportFbx.Register(root);

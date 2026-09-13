@@ -100,11 +100,12 @@ namespace SECmd.Commands
             SkyrimCache? cache = OpenCache(meshes?.FullName ?? CacheAbove(paths[0]));
             var log = new Log(into);
 
-            log.Say($"se-cmd convert, {DateTime.Now:yyyy-MM-dd HH:mm}");
+            log.Say($"se-cmd {Build.Version} convert, {DateTime.Now:yyyy-MM-dd HH:mm}");
             log.Say($"  into {into.FullName}");
             log.Say(cache is null
                 ? "  no animation cache found, so a creature's clips will be skipped"
                 : $"  animation cache: {cache.ProjectNames.Count()} projects");
+            log.Say($"  converted files are stamped {Build.Signature} and {NIFBX.Authoring.Library}");
             log.Say(string.Empty);
 
             foreach (string path in Walk(paths, database, cache, recurse, log))
