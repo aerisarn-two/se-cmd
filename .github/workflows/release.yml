@@ -174,12 +174,43 @@ jobs:
           path: artifacts/*.zip
           if-no-files-found: error
 
+      #
+      # Created with gh rather than an action, for the retries. GitHub's release
+      # API answers 500 on this account often enough that it is the normal case
+      # rather than the exception -- three of the four releases made so far
+      # failed on it -- and it clears in a minute or two. The action gives up
+      # after three tries a couple of seconds apart, which is exactly the wait
+      # that does not work.
+      #
+      # A create that reports failure can still have made the release, so each
+      # round looks before trying again and finishes by uploading into whatever
+      # is already there.
+      #
       - name: Create the GitHub release
         if: steps.version.outputs.publish == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          name: se-cmd ${{ steps.version.outputs.version }}
-          generate_release_notes: true
-          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
-          fail_on_unmatched_files: true
-          files: artifacts/*.zip
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -uo pipefail
+
+          tag="${GITHUB_REF#refs/tags/}"
+          notes=(--generate-notes --title "se-cmd $VERSION")
+
+          case "$VERSION" in *-*) notes+=(--prerelease);; esac
+
+          for wait in 0 30 60 90 120 180; do
+            [ "$wait" -gt 0 ] && sleep "$wait"
+
+            if gh release view "$tag" >/dev/null 2>&1; then
+              gh release upload "$tag" artifacts/*.zip --clobber && exit 0
+            elif gh release create "$tag" artifacts/*.zip "${notes[@]}"; then
+              exit 0
+            fi
+
+            echo "::warning::the release API did not answer; trying again" >&2
+          done
+
+          echo "::error::could not create the release for $tag" >&2
+          exit 1
