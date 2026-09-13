@@ -193,8 +193,16 @@ namespace SECmd.Commands
             return false;
         }
 
-        private static bool Converts(string extension) =>
+        /// <summary>The extensions this converts, which is what a drop is checked against.</summary>
+        public static bool Converts(string extension) =>
             extension.ToLowerInvariant() is ".nif" or ".hkx" or ".fbx";
+
+        /// <summary>
+        /// Whether a path is something to convert: a folder, or a file of a kind
+        /// this reads.
+        /// </summary>
+        public static bool Handles(string path) =>
+            Directory.Exists(path) || (File.Exists(path) && Converts(Path.GetExtension(path)));
 
         /// <summary>One input, recognised and converted.</summary>
         private static void One(
