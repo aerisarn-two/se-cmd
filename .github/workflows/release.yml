@@ -144,6 +144,11 @@ jobs:
             -o $folder
           if ($LASTEXITCODE -ne 0) { throw "publish failed" }
 
+          # What somebody who unzips this needs beside the program: how to use it,
+          # and under what terms. A drag-and-drop tool with no instructions in the
+          # archive is a tool whose instructions are on a web page nobody has open.
+          Copy-Item README.md, LICENSE -Destination $folder
+
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           Compress-Archive -Path $folder -DestinationPath "artifacts/se-cmd-$version-win-x64.zip"
 
