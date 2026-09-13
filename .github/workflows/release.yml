@@ -4,7 +4,13 @@
 # Tagging is the trigger. There is nothing to pack here: se-cmd is a command
 # line, not a library, and everything a caller would reference lives in NIFBX,
 # SKAssets and HKX2 and is already on the feed. So what comes out is the program
-# -- one archive per platform, self-contained, with no .NET to install first.
+# -- one archive, everything in it, nothing to install first.
+#
+# Windows only, and that is not an oversight. mopper.exe is a 32-bit Windows
+# executable and MOPP collision is not optional for the meshes that carry it, so
+# Windows is the only platform where "everything necessary to run it" is a whole
+# sentence. It runs elsewhere under Wine, which is a thing to set up rather than
+# a thing to ship, and anyone doing that can build from source.
 #
 # There are no tests in this repository either. Every test was a test of the
 # conversion and went with it; they run in NIFBX and in SKAssets, off the
@@ -56,9 +62,15 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
+  #
+  # On Windows, so the archive is checked by the platform it is for. A cross
+  # publish from Linux produces the same bytes and cannot say whether they
+  # start, and the one thing worth knowing about a self-contained build is
+  # exactly that.
+  #
   release:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     permissions:
       contents: write   # to create the release
@@ -73,6 +85,7 @@ jobs:
 
       - name: Work out the version
         id: version
+        shell: bash
         run: |
           set -euo pipefail
 
@@ -86,14 +99,14 @@ jobs:
             if [[ ! "$version" =~ $pattern ]]; then
               echo "tag '${GITHUB_REF#refs/tags/}' is not a version." \
                    "Expected vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH.BUILD," \
-                   "optionally with a prerelease suffix, e.g. v0.1.4.0" >&2
+                   "optionally with a prerelease suffix, e.g. v0.1.6.0" >&2
               exit 1
             fi
 
             publish=true
           else
-            # Not a release: still publish every platform, so a packaging or
-            # runtime-identifier problem shows up here rather than on the tag.
+            # Not a release: still publish and check it, so a packaging problem
+            # shows up here rather than on the tag.
             version="0.0.0-ci.${GITHUB_RUN_NUMBER}"
             publish=false
           fi
@@ -109,39 +122,51 @@ jobs:
       # is a worse trade.
       #
       # mopper.exe comes along with it -- Mopper.Native puts it beside the
-      # binary, which is where NIFBX looks. It is a 32-bit Windows executable
-      # and runs under Wine on the others.
+      # binary, which is where NIFBX looks for it.
+      #
+      # Published into a folder named for the version so the archive expands
+      # into one, rather than emptying itself into wherever it was opened.
       #
       - name: Publish
+        shell: pwsh
         env:
           GITHUB_USERNAME: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -euo pipefail
+          $ErrorActionPreference = 'Stop'
+          $version = '${{ steps.version.outputs.version }}'
+          $folder = "publish/se-cmd-$version"
 
-          version=${{ steps.version.outputs.version }}
-          mkdir -p artifacts
+          dotnet publish se-cmd.csproj -c Release -r win-x64 `
+            --self-contained true `
+            -p:Version=$version `
+            -p:RepositoryUrl=https://github.com/${{ github.repository }} `
+            -o $folder
+          if ($LASTEXITCODE -ne 0) { throw "publish failed" }
 
-          for rid in win-x64 linux-x64; do
-            dotnet publish se-cmd.csproj -c Release -r "$rid" \
-              --self-contained true \
-              -p:Version="$version" \
-              -p:RepositoryUrl=https://github.com/${{ github.repository }} \
-              -o "publish/$rid"
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          Compress-Archive -Path $folder -DestinationPath "artifacts/se-cmd-$version-win-x64.zip"
 
-            (cd publish && zip -qr "../artifacts/se-cmd-$version-$rid.zip" "$rid")
-          done
-
-      # The linux build is the one this runner can actually start, so it is the
-      # one that gets asked whether it works. A publish that lays down a broken
-      # dependency graph builds fine and fails on the first run.
+      #
+      # Both executables are started, because both have to work and they fail
+      # differently: se-cmd itself if the self-contained runtime is laid down
+      # wrong, and mopper if the 32-bit binary did not come along or the runner
+      # cannot run it. Either builds clean and dies on first use.
+      #
       - name: Check the artifacts
+        shell: pwsh
         run: |
-          set -euo pipefail
-          ./publish/linux-x64/se-cmd --help
-          ls -l publish/win-x64/se-cmd.exe publish/win-x64/mopper.exe
-          ls -l artifacts/*.zip
-          test "$(ls artifacts/*.zip | wc -l)" -eq 2
+          $ErrorActionPreference = 'Stop'
+          $folder = "publish/se-cmd-${{ steps.version.outputs.version }}"
+
+          & "$folder/se-cmd.exe" --help
+          if ($LASTEXITCODE -ne 0) { throw "se-cmd.exe did not run" }
+
+          & "$folder/mopper.exe" --help
+          if ($LASTEXITCODE -ne 0) { throw "mopper.exe did not run" }
+
+          Get-ChildItem artifacts/*.zip
+          if ((Get-ChildItem artifacts/*.zip).Count -ne 1) { throw "expected one archive" }
 
       - uses: actions/upload-artifact@v4
         with:
