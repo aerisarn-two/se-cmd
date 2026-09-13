@@ -448,3 +448,10 @@ Tests/Resources/vanilla/*.nif
 # Meshes pulled out of the game to look at. Never committed: nothing extracted
 # from the game is a fixture.
 /samples/
+
+# What a sweep prints on the way past. A sweep measures the corpus at one
+# moment against one build, so its output is stale the next time anything
+# changes and means nothing without the build that produced it. What was
+# learned belongs in a spec or a test; the transcript does not.
+/sweep-results/
+/vertex-loss.tsv*
