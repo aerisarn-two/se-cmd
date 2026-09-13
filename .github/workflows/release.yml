@@ -1,0 +1,160 @@
+#
+# Builds se-cmd and publishes the tool itself on a GitHub release.
+#
+# Tagging is the trigger. There is nothing to pack here: se-cmd is a command
+# line, not a library, and everything a caller would reference lives in NIFBX,
+# SKAssets and HKX2 and is already on the feed. So what comes out is the program
+# -- one archive per platform, self-contained, with no .NET to install first.
+#
+# There are no tests in this repository either. Every test was a test of the
+# conversion and went with it; they run in NIFBX and in SKAssets, off the
+# packages this build restores. The build job is here to catch the thing that
+# does break on a runner and not on a desk: a reference that only resolves
+# because of what happens to be beside the clone.
+#
+# Use workflow_dispatch to build and publish without releasing anything.
+#
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      # NIFBX, HKX2 and SKAssets.Export come from GitHub Packages, and
+      # nuget.config takes the credentials from the environment. Read is enough:
+      # this repository publishes nothing to the feed.
+      - name: Restore
+        env:
+          GITHUB_USERNAME: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # to create the release
+      packages: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Work out the version
+        id: version
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF#refs/tags/v}"
+
+            # Four parts as well as three: this repository has tagged
+            # vMAJOR.MINOR.PATCH.BUILD since it began and there is no package
+            # version to keep strictly semver for.
+            pattern='^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+            if [[ ! "$version" =~ $pattern ]]; then
+              echo "tag '${GITHUB_REF#refs/tags/}' is not a version." \
+                   "Expected vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH.BUILD," \
+                   "optionally with a prerelease suffix, e.g. v0.1.4.0" >&2
+              exit 1
+            fi
+
+            publish=true
+          else
+            # Not a release: still publish every platform, so a packaging or
+            # runtime-identifier problem shows up here rather than on the tag.
+            version="0.0.0-ci.${GITHUB_RUN_NUMBER}"
+            publish=false
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "version $version, publish $publish"
+
+      #
+      # Self-contained, so the archive is the whole tool. A framework-dependent
+      # build is a tenth of the size and asks whoever unpacks it to go and
+      # install a matching .NET first, which for the audience this is aimed at
+      # is a worse trade.
+      #
+      # mopper.exe comes along with it -- Mopper.Native puts it beside the
+      # binary, which is where NIFBX looks. It is a 32-bit Windows executable
+      # and runs under Wine on the others.
+      #
+      - name: Publish
+        env:
+          GITHUB_USERNAME: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          version=${{ steps.version.outputs.version }}
+          mkdir -p artifacts
+
+          for rid in win-x64 linux-x64; do
+            dotnet publish se-cmd.csproj -c Release -r "$rid" \
+              --self-contained true \
+              -p:Version="$version" \
+              -p:RepositoryUrl=https://github.com/${{ github.repository }} \
+              -o "publish/$rid"
+
+            (cd publish && zip -qr "../artifacts/se-cmd-$version-$rid.zip" "$rid")
+          done
+
+      # The linux build is the one this runner can actually start, so it is the
+      # one that gets asked whether it works. A publish that lays down a broken
+      # dependency graph builds fine and fails on the first run.
+      - name: Check the artifacts
+        run: |
+          set -euo pipefail
+          ./publish/linux-x64/se-cmd --help
+          ls -l publish/win-x64/se-cmd.exe publish/win-x64/mopper.exe
+          ls -l artifacts/*.zip
+          test "$(ls artifacts/*.zip | wc -l)" -eq 2
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: se-cmd-${{ steps.version.outputs.version }}
+          path: artifacts/*.zip
+          if-no-files-found: error
+
+      - name: Create the GitHub release
+        if: steps.version.outputs.publish == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: se-cmd ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+          fail_on_unmatched_files: true
+          files: artifacts/*.zip
