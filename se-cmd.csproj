@@ -32,7 +32,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="External\HKX2Library\HKX2\HKX2.csproj" />
+    <!--
+      HKX2 as the package, not the submodule. The submodule points at upstream,
+      whose reader rounds every float it reads to six decimal places and turns
+      NaN into zero; the package is the fork that stopped doing that. Building
+      the submodule here put its HKX2.dll in the output in place of the
+      package's, so `exportcreature` and every other command that reaches Havok
+      through HKFBX read a skeleton whose reference poses had been quantised:
+      a cow's root bone came back as 0.136101 where the file says 0.13610077,
+      and the skeleton.hkx written from it could no longer be byte-exact.
+    -->
+    <PackageReference Include="HKX2" Version="1.0.0" />
   </ItemGroup>
 
 </Project>
