@@ -44,8 +44,12 @@
     -->
     <PackageReference Include="HKX2" Version="1.0.0" />
 
-    <!-- Local until SKAssets.Export is published; see the command's remarks. -->
-    <ProjectReference Include="..\SKAssets\src\SKAssets.Export\SKAssets.Export.csproj" />
+    <!--
+      A creature's two skeleton files as one FBX, and back. The conversion is
+      SKAssets', and importcreature and exportcreature are the command line over
+      it; see the commands' remarks for why the split falls there.
+    -->
+    <PackageReference Include="SKAssets.Export" Version="0.1.2" />
   </ItemGroup>
 
 </Project>
