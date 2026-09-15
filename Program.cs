@@ -18,6 +18,7 @@ namespace SECmd
             Commands.ImportCreature.Register(root);
             Commands.ExportCreature.Register(root);
             Commands.Convert.Register(root);
+            Commands.FindNpc.Register(root);
 
             root.Parse(Dropped(root, args)).Invoke();
         }
