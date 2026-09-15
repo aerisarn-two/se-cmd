@@ -94,7 +94,37 @@ namespace SECmd.Npc
             }
 
             if (skin is not null)
-                Collect(cache, skin, race, female, assets);
+                Collect(cache, skin, race, female, assets, "skin");
+
+            // What it is wearing on top. A draugr's helmet is not part of its
+            // body: it is an armour in the outfit the NPC is handed, and without
+            // it the creature comes out bare-headed.
+            if (!npc.DefaultOutfit.IsNull
+                && cache.TryResolve<IOutfitGetter>(npc.DefaultOutfit.FormKey, out IOutfitGetter? outfit))
+            {
+                foreach (var item in outfit.Items)
+                {
+                    if (cache.TryResolve<IArmorGetter>(item.FormKey, out IArmorGetter? piece))
+                        Collect(cache, piece, race, female, assets, "outfit");
+                }
+            }
+
+            // And the head, which for a humanoid is where the hair, the eyes and
+            // the beard live. A draugr has none of these and a bandit has five.
+            foreach (var link in npc.HeadParts)
+            {
+                if (!cache.TryResolve<IHeadPartGetter>(link.FormKey, out IHeadPartGetter? part))
+                    continue;
+
+                if (part.Model?.File?.GivenPath is { Length: > 0 } model)
+                {
+                    assets.Parts.Add(new NpcPart
+                    {
+                        Model = model,
+                        From = $"head part {part.EditorID ?? part.FormKey.ToString()}",
+                    });
+                }
+            }
 
             return assets;
         }
@@ -105,7 +135,8 @@ namespace SECmd.Npc
             IArmorGetter armour,
             IRaceGetter race,
             bool female,
-            NpcAssets assets)
+            NpcAssets assets,
+            string why)
         {
             foreach (var link in armour.Armature)
             {
@@ -130,7 +161,7 @@ namespace SECmd.Npc
                 assets.Parts.Add(new NpcPart
                 {
                     Model = model,
-                    From = $"{armour.EditorID ?? armour.FormKey.ToString()} / "
+                    From = $"{why}: {armour.EditorID ?? armour.FormKey.ToString()} / "
                         + (addon.EditorID ?? addon.FormKey.ToString()),
                 });
             }
