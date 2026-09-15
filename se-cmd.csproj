@@ -50,7 +50,7 @@
       SKAssets', and importcreature and exportcreature are the command line over
       it; see the commands' remarks for why the split falls there.
     -->
-    <PackageReference Include="SKAssets.Export" Version="0.1.13" />
+    <PackageReference Include="SKAssets.Export" Version="0.1.14" />
   </ItemGroup>
 
 </Project>
