@@ -78,6 +78,62 @@ namespace SECmd.Commands
             root.Subcommands.Add(command);
         }
 
+        /// <summary>Every texture the extracted meshes name, once each.</summary>
+        /// <remarks>
+        /// Read out of the NIFs rather than asked of the plugin, because the plugin
+        /// does not know: a record names an armour, the armour names a mesh, and only
+        /// the mesh names the image. A slot a shape left empty is skipped, and so is a
+        /// path already seen -- a draugr's six shapes share three texture sets between
+        /// them.
+        /// </remarks>
+        private static List<string> TexturesOf(
+            IEnumerable<AssetExtractor.Found> found, NifXmlDatabase? database)
+        {
+            database ??= NifXmlDatabase.LoadEmbedded();
+
+            var wanted = new List<string>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (AssetExtractor.Found item in found)
+            {
+                if (item.Written is not { } path
+                    || !path.EndsWith(".nif", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                NifModel model;
+
+                try
+                {
+                    model = NifModel.Load(path, database);
+                }
+                catch (Exception error) when (error is not OutOfMemoryException)
+                {
+                    continue;
+                }
+
+                foreach (NifItem block in model.Blocks)
+                {
+                    if (block.Name != "BSShaderTextureSet"
+                        || model.FindItem(block, "Textures") is not { } textures)
+                    {
+                        continue;
+                    }
+
+                    foreach (NifItem slot in textures.Children)
+                    {
+                        string texture = slot.Value.AsString();
+
+                        if (texture.Length > 0 && seen.Add(texture))
+                            wanted.Add(texture);
+                    }
+                }
+            }
+
+            return wanted;
+        }
+
         /// <summary>The actor a skeleton belongs to, from the folder it sits in.</summary>
         /// <remarks>
         /// `Actors\Draugr\Character Assets\Skeleton.nif` is the Draugr's. The
@@ -189,6 +245,25 @@ namespace SECmd.Commands
             else
             {
                 Console.WriteLine("  no --meshes given, so no clips");
+            }
+
+            // The textures the meshes name, beside the FBX rather than in the staging
+            // folder. A NIF names them relative to Data -- `textures\actors\draugr\
+            // Draugr.dds` -- and the FBX carries that spelling through, so a reader
+            // resolves them against the FBX's own folder. Without them the creature
+            // opens untextured and nothing says why: every image is there, pointing at
+            // a file nobody fetched.
+            List<string> textures = TexturesOf(found, database: null);
+
+            if (textures.Count > 0)
+            {
+                List<AssetExtractor.Found> art = extractor.Extract(textures, into.FullName);
+                int got = art.Count(a => a.Written is not null);
+
+                Console.WriteLine($"  {got} of {textures.Count} textures");
+
+                foreach (AssetExtractor.Found item in art.Where(a => a.Written is null))
+                    Console.WriteLine($"    missing  {item.Relative}");
             }
 
             var assets = new CreatureAssets(npc.EditorId, skeleton, rig!, meshBodies, project!);
