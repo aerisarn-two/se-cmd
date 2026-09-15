@@ -5,6 +5,7 @@ using HKFBX.Model;
 using HKSK.Model;
 using LeanMeshIO;
 using NIFSharp;
+using NIFBX.Conversion;
 using SKAssets.Export;
 using System.CommandLine;
 using System.Text;
@@ -64,9 +65,27 @@ namespace SECmd.Commands
                 DefaultValueFactory = _ => true
             };
 
+            Option<bool> invertUOption = new("--invert-u")
+            {
+                Description = "Mirror the U texture coordinate on the way into a NIF"
+            };
+
+            Option<bool> keepVOption = new("--keep-v")
+            {
+                Description = "Do not mirror V on the way into a NIF. NIF's V axis is normally "
+                    + "the other way up, so leave this off unless the result looks wrong"
+            };
+
+            Option<bool> legendaryOption = new("--le")
+            {
+                Description = "Write NIFs for Skyrim Legendary Edition (stream version 83, "
+                    + "NiTriShape geometry). The default is Special Edition (100, BSTriShape)"
+            };
+
             Command command = new("convert", "Convert anything: NIF, HKX, FBX, or a creature's folder")
             {
-                inputs, outputOption, meshesOption, templateOption, recurseOption
+                inputs, outputOption, meshesOption, templateOption, recurseOption,
+                invertUOption, keepVOption, legendaryOption
             };
 
             command.SetAction(parseResult => Execute(
@@ -74,13 +93,20 @@ namespace SECmd.Commands
                 parseResult.GetValue(outputOption),
                 parseResult.GetValue(meshesOption),
                 parseResult.GetValue(templateOption),
-                parseResult.GetValue(recurseOption)));
+                parseResult.GetValue(recurseOption),
+                new FbxToNifOptions
+                {
+                    InvertU = parseResult.GetValue(invertUOption),
+                    InvertV = !parseResult.GetValue(keepVOption),
+                    LegendaryEdition = parseResult.GetValue(legendaryOption),
+                }));
 
             root.Subcommands.Add(command);
         }
 
         private static int Execute(
-            string[] paths, DirectoryInfo? output, DirectoryInfo? meshes, FileInfo? template, bool recurse)
+            string[] paths, DirectoryInfo? output, DirectoryInfo? meshes, FileInfo? template,
+            bool recurse, FbxToNifOptions settings)
         {
             NifXmlDatabase database;
 
@@ -109,7 +135,7 @@ namespace SECmd.Commands
             log.Say(string.Empty);
 
             foreach (string path in Walk(paths, database, cache, recurse, log))
-                One(path, database, cache, into, template, log);
+                One(path, database, cache, into, template, settings, log);
 
             log.Say(string.Empty);
             log.Say($"{log.Converted} converted, {log.Skipped} skipped, {log.Failed} failed");
@@ -208,7 +234,7 @@ namespace SECmd.Commands
         /// <summary>One input, recognised and converted.</summary>
         private static void One(
             string path, NifXmlDatabase database, SkyrimCache? cache,
-            DirectoryInfo into, FileInfo? template, Log log)
+            DirectoryInfo into, FileInfo? template, FbxToNifOptions settings, Log log)
         {
             RecognisedAsset what = AssetRecognition.Of(path, database, cache);
             log.Say($"{Name(path)}: {what.Summary}");
@@ -234,7 +260,7 @@ namespace SECmd.Commands
                         break;
 
                     case AssetKind.Scene:
-                        Scene(path, what, database, cache, into, template, log);
+                        Scene(path, what, database, cache, into, template, settings, log);
                         break;
 
                     default:
@@ -328,7 +354,7 @@ namespace SECmd.Commands
 
         private static void Scene(
             string path, RecognisedAsset what, NifXmlDatabase database, SkyrimCache? cache,
-            DirectoryInfo into, FileInfo? template, Log log)
+            DirectoryInfo into, FileInfo? template, FbxToNifOptions settings, Log log)
         {
             SceneContents contents = what.Contents!;
 
@@ -347,7 +373,8 @@ namespace SECmd.Commands
             if (contents.HasClips && project is null)
                 log.Say("    it carries clips and no project was found for it, so they stay in the scene");
 
-            CreatureImport back = CreatureExchange.Import(document, database, project);
+            CreatureImport back = CreatureExchange.Import(
+                document, database, project, options: settings);
             DirectoryInfo folder = into.CreateSubdirectory(name);
 
             // A scene this library built says which files it came from, and those
