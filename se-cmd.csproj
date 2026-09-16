@@ -29,7 +29,7 @@
       What is left in this project is the command line over it, plus the Havok
       animation cache in AnimData/, which no converter needs.
     -->
-    <PackageReference Include="NIFBX" Version="1.6.7" />
+    <PackageReference Include="NIFBX" Version="1.6.10" />
   </ItemGroup>
 
   <ItemGroup>
@@ -50,7 +50,7 @@
       SKAssets'; `convert` is the command line over it, and recognises a
       creature's folder for itself.
     -->
-    <PackageReference Include="SKAssets.Export" Version="0.1.18" />
+    <PackageReference Include="SKAssets.Export" Version="0.1.21" />
   </ItemGroup>
 
 </Project>
