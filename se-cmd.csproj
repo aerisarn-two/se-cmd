@@ -29,7 +29,7 @@
       What is left in this project is the command line over it, plus the Havok
       animation cache in AnimData/, which no converter needs.
     -->
-    <PackageReference Include="NIFBX" Version="1.6.17" />
+    <PackageReference Include="NIFBX" Version="1.6.18" />
   </ItemGroup>
 
   <ItemGroup>
