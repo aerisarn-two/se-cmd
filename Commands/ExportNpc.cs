@@ -220,18 +220,25 @@ namespace SECmd.Commands
             // the animation cache, which lives in an extracted `meshes` folder
             // rather than in an archive -- so it is asked for rather than assumed.
             //
-            // The actor is named by the folder its skeleton sits in: a skeleton at
-            // Actors/Draugr/Character Assets/Skeleton.nif belongs to Draugr, whose
-            // project the cache calls DraugrProject.
+            // Which project is the record's to say, not the folder's. The race names
+            // a behaviour graph -- `Actors/Draugr/DraugrProject.hkx` -- and that is
+            // the project. Reading it off the skeleton's folder instead is right for
+            // a draugr by luck and wrong for most: a dog's skeleton sits in
+            // `Character Assets Dog` while its project is `DogProject`, and a Nord's
+            // project is `DefaultMale` or `DefaultFemale` depending on the NPC's sex,
+            // which no folder name knows. Both came back with none of their clips.
+            //
+            // The folder still answers where the record does not, since a race with
+            // no graph is one this has nothing better to go on for.
             ActorProject? project = null;
-            string actor = ActorName(npc.Skeleton);
+            string actor = npc.ProjectName ?? ActorName(npc.Skeleton);
 
             if (meshes is not null && Directory.Exists(meshes.FullName))
             {
                 try
                 {
                     SkyrimCache cache = SkyrimCache.Load(meshes.FullName);
-                    project = cache.OpenActor(actor + "Project") ?? cache.OpenActor(actor);
+                    project = cache.OpenActor(actor) ?? cache.OpenActor(actor + "Project");
                 }
                 catch (Exception error) when (error is not OutOfMemoryException)
                 {

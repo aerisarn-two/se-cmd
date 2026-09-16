@@ -32,6 +32,32 @@ namespace SECmd.Npc
         /// <summary>The rig, from the race's skeletal model.</summary>
         public string? Skeleton { get; init; }
 
+        /// <summary>The behaviour graph the race names, which is its Havok project.</summary>
+        /// <remarks>
+        /// The record says which project an actor animates with, and nothing else
+        /// does. Naming it after the folder the skeleton sits in is right for a
+        /// draugr by luck and wrong for most: a dog's skeleton is in
+        /// `Actors/Canine/Character Assets Dog` and its project is `DogProject`, a
+        /// wolf's is `Actors/Canine/Character Assets Wolf` and `WolfProject`, and a
+        /// Nord's is `Actors/Character/Character Assets` with the project depending
+        /// on which sex the NPC is -- `DefaultMale` or `DefaultFemale`, which no
+        /// folder name can tell you. Guessing cost the dog and every human all 
+        /// their clips.
+        /// </remarks>
+        public string? BehaviorGraph { get; init; }
+
+        /// <summary>The Havok project's name, as the animation cache spells it.</summary>
+        /// <remarks>
+        /// The record writes a Windows path -- `Actors\Draugr\DraugrProject.hkx` --
+        /// and `Path.GetFileNameWithoutExtension` only knows the separator it is
+        /// running on, so off Windows it hands the whole thing back. The separators
+        /// are squared up first.
+        /// </remarks>
+        public string? ProjectName =>
+            BehaviorGraph is null
+                ? null
+                : Path.GetFileNameWithoutExtension(BehaviorGraph.Replace('\\', '/'));
+
         /// <summary>The Havok half, beside the skeleton and named by convention.</summary>
         public string? SkeletonHavok =>
             Skeleton is null ? null : Path.ChangeExtension(Skeleton, ".hkx");
@@ -76,6 +102,9 @@ namespace SECmd.Npc
                 Skeleton = female
                     ? race.SkeletalModel?.Female?.File?.GivenPath
                     : race.SkeletalModel?.Male?.File?.GivenPath,
+                BehaviorGraph = female
+                    ? race.BehaviorGraph?.Female?.File?.GivenPath
+                    : race.BehaviorGraph?.Male?.File?.GivenPath,
             };
 
             // What it wears, if anything, and otherwise what its race wears. A
