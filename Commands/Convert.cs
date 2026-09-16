@@ -76,6 +76,12 @@ namespace SECmd.Commands
                     + "the other way up, so leave this off unless the result looks wrong"
             };
 
+            Option<string> texturePathOption = new("--textures")
+            {
+                Description = "Prefix prepended to texture paths written into materials",
+                DefaultValueFactory = _ => string.Empty
+            };
+
             Option<bool> legendaryOption = new("--le")
             {
                 Description = "Write NIFs for Skyrim Legendary Edition (stream version 83, "
@@ -85,7 +91,7 @@ namespace SECmd.Commands
             Command command = new("convert", "Convert anything: NIF, HKX, FBX, or a creature's folder")
             {
                 inputs, outputOption, meshesOption, templateOption, recurseOption,
-                invertUOption, keepVOption, legendaryOption
+                invertUOption, keepVOption, legendaryOption, texturePathOption
             };
 
             command.SetAction(parseResult => Execute(
@@ -99,14 +105,15 @@ namespace SECmd.Commands
                     InvertU = parseResult.GetValue(invertUOption),
                     InvertV = !parseResult.GetValue(keepVOption),
                     LegendaryEdition = parseResult.GetValue(legendaryOption),
-                }));
+                },
+                new NifToFbxOptions { TexturePath = parseResult.GetValue(texturePathOption)! }));
 
             root.Subcommands.Add(command);
         }
 
         private static int Execute(
             string[] paths, DirectoryInfo? output, DirectoryInfo? meshes, FileInfo? template,
-            bool recurse, FbxToNifOptions settings)
+            bool recurse, FbxToNifOptions settings, NifToFbxOptions outgoing)
         {
             NifXmlDatabase database;
 
@@ -135,7 +142,7 @@ namespace SECmd.Commands
             log.Say(string.Empty);
 
             foreach (string path in Walk(paths, database, cache, recurse, log))
-                One(path, database, cache, into, template, settings, log);
+                One(path, database, cache, into, template, settings, outgoing, log);
 
             log.Say(string.Empty);
             log.Say($"{log.Converted} converted, {log.Skipped} skipped, {log.Failed} failed");
@@ -234,7 +241,8 @@ namespace SECmd.Commands
         /// <summary>One input, recognised and converted.</summary>
         private static void One(
             string path, NifXmlDatabase database, SkyrimCache? cache,
-            DirectoryInfo into, FileInfo? template, FbxToNifOptions settings, Log log)
+            DirectoryInfo into, FileInfo? template, FbxToNifOptions settings,
+            NifToFbxOptions outgoing, Log log)
         {
             RecognisedAsset what = AssetRecognition.Of(path, database, cache);
             log.Say($"{Name(path)}: {what.Summary}");
@@ -248,7 +256,7 @@ namespace SECmd.Commands
                         break;
 
                     case AssetKind.Mesh:
-                        Mesh(path, database, into, log);
+                        Mesh(path, database, into, outgoing, log);
                         break;
 
                     case AssetKind.HavokSkeleton:
@@ -293,7 +301,9 @@ namespace SECmd.Commands
             log.Wrote(target);
         }
 
-        private static void Mesh(string path, NifXmlDatabase database, DirectoryInfo into, Log log)
+        private static void Mesh(
+            string path, NifXmlDatabase database, DirectoryInfo into,
+            NifToFbxOptions outgoing, Log log)
         {
             string target = Path.Combine(into.FullName, Path.GetFileNameWithoutExtension(path) + ".fbx");
 
@@ -302,7 +312,7 @@ namespace SECmd.Commands
             foreach (string warning in model.Warnings)
                 log.Say($"    {warning}");
 
-            new NIFBX.Conversion.NifToFbx(model).Convert().Save(target);
+            new NIFBX.Conversion.NifToFbx(model, outgoing).Convert().Save(target);
             log.Wrote(target);
         }
 

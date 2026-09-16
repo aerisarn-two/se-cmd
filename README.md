@@ -57,12 +57,15 @@ game's 1,106 meshes use it.
 
 ## The other commands
 
-`convert` covers most of it. These are the narrower jobs:
+`convert` covers the conversion, in both directions, for anything it is handed:
+a NIF, an HKX, an FBX, or a creature's folder. It asks the file what it is, so
+there is nothing for a command naming the direction to do. These are the jobs
+that are not conversions:
 
 | | |
 | --- | --- |
-| `exportfbx` / `importfbx` | one NIF to FBX and back, without looking at anything beside it |
-| `exportcreature` / `importcreature` | a creature's two skeleton files alone, without its bodies |
+| `findnpc` | say which files a creature is made of, without converting any of them |
+| `exportnpc` | gather the files a record configures, out of the archives, into one FBX |
 | `retarget` | a creature's Havok project, forms and assets onto another actor |
 
 ## Where the work is

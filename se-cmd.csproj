@@ -38,19 +38,19 @@
       whose reader rounds every float it reads to six decimal places and turns
       NaN into zero; the package is the fork that stopped doing that. Building
       the submodule here put its HKX2.dll in the output in place of the
-      package's, so `exportcreature` and every other command that reaches Havok
-      through HKFBX read a skeleton whose reference poses had been quantised:
+      package's, so every command that reaches Havok through HKFBX read a
+      skeleton whose reference poses had been quantised:
       a cow's root bone came back as 0.136101 where the file says 0.13610077,
       and the skeleton.hkx written from it could no longer be byte-exact.
     -->
     <PackageReference Include="HKX2" Version="1.0.0" />
 
     <!--
-      A creature's two skeleton files as one FBX, and back. The conversion is
-      SKAssets', and importcreature and exportcreature are the command line over
-      it; see the commands' remarks for why the split falls there.
+      A creature as one FBX, and back apart into its files. The conversion is
+      SKAssets'; `convert` is the command line over it, and recognises a
+      creature's folder for itself.
     -->
-    <PackageReference Include="SKAssets.Export" Version="0.1.14" />
+    <PackageReference Include="SKAssets.Export" Version="0.1.18" />
   </ItemGroup>
 
 </Project>

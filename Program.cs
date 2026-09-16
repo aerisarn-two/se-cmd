@@ -13,8 +13,6 @@ namespace SECmd
 
             RootCommand root = new($"se-cmd {Build.Version}");
             Commands.RetargetCreature.Register(root);
-            Commands.ExportFbx.Register(root);
-            Commands.ExportCreature.Register(root);
             Commands.Convert.Register(root);
             Commands.FindNpc.Register(root);
             Commands.ExportNpc.Register(root);
