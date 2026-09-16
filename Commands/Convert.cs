@@ -282,6 +282,36 @@ namespace SECmd.Commands
             }
         }
 
+        /// <summary>Where a mesh goes, kept inside the output folder.</summary>
+        /// <remarks>
+        /// A creature's scene records where each mesh came from, relative to the
+        /// skeleton, and the game does not keep them all in one place: a dog's
+        /// skeleton is `Actors/Canine/Character Assets Dog` while its body is
+        /// `Actors/Dog/Character Assets`, so the name recorded climbs out with
+        /// `../..` and `Path.Combine` follows it. Writing an NPC put its dog beside
+        /// the output folder rather than in it, and a Nord's beard -- recorded as
+        /// `Beards/HumanBeardShort32.nif` -- into a subfolder nothing had created.
+        /// Both came back as "0 converted, 1 failed", the whole creature lost for a
+        /// missing directory.
+        ///
+        /// So the climb is dropped and the rest kept: the beard lands in `Beards/`
+        /// and the dog in `Dog/Character Assets/`, under the folder that was asked
+        /// for, which is where somebody looking for output looks.
+        /// </remarks>
+        private static string Inside(DirectoryInfo folder, string file)
+        {
+            IEnumerable<string> parts = file
+                .Replace('\\', Path.DirectorySeparatorChar)
+                .Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries)
+                .SkipWhile(p => p == ".." || p == ".");
+
+            string relative = Path.Combine([.. parts]);
+
+            return relative.Length == 0
+                ? Path.Combine(folder.FullName, Path.GetFileName(file))
+                : Path.Combine(folder.FullName, relative);
+        }
+
         private static void Creature(RecognisedAsset what, NifXmlDatabase database, DirectoryInfo into, Log log)
         {
             CreatureAssets assets = what.Creature!;
@@ -395,7 +425,8 @@ namespace SECmd.Commands
 
             foreach ((string file, NifModel model) in back.Meshes.OrderBy(m => m.Key, StringComparer.Ordinal))
             {
-                string target = Path.Combine(folder.FullName, carriesNames ? file : name + ".nif");
+                string target = Inside(folder, carriesNames ? file : name + ".nif");
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                 model.Save(target);
                 log.Wrote(target);
             }
